@@ -1,0 +1,46 @@
+syntax="proto3";
+option cc_generic_services = true;
+
+package storage_service;
+
+message LogWriteRequest {
+    bytes log = 1;
+};
+
+message LogWriteResponse{}
+
+message GetLatestPageRequest {
+	message PageID{
+    	sint32 table_id = 1;
+        sint32 slice_id = 2;
+        sint32 page_no = 3;
+    }
+	repeated PageID page_id = 1;
+    repeated sint32 latest_lsn = 2;
+};
+
+message GetLatestPageResponse {
+    repeated bytes data = 1;
+};
+
+message GetOldPageRequest {
+    message PageID{
+    	sint32 table_id = 1;
+        sint32 slice_id = 2;
+        sint32 page_no = 3;
+    }
+	repeated PageID page_id = 1;
+    repeated sint32 active_trx_ids = 2;
+    sint32 up_limit_id = 3;
+    sint32 low_limit_id = 4;
+};
+
+message GetOldPageResponse {
+    repeated bytes data = 1;
+};
+
+service StorageService {
+    rpc LogWrite(LogWriteRequest) returns (LogWriteResponse);
+    rpc GetOldPage(GetOldPageRequest) returns (GetOldPageResponse);
+    rpc GetLatestPage(GetLatestPageRequest) returns (GetLatestPageResponse);
+};

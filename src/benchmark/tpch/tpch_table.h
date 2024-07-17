@@ -1,0 +1,1010 @@
+#include "tpch_config.h"
+
+#include "benchmark/util/random.h"
+#include "benchmark/util/clock.h"
+
+#include <cstring>
+#include <iostream>
+#include <cstdio>
+#include <vector>
+#include <fstream>
+
+#include "system/sm.h"
+
+#include "debug_log.h"
+
+namespace TPCH_TABLE{
+
+/*
+    table region
+*/
+class Region {
+
+// CREATE TABLE REGION (
+//   R_REGIONKEY INT NOT NULL,
+//   R_NAME CHAR(25) NOT NULL,
+//   R_COMMENT VARCHAR(152) DEFAULT NULL,
+//   PRIMARY KEY (R_REGIONKEY)
+// );
+
+public:
+    int     r_regionkey;    // int  primary key
+    char    r_name[25];     // varchar
+    char    r_comment[152]; // varchar
+
+    void create_table(SmManager* sm_mgr) {
+        std::string table_name = "region";
+        std::vector<ColDef> col_defs;
+        col_defs.emplace_back(ColDef("r_regionkey", ColType::TYPE_INT, 4));
+        col_defs.emplace_back(ColDef("r_name", ColType::TYPE_STRING, 25));
+        col_defs.emplace_back(ColDef("r_comment", ColType::TYPE_STRING, 152));
+        std::vector<std::string> pkeys;
+        pkeys.emplace_back("r_regionkey");
+        sm_mgr->create_table(table_name, col_defs, pkeys, nullptr);
+    }
+
+    Region() {}
+
+    void print_record() {
+        std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
+    }
+
+    void generate_table_data(int sf, Transaction* txn, SmManager* sm_mgr, IxManager* ix_mgr) {
+        auto tab_meta = sm_mgr->db_.get_table("region");
+        auto index_handle = sm_mgr->primary_index_.at("region").get();
+        Record record(tab_meta.record_length_);
+
+        for(r_regionkey = 1; r_regionkey <= REGION_NUM; ++r_regionkey) {
+
+            /*
+                r_name, r_comment
+            */
+            RandomGenerator::generate_random_str(r_name, 25);
+            RandomGenerator::generate_random_str(r_comment, 152);
+
+            memset(record.record_, 0, record.data_length_ + sizeof(RecordHdr));
+            
+            int offset = 0;
+
+            memcpy(record.raw_data_ + offset, (char *)&r_regionkey, sizeof(int));
+            offset += sizeof(int);
+            memcpy(record.raw_data_ + offset, (char *)r_name, 25);
+            offset += 25;
+            memcpy(record.raw_data_ + offset, (char *)r_comment, 152);
+            offset += 152;
+
+            assert(offset == tab_meta.record_length_);
+
+            index_handle->insert_entry(record.raw_data_, record.record_, txn);
+        }
+    }
+
+    void generate_data_csv(std::string file_name) {
+        std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
+    }
+
+    void write_data_into_file(std::string file_name) {
+        std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
+    }
+};
+
+
+/*
+    table nation
+    
+    CREATE TABLE NATION (
+    N_NATIONKEY INT NOT NULL,
+    N_NAME CHAR(25) NOT NULL,
+    N_REGIONKEY INT NOT NULL,
+    N_COMMENT VARCHAR(152) DEFAULT NULL,
+    PRIMARY KEY (N_NATIONKEY)
+);
+*/
+class Nation {
+
+public:
+    int     n_nationkey;    // int  primary key
+    char    n_name[25];     // varchar
+    int     n_regionkey;    // region key
+    char    n_comment[152];      // varchar
+
+    void create_table(SmManager* sm_mgr) {
+        std::string table_name = "nation";
+        std::vector<ColDef> col_defs;
+        col_defs.emplace_back(ColDef("n_nationkey", ColType::TYPE_INT, 4));
+        col_defs.emplace_back(ColDef("n_name", ColType::TYPE_STRING, 25));
+        col_defs.emplace_back(ColDef("n_regionkey", ColType::TYPE_INT, 4));
+        col_defs.emplace_back(ColDef("n_comment", ColType::TYPE_STRING, 152));
+        std::vector<std::string> pkeys;
+        pkeys.emplace_back("n_nationkey");
+        sm_mgr->create_table(table_name, col_defs, pkeys, nullptr);
+    }
+
+    Nation() {}
+
+    void print_record() {
+        std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
+    }
+
+    void generate_table_data(int sf, Transaction* txn, SmManager* sm_mgr, IxManager* ix_mgr) {
+        auto tab_meta = sm_mgr->db_.get_table("nation");
+        auto index_handle = sm_mgr->primary_index_.at("nation").get();
+        Record record(tab_meta.record_length_);
+
+        int nationkey_max = REGION_NUM * ONE_REGION_PER_NATION;
+        for(n_regionkey = 1; n_regionkey <= REGION_NUM; ++n_regionkey) {
+            for(n_nationkey = 1; n_nationkey <= nationkey_max; ++n_nationkey) {
+                /*
+                    random generate: n_name, n_comment
+                */
+                RandomGenerator::generate_random_str(n_name, 25);
+                RandomGenerator::generate_random_str(n_comment, 152);
+
+                /*
+                    generate record content
+                */
+                memset(record.record_, 0, record.data_length_ + sizeof(RecordHdr));
+
+                int offset = 0;
+                
+                memcpy(record.raw_data_ + offset, (char *)&n_nationkey, sizeof(int));
+                offset += sizeof(int);
+                memcpy(record.raw_data_ + offset, n_name, 25);
+                offset += 25;
+                memcpy(record.raw_data_ + offset, (char *)&n_regionkey, sizeof(int));
+                offset += sizeof(int);
+                memcpy(record.raw_data_ + offset, n_comment, 152);
+                offset += 152;
+
+                assert(offset == tab_meta.record_length_);
+
+                /*
+                    insert data
+                */
+                index_handle->insert_entry(record.raw_data_, record.record_, txn);
+            }
+        }
+    }
+
+    void generate_data_csv(std::string file_name) {
+        std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
+    }
+
+    void write_data_into_file(std::string file_name) {
+        std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
+    }
+};
+
+
+/*
+    table part
+
+    CREATE TABLE PART (
+    P_PARTKEY INT NOT NULL,
+    P_NAME VARCHAR(55) NOT NULL,
+    P_MFGR CHAR(25) NOT NULL,
+    P_BRAND CHAR(10) NOT NULL,
+    P_TYPE VARCHAR(25) NOT NULL,
+    P_SIZE INT NOT NULL,
+    P_CONTAINER CHAR(10) NOT NULL,
+    P_RETAILPRICE DECIMAL(15,2) NOT NULL,
+    P_COMMENT VARCHAR(23) NOT NULL,
+    PRIMARY KEY (P_PARTKEY)
+);
+*/
+
+class Part {
+
+public:
+    int     p_partkey;          // int  primary key
+    char    p_name[55];         
+    char    p_mfgr[25];         
+    char    p_brand[10];       
+    char    p_type[25];         
+    int     p_size;
+    char    p_container[10];
+    float   p_retailprice;
+    char    p_comment[23];
+
+    void create_table(SmManager* sm_mgr) {
+        std::string table_name = "part";
+        std::vector<ColDef> col_defs;
+        col_defs.emplace_back(ColDef("p_partkey", ColType::TYPE_INT, 4));
+        col_defs.emplace_back(ColDef("p_name", ColType::TYPE_STRING, 55));
+        col_defs.emplace_back(ColDef("p_mfgr", ColType::TYPE_STRING, 25));
+        col_defs.emplace_back(ColDef("p_brand", ColType::TYPE_STRING, 10));
+        col_defs.emplace_back(ColDef("p_type", ColType::TYPE_STRING, 25));
+        col_defs.emplace_back(ColDef("p_size", ColType::TYPE_INT, 4));
+        col_defs.emplace_back(ColDef("p_container", ColType::TYPE_STRING, 10));
+        col_defs.emplace_back(ColDef("p_retailprice", ColType::TYPE_FLOAT, 4));
+        col_defs.emplace_back(ColDef("p_comment", ColType::TYPE_STRING, 23));
+        std::vector<std::string> pkeys;
+        pkeys.emplace_back("p_partkey");
+        sm_mgr->create_table(table_name, col_defs, pkeys, nullptr);
+    }
+
+    Part() {}
+
+    void print_record() {
+        std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
+    }
+
+    void generate_table_data(int SF, Transaction* txn, SmManager* sm_mgr, IxManager* ix_mgr) {
+        auto tab_meta = sm_mgr->db_.get_table("part");
+        auto index_handle = sm_mgr->primary_index_.at("part").get();
+        Record record(tab_meta.record_length_);
+
+        int p_partkey_max = SF * ONE_SF_PER_PART;
+        for(p_partkey = 1; p_partkey <= p_partkey_max; ++p_partkey) {
+        
+            /*
+                random generate: p_name, p_mfgr, p_brand, p_type, p_size, p_container, p_retailprice, p_comment
+            */
+            RandomGenerator::generate_random_str(p_name, 55);
+            RandomGenerator::generate_random_str(p_mfgr, 25);
+            RandomGenerator::generate_random_str(p_brand, 10);
+            RandomGenerator::generate_random_str(p_type, 25);
+            p_size = RandomGenerator::generate_random_int(1, 2000);
+            RandomGenerator::generate_random_str(p_container, 10);
+            p_retailprice = RandomGenerator::generate_random_float(1, 20000);
+            RandomGenerator::generate_random_str(p_comment, 23);
+
+            /*
+                generate record content
+            */
+            memset(record.record_, 0, record.data_length_ + sizeof(RecordHdr));
+
+            int offset = 0;
+            
+            memcpy(record.raw_data_ + offset, (char *)&p_partkey, sizeof(int));
+            offset += sizeof(int);
+            memcpy(record.raw_data_ + offset, p_name, 55);
+            offset += 55;
+            memcpy(record.raw_data_ + offset, p_mfgr, 25);
+            offset += 25;
+            memcpy(record.raw_data_ + offset, p_brand, 10);
+            offset += 10;
+            memcpy(record.raw_data_ + offset, p_type, 25);
+            offset += 25;
+            memcpy(record.raw_data_ + offset, (char *)&p_size, sizeof(int));
+            offset += sizeof(int);
+            memcpy(record.raw_data_ + offset, p_container, 10);
+            offset += 10;
+            memcpy(record.raw_data_ + offset, (char *)&p_retailprice, sizeof(float));
+            offset += sizeof(float);
+            memcpy(record.raw_data_ + offset, p_comment, 23);
+            offset += 23;
+
+            assert(offset == tab_meta.record_length_);
+
+            /*
+                insert data
+            */
+            index_handle->insert_entry(record.raw_data_, record.record_, txn);
+        }
+    }
+
+    void generate_data_csv(std::string file_name) {
+        std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
+    }
+
+    void write_data_into_file(std::string file_name) {
+        std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
+    }
+};
+
+
+/*
+    table customer
+
+    CREATE TABLE CUSTOMER (
+    C_CUSTKEY INT NOT NULL,
+    C_NAME VARCHAR(25) NOT NULL,
+    C_ADDRESS VARCHAR(40) NOT NULL,
+    C_NATIONKEY INT NOT NULL,
+    C_PHONE CHAR(15) NOT NULL,
+    C_ACCTBAL DECIMAL(15,2) NOT NULL,
+    C_MKTSEGMENT CHAR(10) NOT NULL,
+    C_COMMENT VARCHAR(117) NOT NULL,
+    PRIMARY KEY (C_CUSTKEY),
+    KEY CUSTOMER_FK1 (C_NATIONKEY),
+    CONSTRAINT CUSTOMER_IBFK_1 FOREIGN KEY (C_NATIONKEY) REFERENCES NATION (N_NATIONKEY)
+    );
+);
+*/
+
+class Customer {
+
+public:
+    int     c_custkey;          // int  primary key
+    char    c_name[25];
+    char    c_address[40];
+    int     c_nationkey;
+    char    c_phone[15];
+    float   c_acctbal;
+    char    c_mktsegment[10];
+    char    c_comment[117];
+
+    void create_table(SmManager* sm_mgr) {
+        std::string table_name = "customer";
+        std::vector<ColDef> col_defs;
+        col_defs.emplace_back(ColDef("c_custkey", ColType::TYPE_INT, 4));
+        col_defs.emplace_back(ColDef("c_name", ColType::TYPE_STRING, 25));
+        col_defs.emplace_back(ColDef("c_address", ColType::TYPE_STRING, 40));
+        col_defs.emplace_back(ColDef("c_nationkey", ColType::TYPE_INT, 4));
+        col_defs.emplace_back(ColDef("c_phone", ColType::TYPE_STRING, 15));
+        col_defs.emplace_back(ColDef("c_acctbal", ColType::TYPE_FLOAT, 4));
+        col_defs.emplace_back(ColDef("c_mktsegment", ColType::TYPE_STRING, 10));
+        col_defs.emplace_back(ColDef("c_comment", ColType::TYPE_STRING, 117));
+        std::vector<std::string> pkeys;
+        pkeys.emplace_back("c_custkey");
+        sm_mgr->create_table(table_name, col_defs, pkeys, nullptr);
+    }
+
+    Customer() {}
+
+    void print_record() {
+        std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
+    }
+
+    void generate_table_data(int SF, Transaction* txn, SmManager* sm_mgr, IxManager* ix_mgr) {
+        auto tab_meta = sm_mgr->db_.get_table("customer");
+        auto index_handle = sm_mgr->primary_index_.at("customer").get();
+        Record record(tab_meta.record_length_);
+
+        /*
+            1 <= c_custkey <= SF * ONE_SF_PER_CUSTOMER
+        */
+        int c_custkey_max = SF * ONE_SF_PER_CUSTOMER;
+
+        /*
+            1 <= c_nationkey <= 25
+        */
+        for(c_custkey = 1; c_custkey <= c_custkey_max; ++c_custkey) {
+        
+            /*
+                col_defs.emplace_back(ColDef("c_custkey", ColType::TYPE_INT, 4));
+                col_defs.emplace_back(ColDef("c_name", ColType::TYPE_STRING, 25));
+                col_defs.emplace_back(ColDef("c_address", ColType::TYPE_STRING, 40));
+                col_defs.emplace_back(ColDef("c_nationkey", ColType::TYPE_INT, 4));
+                col_defs.emplace_back(ColDef("c_phone", ColType::TYPE_STRING, 15));
+                col_defs.emplace_back(ColDef("c_acctbal", ColType::TYPE_FLOAT, 4));
+                col_defs.emplace_back(ColDef("c_mktsegment", ColType::TYPE_STRING, 10));
+                col_defs.emplace_back(ColDef("c_comment", ColType::TYPE_STRING, 117));
+            */
+            RandomGenerator::generate_random_str(c_name, 25);
+            RandomGenerator::generate_random_str(c_address, 40);
+            c_nationkey = RandomGenerator::generate_random_int(1, REGION_NUM * ONE_REGION_PER_NATION);
+            RandomGenerator::generate_random_str(c_phone, 15);
+            c_acctbal = RandomGenerator::generate_random_float(1, 20000);
+            RandomGenerator::generate_random_str(c_mktsegment, 10);
+            RandomGenerator::generate_random_str(c_comment, 117);
+
+            /*
+                generate record content
+            */
+            memset(record.record_, 0, record.data_length_ + sizeof(RecordHdr));
+
+            int offset = 0;
+            
+            memcpy(record.raw_data_ + offset, (char *)&c_custkey, sizeof(int));
+            offset += sizeof(int);
+            memcpy(record.raw_data_ + offset, c_name, 25);
+            offset += 25;
+            memcpy(record.raw_data_ + offset, c_address, 40);
+            offset += 40;
+            memcpy(record.raw_data_ + offset, (char *)&c_nationkey, sizeof(int));
+            offset += sizeof(int);
+            memcpy(record.raw_data_ + offset, c_phone, 15);
+            offset += 15;
+            memcpy(record.raw_data_ + offset, (char *)&c_acctbal, sizeof(float));
+            offset += sizeof(float);
+            memcpy(record.raw_data_ + offset, c_mktsegment, 10);
+            offset += 10;
+            memcpy(record.raw_data_ + offset, c_comment, 117);
+            offset += 117;
+
+            assert(offset == tab_meta.record_length_);
+
+            /*
+                insert data
+            */
+            index_handle->insert_entry(record.raw_data_, record.record_, txn);
+        }
+    }
+
+    void generate_data_csv(std::string file_name) {
+        std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
+    }
+
+    void write_data_into_file(std::string file_name) {
+        std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
+    }
+};
+
+
+/*
+    table orders
+
+    CREATE TABLE ORDERS (
+    O_ORDERKEY INT NOT NULL,
+    O_CUSTKEY INT NOT NULL,
+    O_ORDERSTATUS CHAR(1) NOT NULL,
+    O_TOTALPRICE DECIMAL(15,2) NOT NULL,
+    O_ORDERDATE DATE NOT NULL,
+    O_ORDERPRIORITY CHAR(15) NOT NULL,
+    O_CLERK CHAR(15) NOT NULL,
+    O_SHIPPRIORITY INT NOT NULL,
+    O_COMMENT VARCHAR(79) NOT NULL,
+    PRIMARY KEY (O_ORDERKEY),
+    KEY ORDERS_FK1 (O_CUSTKEY),
+    CONSTRAINT ORDERS_IBFK_1 FOREIGN KEY (O_CUSTKEY) REFERENCES CUSTOMER (C_CUSTKEY)
+    );
+);
+*/
+
+class Orders {
+
+public:
+    int     o_orderkey;          // int  primary key
+    int     o_custkey;              
+    char    o_orderstatus[1]; 
+    float   o_totalprice;
+    char    o_orderdate[Clock::DATETIME_SIZE + 1];
+    char    o_orderpriority[15];
+    char    o_clerk[15];
+    int     o_shippriority;
+    char    o_comment[79];
+
+
+    void create_table(SmManager* sm_mgr) {
+        std::string table_name = "orders";
+        std::vector<ColDef> col_defs;
+        col_defs.emplace_back(ColDef("o_orderkey", ColType::TYPE_INT, 4));
+        col_defs.emplace_back(ColDef("o_custkey", ColType::TYPE_INT, 4));
+        col_defs.emplace_back(ColDef("o_orderstatus", ColType::TYPE_STRING, 1));
+        col_defs.emplace_back(ColDef("o_totalprice", ColType::TYPE_FLOAT, 4));
+        col_defs.emplace_back(ColDef("o_orderdate", ColType::TYPE_STRING, Clock::DATETIME_SIZE + 1));
+        col_defs.emplace_back(ColDef("o_orderpriority", ColType::TYPE_STRING, 15));
+        col_defs.emplace_back(ColDef("o_clerk", ColType::TYPE_STRING, 15));
+        col_defs.emplace_back(ColDef("o_shippriority", ColType::TYPE_INT, 4));
+        col_defs.emplace_back(ColDef("o_comment", ColType::TYPE_STRING, 79));
+        
+        std::vector<std::string> pkeys;
+        pkeys.emplace_back("o_orderkey");
+        sm_mgr->create_table(table_name, col_defs, pkeys, nullptr);
+    }
+
+    Orders() {}
+
+    void print_record() {
+        std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
+    }
+
+    void generate_table_data(int SF, Transaction* txn, SmManager* sm_mgr, IxManager* ix_mgr) {
+        auto tab_meta = sm_mgr->db_.get_table("orders");
+        auto index_handle = sm_mgr->primary_index_.at("orders").get();
+        Record record(tab_meta.record_length_);
+
+        /*
+            1 <= o_orderkey <= SF * ONE_SF_PER_ORDER
+        */
+        int o_orderkey_max = SF * ONE_SF_PER_ORDER;
+
+        /*
+            1 <= o_custkey <= SF * ONE_SF_PER_CUSTOMER
+        */
+        int c_custkey_max = SF * ONE_SF_PER_CUSTOMER;
+        for(o_orderkey = 1; o_orderkey <= o_orderkey_max; ++o_orderkey) {
+        
+            /*
+                col_defs.emplace_back(ColDef("o_orderkey", ColType::TYPE_INT, 4));
+                col_defs.emplace_back(ColDef("o_custkey", ColType::TYPE_INT, 4));
+                col_defs.emplace_back(ColDef("o_orderstatus", ColType::TYPE_STRING, 1));
+                col_defs.emplace_back(ColDef("o_totalprice", ColType::TYPE_FLOAT, 4));
+                col_defs.emplace_back(ColDef("o_orderdate", ColType::TYPE_STRING, Clock::DATETIME_SIZE + 1));
+                col_defs.emplace_back(ColDef("o_orderpriority", ColType::TYPE_STRING, 15));
+                col_defs.emplace_back(ColDef("o_clerk", ColType::TYPE_STRING, 15));
+                col_defs.emplace_back(ColDef("o_shippriority", ColType::TYPE_INT, 4));
+                col_defs.emplace_back(ColDef("o_comment", ColType::TYPE_STRING, 79));
+            */
+            o_custkey = RandomGenerator::generate_random_int(1, c_custkey_max);
+            RandomGenerator::generate_random_str(o_orderstatus, 1);
+            o_totalprice = RandomGenerator::generate_random_float(1, 20000);
+            RandomGenerator::generate_random_str(o_orderdate, Clock::DATETIME_SIZE + 1);
+            RandomGenerator::generate_random_str(o_orderpriority, 15);
+            RandomGenerator::generate_random_str(o_clerk, 15);
+            o_shippriority = RandomGenerator::generate_random_int(1, 20000);
+            RandomGenerator::generate_random_str(o_comment, 79);
+
+            /*
+                generate record content
+            */
+            memset(record.record_, 0, record.data_length_ + sizeof(RecordHdr));
+
+            int offset = 0;
+            
+            memcpy(record.raw_data_ + offset, (char *)&o_orderkey, sizeof(int));
+            offset += sizeof(int);
+            memcpy(record.raw_data_ + offset, (char *)&o_custkey, sizeof(int));
+            offset += sizeof(int);
+            memcpy(record.raw_data_ + offset, o_orderstatus, 1);
+            offset += 1;
+            memcpy(record.raw_data_ + offset, (char *)&o_totalprice, sizeof(float));
+            offset += sizeof(float);
+            memcpy(record.raw_data_ + offset, o_orderdate, Clock::DATETIME_SIZE + 1);
+            offset += (Clock::DATETIME_SIZE + 1);
+            memcpy(record.raw_data_ + offset, o_orderpriority, 15);
+            offset += 15;
+            memcpy(record.raw_data_ + offset, o_clerk, 15);
+            offset += 15;
+            memcpy(record.raw_data_ + offset, (char *)&o_shippriority, sizeof(int));
+            offset += sizeof(int);
+            memcpy(record.raw_data_ + offset, o_comment, 79);
+            offset += 79;
+
+            assert(offset == tab_meta.record_length_);
+
+            /*
+                insert data
+            */
+            index_handle->insert_entry(record.raw_data_, record.record_, txn);
+        }
+    }
+
+    void generate_data_csv(std::string file_name) {
+        std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
+    }
+
+    void write_data_into_file(std::string file_name) {
+        std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
+    }
+};
+
+
+/*
+    table supplier
+
+    CREATE TABLE SUPPLIER (
+    S_SUPPKEY INT NOT NULL,
+    S_NAME CHAR(25) NOT NULL,
+    S_ADDRESS VARCHAR(40) NOT NULL,
+    S_NATIONKEY INT NOT NULL,
+    S_PHONE CHAR(15) NOT NULL,
+    S_ACCTBAL DECIMAL(15,2) NOT NULL,
+    S_COMMENT VARCHAR(101) NOT NULL,
+    PRIMARY KEY (S_SUPPKEY),
+    KEY SUPPLIER_FK1 (S_NATIONKEY),
+    CONSTRAINT SUPPLIER_IBFK_1 FOREIGN KEY (S_NATIONKEY) REFERENCES NATION (N_NATIONKEY)
+    );
+
+);
+*/
+
+class Supplier {
+
+public:
+    int     s_suppkey       ;         // int primary key
+    char    s_name[25]      ;    
+    char    s_address[40]   ;
+    int     s_nationkey     ;
+    char    s_phone[15]     ;
+    float   s_acctbal       ;
+    char    s_comment[101]  ;
+
+    void create_table(SmManager* sm_mgr) {
+        std::string table_name = "supplier";
+        std::vector<ColDef> col_defs;
+        col_defs.emplace_back(ColDef("s_suppkey", ColType::TYPE_INT, 4));
+        col_defs.emplace_back(ColDef("s_name", ColType::TYPE_STRING, 25));
+        col_defs.emplace_back(ColDef("s_address", ColType::TYPE_STRING, 40));
+        col_defs.emplace_back(ColDef("s_nationkey", ColType::TYPE_INT, 4));
+        col_defs.emplace_back(ColDef("s_phone", ColType::TYPE_STRING, 15));
+        col_defs.emplace_back(ColDef("s_acctbal", ColType::TYPE_FLOAT, 4));
+        col_defs.emplace_back(ColDef("s_comment", ColType::TYPE_STRING, 101));
+
+        std::vector<std::string> pkeys;
+        pkeys.emplace_back("s_suppkey");
+        sm_mgr->create_table(table_name, col_defs, pkeys, nullptr);
+    }
+
+    Supplier() {}
+
+    void print_record() {
+        std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
+    }
+
+    void generate_table_data(int SF, Transaction* txn, SmManager* sm_mgr, IxManager* ix_mgr) {
+        auto tab_meta = sm_mgr->db_.get_table("supplier");
+        auto index_handle = sm_mgr->primary_index_.at("supplier").get();
+        Record record(tab_meta.record_length_);
+
+        /*
+            1 <= s_suppkey <= SF * ONE_SF_PER_SUPPLIER
+        */
+        int s_suppkey_max = SF * ONE_SF_PER_SUPPLIER;
+
+        /*
+            1 <= s_nationkey <= SF * ONE_SF_PER_CUSTOMER
+        */
+        int s_nationkey_max = REGION_NUM * ONE_REGION_PER_NATION;
+        for(s_suppkey = 1; s_suppkey <= s_suppkey_max; ++s_suppkey) {
+        
+            /*
+                col_defs.emplace_back(ColDef("s_suppkey", ColType::TYPE_INT, 4));
+                col_defs.emplace_back(ColDef("s_name", ColType::TYPE_STRING, 25));
+                col_defs.emplace_back(ColDef("s_address", ColType::TYPE_STRING, 40));
+                col_defs.emplace_back(ColDef("s_nationkey", ColType::TYPE_INT, 4));
+                col_defs.emplace_back(ColDef("s_phone", ColType::TYPE_STRING, 15));
+                col_defs.emplace_back(ColDef("s_acctbal", ColType::TYPE_FLOAT, 4));
+                col_defs.emplace_back(ColDef("s_comment", ColType::TYPE_STRING, 101));
+            */
+            RandomGenerator::generate_random_str(s_name, 25);
+            RandomGenerator::generate_random_str(s_address, 40);
+            s_nationkey = RandomGenerator::generate_random_int(1, s_nationkey_max);
+            RandomGenerator::generate_random_str(s_phone, 15);
+            s_acctbal = RandomGenerator::generate_random_float(1, 200000);
+            RandomGenerator::generate_random_str(s_comment, 101);
+
+            /*
+                generate record content
+            */
+            memset(record.record_, 0, record.data_length_ + sizeof(RecordHdr));
+
+            int offset = 0;
+            
+            memcpy(record.raw_data_ + offset, (char *)&s_suppkey, sizeof(int));
+            offset += sizeof(int);
+            memcpy(record.raw_data_ + offset, s_name, 25);
+            offset += 25;
+            memcpy(record.raw_data_ + offset, s_address, 40);
+            offset += 40;
+            memcpy(record.raw_data_ + offset, (char *)&s_nationkey, sizeof(int));
+            offset += sizeof(int);
+            memcpy(record.raw_data_ + offset, s_phone, 15);
+            offset += 15;            
+            memcpy(record.raw_data_ + offset, (char *)&s_acctbal, sizeof(float));
+            offset += sizeof(float); 
+            memcpy(record.raw_data_ + offset, s_comment, 101);
+            offset += 101;              
+
+            assert(offset == tab_meta.record_length_);
+
+            /*
+                insert data
+            */
+            index_handle->insert_entry(record.raw_data_, record.record_, txn);
+        }
+    }
+
+    void generate_data_csv(std::string file_name) {
+        std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
+    }
+
+    void write_data_into_file(std::string file_name) {
+        std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
+    }
+};
+
+/*
+    table partsupp
+
+    CREATE TABLE PARTSUPP (
+    PS_PARTKEY INT NOT NULL,
+    PS_SUPPKEY INT NOT NULL,
+    PS_AVAILQTY INT NOT NULL,
+    PS_SUPPLYCOST DECIMAL(15,2) NOT NULL,
+    PS_COMMENT VARCHAR(199) NOT NULL,
+    PRIMARY KEY (PS_PARTKEY,PS_SUPPKEY),
+    KEY PARTSUPP_FK1 (PS_SUPPKEY),
+    CONSTRAINT PARTSUPP_IBFK_1 FOREIGN KEY (PS_SUPPKEY) REFERENCES SUPPLIER (S_SUPPKEY),
+    CONSTRAINT PARTSUPP_IBFK_2 FOREIGN KEY (PS_PARTKEY) REFERENCES PART (P_PARTKEY)
+    );
+*/
+
+class PartSupp {
+
+public:
+    int     ps_partkey      ;    
+    int     ps_suppkey      ; 
+    int     ps_availqty     ;
+    float   ps_supplycost   ; 
+    char    ps_comment[199] ;
+
+    // primary key (ps_partkey, ps_suppkey)   
+
+    void create_table(SmManager* sm_mgr) {
+        std::string table_name = "partsupp";
+        std::vector<ColDef> col_defs;
+        col_defs.emplace_back(ColDef("ps_partkey", ColType::TYPE_INT, 4));
+        col_defs.emplace_back(ColDef("ps_suppkey", ColType::TYPE_INT, 4));
+        col_defs.emplace_back(ColDef("ps_availqty", ColType::TYPE_INT, 4));
+        col_defs.emplace_back(ColDef("ps_supplycost", ColType::TYPE_FLOAT, 4));
+        col_defs.emplace_back(ColDef("ps_comment", ColType::TYPE_STRING, 199));
+
+        std::vector<std::string> pkeys;
+        pkeys.emplace_back("ps_partkey");
+        pkeys.emplace_back("ps_suppkey");
+        sm_mgr->create_table(table_name, col_defs, pkeys, nullptr);
+    }
+
+    PartSupp() {}
+
+    void print_record() {
+        std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
+    }
+
+    void generate_table_data(int SF, Transaction* txn, SmManager* sm_mgr, IxManager* ix_mgr) {
+        auto tab_meta = sm_mgr->db_.get_table("partsupp");
+        auto index_handle = sm_mgr->primary_index_.at("partsupp").get();
+        Record record(tab_meta.record_length_);
+
+        /*
+            1 <= ps_partkey <= SF * ONE_SF_PER_PART
+        */
+        int ps_partkey_max = SF * ONE_SF_PER_PART;
+
+        /*
+            1 <= ps_suppkey <= SF * ONE_SF_PER_
+        */
+        int ps_suppkey_max = SF * ONE_SF_PER_SUPPLIER;
+
+        for(ps_partkey = 1; ps_partkey <= ps_partkey_max; ++ps_partkey) {
+            for(int ps_suppkey_i = 1; ps_suppkey_i <= ONE_PART_PER_SUPP; ++ps_suppkey_i) {
+                /*
+                    col_defs.emplace_back(ColDef("ps_partkey", ColType::TYPE_INT, 4));
+                    col_defs.emplace_back(ColDef("ps_suppkey", ColType::TYPE_INT, 4));
+                    col_defs.emplace_back(ColDef("ps_availqty", ColType::TYPE_INT, 4));
+                    col_defs.emplace_back(ColDef("ps_supplycost", ColType::TYPE_FLOAT, 4));
+                    col_defs.emplace_back(ColDef("ps_comment", ColType::TYPE_STRING, 199));
+                */
+
+                ps_suppkey = RandomGenerator::generate_random_int(1, ps_suppkey_max);
+                ps_availqty = RandomGenerator::generate_random_int(1, 200000);
+                ps_supplycost = RandomGenerator::generate_random_float(1, 200000);
+                RandomGenerator::generate_random_str(ps_comment, 199);
+
+                /*
+                    generate record content
+                */
+                memset(record.record_, 0, record.data_length_ + sizeof(RecordHdr));
+
+                int offset = 0;
+                
+                memcpy(record.raw_data_ + offset, (char *)&ps_partkey, sizeof(int));
+                offset += sizeof(int);
+                memcpy(record.raw_data_ + offset, (char *)&ps_suppkey, sizeof(int));
+                offset += sizeof(int);
+                memcpy(record.raw_data_ + offset, (char *)&ps_availqty, sizeof(int));
+                offset += sizeof(int);
+                memcpy(record.raw_data_ + offset, (char *)&ps_supplycost, sizeof(float));
+                offset += sizeof(float);
+                memcpy(record.raw_data_ + offset, ps_comment, 199);
+                offset += 199;
+
+                assert(offset == tab_meta.record_length_);
+
+                /*
+                    insert data
+                */
+                index_handle->insert_entry(record.raw_data_, record.record_, txn);
+                
+            }
+        }
+    }
+
+    void generate_data_csv(std::string file_name) {
+        std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
+    }
+
+    void write_data_into_file(std::string file_name) {
+        std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
+    }
+};
+
+
+/*
+    table lineitem
+
+    CREATE TABLE LINEITEM (
+    L_ORDERKEY INT NOT NULL,
+    L_PARTKEY INT NOT NULL,
+    L_SUPPKEY INT NOT NULL,
+    L_LINENUMBER INT NOT NULL,
+    L_QUANTITY DECIMAL(15,2) NOT NULL,
+    L_EXTENDEDPRICE DECIMAL(15,2) NOT NULL,
+    L_DISCOUNT DECIMAL(15,2) NOT NULL,
+    L_TAX DECIMAL(15,2) NOT NULL,
+    L_RETURNFLAG CHAR(1) NOT NULL,
+    L_LINESTATUS CHAR(1) NOT NULL,
+    L_SHIPDATE DATE NOT NULL,
+    L_COMMITDATE DATE NOT NULL,
+    L_RECEIPTDATE DATE NOT NULL,
+    L_SHIPINSTRUCT CHAR(25) NOT NULL,
+    L_SHIPMODE CHAR(10) NOT NULL,
+    L_COMMENT VARCHAR(44) NOT NULL,
+    PRIMARY KEY (L_ORDERKEY,L_LINENUMBER),
+    KEY LINEITEM_FK2 (L_PARTKEY,L_SUPPKEY),
+    CONSTRAINT LINEITEM_IBFK_1 FOREIGN KEY (L_ORDERKEY) REFERENCES ORDERS (O_ORDERKEY),
+    CONSTRAINT LINEITEM_IBFK_2 FOREIGN KEY (L_PARTKEY, L_SUPPKEY) REFERENCES PARTSUPP (PS_PARTKEY, PS_SUPPKEY)
+    );
+*/
+
+class Lineitem {
+public:
+    int     l_orderkey      ;
+    int     l_linenumber    ;
+    int     l_partkey       ;
+    int     l_suppkey       ; 
+    float   l_quantity      ;
+    float   l_extendedprice ;
+    float   l_discount      ;
+    float   l_tax           ;
+    char    l_returnflag[1] ;
+    char    l_linestatus[1] ;
+    char    l_shipdate[Clock::DATETIME_SIZE + 1]    ;
+    char    l_commitdate[Clock::DATETIME_SIZE + 1]  ;
+    char    l_receiptdate[Clock::DATETIME_SIZE + 1] ;
+    char    l_shipinstruct[25]  ;
+    char    l_shipmode[10]      ;
+    char    l_comment[4]       ;
+    // primary key (l_orderkey,l_linenumber)
+
+    void create_table(SmManager* sm_mgr) {
+        std::string table_name = "lineitem";
+        std::vector<ColDef> col_defs;
+        col_defs.emplace_back(ColDef("l_orderkey", ColType::TYPE_INT, 4));
+        col_defs.emplace_back(ColDef("l_linenumber", ColType::TYPE_INT, 4));
+        col_defs.emplace_back(ColDef("l_partkey", ColType::TYPE_INT, 4));
+        col_defs.emplace_back(ColDef("l_suppkey", ColType::TYPE_INT, 4));
+        col_defs.emplace_back(ColDef("l_quantity", ColType::TYPE_FLOAT, 4));
+        col_defs.emplace_back(ColDef("l_extendedprice", ColType::TYPE_FLOAT, 4));
+        col_defs.emplace_back(ColDef("l_discount", ColType::TYPE_FLOAT, 4));
+        col_defs.emplace_back(ColDef("l_tax", ColType::TYPE_FLOAT, 4));
+        col_defs.emplace_back(ColDef("l_returnflag", ColType::TYPE_STRING, 1));
+        col_defs.emplace_back(ColDef("l_linestatus", ColType::TYPE_STRING, 1));
+        col_defs.emplace_back(ColDef("l_shipdate", ColType::TYPE_STRING, Clock::DATETIME_SIZE + 1));
+        col_defs.emplace_back(ColDef("l_commitdate", ColType::TYPE_STRING, Clock::DATETIME_SIZE + 1));
+        col_defs.emplace_back(ColDef("l_receiptdate", ColType::TYPE_STRING, Clock::DATETIME_SIZE + 1));
+        col_defs.emplace_back(ColDef("l_shipinstruct", ColType::TYPE_STRING, 25));
+        col_defs.emplace_back(ColDef("l_shipmode", ColType::TYPE_STRING, 10));
+        col_defs.emplace_back(ColDef("l_comment", ColType::TYPE_STRING, 4));
+
+        std::vector<std::string> pkeys;
+        pkeys.emplace_back("l_orderkey");
+        pkeys.emplace_back("l_linenumber");
+        sm_mgr->create_table(table_name, col_defs, pkeys, nullptr);
+        // print_name = true;
+    }
+
+    Lineitem() {}
+
+    void print_record() {
+        std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
+    }
+
+    void generate_table_data(int SF, Transaction* txn, SmManager* sm_mgr, IxManager* ix_mgr) {
+        auto tab_meta = sm_mgr->db_.get_table("lineitem");
+        auto index_handle = sm_mgr->primary_index_.at("lineitem").get();
+        Record record(tab_meta.record_length_);
+
+        /*
+            1 <= l_orderkey <= SF * ONE_SF_PER_ORDER
+        */
+        int l_orderkey_max = SF * ONE_SF_PER_ORDER;
+
+        /*
+            1 <= l_partkey <= SF * ONE_SF_PER_PART
+        */
+        int l_partkey_max = SF * ONE_SF_PER_PART;
+
+        /*
+            1 <= l_suppkey <= SF * ONE_SF_PER_SUPPLIER
+        */
+        int l_suppkey_max = SF * ONE_SF_PER_SUPPLIER;
+
+        /*
+            1 <= l_linenumber <= ONE_ORDER_PER_LINENUM
+        */
+        int l_linenumber_max = ONE_ORDER_PER_LINENUM; 
+
+        for(l_orderkey = 1; l_orderkey <= l_orderkey_max; ++l_orderkey) {
+            for(int l_linenumber = 1; l_linenumber <= l_linenumber_max; ++l_linenumber) {
+                /*
+                    col_defs.emplace_back(ColDef("l_orderkey", ColType::TYPE_INT, 4));
+                    col_defs.emplace_back(ColDef("l_partkey", ColType::TYPE_INT, 4));
+                    col_defs.emplace_back(ColDef("l_suppkey", ColType::TYPE_INT, 4));
+                    col_defs.emplace_back(ColDef("l_linenumber", ColType::TYPE_INT, 4));
+                    col_defs.emplace_back(ColDef("l_quantity", ColType::TYPE_FLOAT, 4));
+                    col_defs.emplace_back(ColDef("l_extendedprice", ColType::TYPE_FLOAT, 4));
+                    col_defs.emplace_back(ColDef("l_discount", ColType::TYPE_FLOAT, 4));
+                    col_defs.emplace_back(ColDef("l_tax", ColType::TYPE_FLOAT, 4));
+                    col_defs.emplace_back(ColDef("l_returnflag", ColType::TYPE_STRING, 1));
+                    col_defs.emplace_back(ColDef("l_linestatus", ColType::TYPE_STRING, 1));
+                    col_defs.emplace_back(ColDef("l_shipdate", ColType::TYPE_STRING, Clock::DATETIME_SIZE + 1));
+                    col_defs.emplace_back(ColDef("l_commitdate", ColType::TYPE_STRING, Clock::DATETIME_SIZE + 1));
+                    col_defs.emplace_back(ColDef("l_receiptdate", ColType::TYPE_STRING, Clock::DATETIME_SIZE + 1));
+                    col_defs.emplace_back(ColDef("l_shipinstruct", ColType::TYPE_STRING, 25));
+                    col_defs.emplace_back(ColDef("l_shipmode", ColType::TYPE_STRING, 10));
+                    col_defs.emplace_back(ColDef("l_comment", ColType::TYPE_STRING, 44));
+                */
+
+                l_partkey = RandomGenerator::generate_random_int(1, l_partkey_max);
+                l_suppkey = RandomGenerator::generate_random_int(1, l_suppkey_max);
+
+                l_quantity = RandomGenerator::generate_random_float(1, 20000);
+                l_extendedprice = RandomGenerator::generate_random_float(1, 20000);
+                l_discount = RandomGenerator::generate_random_float(1, 20000);
+                l_tax = RandomGenerator::generate_random_float(1, 20000);
+                
+                RandomGenerator::generate_random_str(l_returnflag, 1);
+                RandomGenerator::generate_random_str(l_linestatus, 1);
+                RandomGenerator::generate_random_str(l_shipdate, Clock::DATETIME_SIZE + 1);
+                RandomGenerator::generate_random_str(l_commitdate, Clock::DATETIME_SIZE + 1);
+                RandomGenerator::generate_random_str(l_receiptdate, Clock::DATETIME_SIZE + 1);
+                RandomGenerator::generate_random_str(l_shipinstruct, 25);
+                RandomGenerator::generate_random_str(l_shipmode, 10);
+                RandomGenerator::generate_random_str(l_comment, 4);
+
+                /*
+                    generate record content
+                */
+                memset(record.record_, 0, record.data_length_ + sizeof(RecordHdr));
+
+                int offset = 0;
+                
+                memcpy(record.raw_data_ + offset, (char *)&l_orderkey, sizeof(int));
+                offset += sizeof(int);
+                memcpy(record.raw_data_ + offset, (char *)&l_linenumber, sizeof(int));
+                offset += sizeof(int);
+                memcpy(record.raw_data_ + offset, (char *)&l_partkey, sizeof(int));
+                offset += sizeof(int);
+                memcpy(record.raw_data_ + offset, (char *)&l_suppkey, sizeof(int));
+                offset += sizeof(int);
+                memcpy(record.raw_data_ + offset, (char *)&l_quantity, sizeof(float));
+                offset += sizeof(float);
+                memcpy(record.raw_data_ + offset, (char *)&l_extendedprice, sizeof(float));
+                offset += sizeof(float);
+                memcpy(record.raw_data_ + offset, (char *)&l_discount, sizeof(float));
+                offset += sizeof(float);
+                memcpy(record.raw_data_ + offset, (char *)&l_tax, sizeof(float));
+                offset += sizeof(float);
+                memcpy(record.raw_data_ + offset, l_returnflag, 1);
+                offset += 1;
+                memcpy(record.raw_data_ + offset, l_linestatus, 1);
+                offset += 1;
+                memcpy(record.raw_data_ + offset, l_shipdate, Clock::DATETIME_SIZE + 1);
+                offset += Clock::DATETIME_SIZE + 1;
+                memcpy(record.raw_data_ + offset, l_commitdate, Clock::DATETIME_SIZE + 1);
+                offset += Clock::DATETIME_SIZE + 1;
+                memcpy(record.raw_data_ + offset, l_receiptdate, Clock::DATETIME_SIZE + 1);
+                offset += Clock::DATETIME_SIZE + 1;
+                memcpy(record.raw_data_ + offset, l_shipinstruct, 25);
+                offset += 25;
+                memcpy(record.raw_data_ + offset, l_shipmode, 10);
+                offset += 10;
+                memcpy(record.raw_data_ + offset, l_comment, 4);
+                offset += 4;
+
+                assert(offset == tab_meta.record_length_);
+
+                // std::cout << "l_orderkey = " << l_orderkey << ", l_linenumber = " << l_linenumber << ", begin insert!"<< std::endl;
+                /*
+                    insert data
+                */
+                index_handle->insert_entry(record.raw_data_, record.record_, txn);
+                
+            }
+        }
+    }
+
+    void generate_data_csv(std::string file_name) {
+        std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
+    }
+
+    void write_data_into_file(std::string file_name) {
+        std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
+    }
+};
+
+}

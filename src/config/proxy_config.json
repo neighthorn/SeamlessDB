@@ -1,0 +1,17 @@
+{
+    "rw_node": {
+        "ip": "10.77.110.145",
+        "port": 12191,
+        "thread_num": 16,
+        "workload": "tpch",
+        "record_num": 10 
+    },
+    "back_rw_node": {
+        "ip": "10.77.110.146",
+        "port": 12194
+    },
+    "ro_nodes": {
+        "ips": ["10.77.110.147"],
+        "ports": [12196]
+    }
+}

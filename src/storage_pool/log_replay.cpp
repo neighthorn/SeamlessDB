@@ -36,7 +36,7 @@ void LogReplay::replay_single_log(const std::string &redo_log_str) {
     RedoLogRecord redo_log_hdr;
     redo_log_hdr.deserialize(redo_log_str.c_str());
 
-    StorageDebug::getInstance()->DEBUG_REPALY_LOG(redo_log_hdr);
+    // DEBUG_REPALY_LOG(redo_log_hdr);
 
     switch (redo_log_hdr.log_type_)
     {

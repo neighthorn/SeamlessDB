@@ -39,8 +39,16 @@ message GetOldPageResponse {
     repeated bytes data = 1;
 };
 
+message GetPersistLsnRequest {
+};
+
+message GetPersistLsnResponse {
+    sint32 persist_lsn = 1;
+};
+
 service StorageService {
     rpc LogWrite(LogWriteRequest) returns (LogWriteResponse);
     rpc GetOldPage(GetOldPageRequest) returns (GetOldPageResponse);
     rpc GetLatestPage(GetLatestPageRequest) returns (GetLatestPageResponse);
+    rpc GetPersistLsn(GetPersistLsnRequest) returns (GetPersistLsnResponse);
 };

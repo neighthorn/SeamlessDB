@@ -183,4 +183,6 @@ NativeTransaction* TPCHWK::generate_transaction(int thread_index) {
     return nullptr;
 }
 
-
+NativeTransaction* TPCHWK::get_transaction(int thread_index) {
+    return queries_example[thread_index];
+}

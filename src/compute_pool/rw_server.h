@@ -22,7 +22,7 @@ DEFINE_int32(interval_ms, 10, "Milliseconds between consecutive requests");
 
 class RWNode {
 public:
-    RWNode(int local_rpc_port, std::string workload, int record_num, int thread_num, int buffer_pool_size, std::string config_path)
+    RWNode(int local_rpc_port, std::string workload, int record_num, int thread_num, int buffer_pool_size, std::string config_path) 
         : local_rpc_port_(local_rpc_port), workload_(workload), record_num_(record_num), thread_num_(thread_num),
         buffer_pool_size_(buffer_pool_size), config_path_(config_path){
 
@@ -50,7 +50,7 @@ public:
         QPManager::create_instance(thread_num_);
         std::cout << "finish create qp manager\n";
         QPManager::BuildALLQPConnection(MetaManager::get_instance());
-        StateManager::create_instance();
+        StateManager::create_instance(thread_num);
         std::cout << "finishi create state manager\n";
         
         // /*

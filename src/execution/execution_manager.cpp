@@ -9,6 +9,7 @@
 #include "executor_update.h"
 #include "index/ix.h"
 #include "record_printer.h"
+#include "state/state_item/txn_state.h"
 
 const char *help_info = "Supported SQL syntax:\n"
                    "  command ;\n"
@@ -90,6 +91,18 @@ void QlManager::run_cmd_utility(std::shared_ptr<Plan> plan, Context *context) {
                 // 显示开启一个事务
                 // context->txn_->set_txn_mode(true);
                 txn_mgr_->begin(context->txn_, context->log_mgr_);
+
+                MetaManager* meta_mgr = MetaManager::get_instance();
+                RCQP* qp = context->qp_mgr_->GetRemoteTxnListQPWithNodeID(0);
+                assert(qp != nullptr);
+                TxnItem* txn_buf = (TxnItem*)context->rdma_buffer_allocator_->Alloc(sizeof(TxnItem));
+                txn_buf->txn_id_ = context->txn_->get_transaction_id();
+                txn_buf->prev_lsn_ = context->txn_->get_prev_lsn();
+                if(!context->coro_sched_->RDMAWriteSync(0, qp, (char*)txn_buf, meta_mgr->GetTxnAddrByIndex(context->coro_sched_->t_id_), sizeof(TxnItem))) {
+                    RDMA_LOG(ERROR) << "Failed to write txn item into state_node";
+                    assert(0);
+                }
+
                 break;
             }  
             case T_Transaction_commit:

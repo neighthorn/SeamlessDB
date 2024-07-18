@@ -121,8 +121,8 @@ static const std::string DB_META_NAME = "db.meta";
 // #define LOCK_STATE_SIZE_LOCAL sizeof(txn_id_t) + sizeof(uint32_t) + sizeof(int) * 2 + sizeof(int32_t)
 #define LOCK_STATE_SIZE_LOCAL 20
 
-#define LOCK_MAX_COUNT 4096    
-#define LOCK_REGION_SIZE 655360     // RDMA_BATCH_MAX_SIZE * 20B (this is used in compute node)
+#define LOCK_MAX_COUNT 8192    
+#define LOCK_REGION_SIZE 2621440     // RDMA_BATCH_MAX_SIZE * 20B (this is used in compute node)
 #define RDMA_BATCH_MAX_SIZE 32768   // doorbell batching max batch size
 
 #define LOG_REGION_SIZE 268435456   // 256MB 1024*1024*256

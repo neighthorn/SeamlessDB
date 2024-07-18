@@ -44,6 +44,12 @@ public:
     return rdma_region_allocator;
   }
 
+  ALWAYS_INLINE
+  std::pair<char*, char*> GetThreadLocalRegion(t_id_t tid) {
+    assert(tid < thread_num);
+    return std::make_pair(thread_local_mr + tid * PER_THREAD_SQL_SIZE, thread_local_mr + (tid + 1) * PER_THREAD_SQL_SIZE);
+  }
+
   /*
     sql region
   */
@@ -85,6 +91,10 @@ public:
     return log_mr;
   }
 
+  char* GetLogMetaRegion() {
+    return log_meta_mr;
+  }
+
 private:
   RDMARegionAllocator(MetaManager* global_meta_man, t_id_t thread_num_per_machine);
 
@@ -97,7 +107,9 @@ private:
   char* global_mr;  // memory region
   char* lock_mr;
   char* log_mr;
+  char* log_meta_mr;
   char* lock_bitmap_mr;
+  char* thread_local_mr;
   char* thread_local_sql_mr;        // sql
   char *thread_local_join_plan_mr;  // join plan  
   char *thread_local_join_block_mr; // join block

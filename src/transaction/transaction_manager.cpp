@@ -1,6 +1,7 @@
 #include "transaction_manager.h"
 #include "record/rm_file_handle.h"
 #include "system/sm_manager.h"
+#include "state/state_manager.h"
 
 /**
  * @description: 事务的开始方法
@@ -98,4 +99,8 @@ void TransactionManager::abort(Transaction * txn, Context* context) {
     // if (it != active_txns_.end()) {
     //     active_txns_.erase(it);
     // }
+}
+
+void TransactionManager::recover_active_txn_lists(Context* context) {
+    StateManager::get_instance()->fetch_active_txns(active_transactions_, thread_num_);
 }

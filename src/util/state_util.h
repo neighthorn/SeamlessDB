@@ -40,12 +40,12 @@ static uint64_t HashFunc(const void* data, size_t size) {
     return hash;
 }
 
-static void GetHashCodeForTxn(TxnItem* txn) {
-    txn->hash_code ^= HashFunc(&txn->id, sizeof(txn_id_t));
-    txn->hash_code ^= HashFunc(&txn->txn_mode, sizeof(bool));
-    txn->hash_code ^= HashFunc(&txn->thread_id, sizeof(t_id_t));
-    txn->hash_code ^= HashFunc(&txn->txn_state, sizeof(TransactionState));
-}
+// static void GetHashCodeForTxn(TxnItem* txn) {
+//     txn->hash_code ^= HashFunc(&txn->id, sizeof(txn_id_t));
+//     txn->hash_code ^= HashFunc(&txn->txn_mode, sizeof(bool));
+//     txn->hash_code ^= HashFunc(&txn->thread_id, sizeof(t_id_t));
+//     txn->hash_code ^= HashFunc(&txn->txn_state, sizeof(TransactionState));
+// }
 
 static std::vector<int> GetAllUsedBit(unsigned char* bitmap,size_t bitmap_size){
     std::vector<int> res;

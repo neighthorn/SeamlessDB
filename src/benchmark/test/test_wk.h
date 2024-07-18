@@ -17,6 +17,7 @@ public:
     void load_meta() override;
     void init_transaction(int thread_num) override;
     NativeTransaction* generate_transaction(int thread_index) override;
+    NativeTransaction* get_transaction(int thread_index) override;
 
     SmManager* sm_mgr_;
     IxIndexHandle* index_handle_;

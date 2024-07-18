@@ -236,6 +236,7 @@ public:
             curr_tail = tail_;
             tail_ = (tail_ + redolog->log_tot_len_) % buf_size_;
             free_size_ -= redolog->log_tot_len_;
+            // std::cout << "write log: begin = " << curr_tail << ", end = " << tail_ << "\n";
         }
 
         if(curr_tail + redolog->log_tot_len_ > buf_size_) {
@@ -248,6 +249,8 @@ public:
         }
         else {
             redolog->serialize(buffer_ + curr_tail);
+            // char* tmp = buffer_ + curr_tail;
+            // print_char_array(tmp, redolog->log_tot_len_);
         }
     }
 
@@ -293,6 +296,82 @@ public:
             std::string str1(buffer_ + head_, size1);
             std::string str2(buffer_, size - size1);
             return std::move(str1 + str2);
+        }
+    }
+
+    RedoLogRecord* read_log(int64_t& head, int persist_lsn) {
+        RedoLogRecord* redo_log_hdr = new RedoLogRecord();
+        int hdr_tail = (head + REDO_LOG_HEADER_SIZE) % buf_size_;
+
+        // std::cout << "read log, head = " << head << "\n";
+        // char* tmp = buffer_ + head;
+        // print_char_array(tmp, REDO_LOG_HEADER_SIZE);
+
+        if(head > tail_) assert(0);
+
+        if(head < hdr_tail) {
+            // memcpy(redo_log_hdr, buffer_ + head, REDO_LOG_HEADER_SIZE);
+            redo_log_hdr->deserialize(buffer_ + head);
+        }
+        else {
+            int size1 = buf_size_ - head;
+            char* range_string = new char[REDO_LOG_HEADER_SIZE];
+            memcpy(range_string, buffer_ + head, size1);
+            memcpy(range_string + size1, buffer_, REDO_LOG_BUFFER_SIZE - size1);
+            redo_log_hdr->deserialize(range_string);
+        }
+
+        if (persist_lsn >= redo_log_hdr->lsn_) {
+            head = (redo_log_hdr->log_tot_len_ + head) % buf_size_;
+            delete redo_log_hdr;
+            return nullptr;
+        }
+
+        int log_tail = head + redo_log_hdr->log_tot_len_;
+        switch(redo_log_hdr->log_type_) {
+            case RedoLogType::UPDATE: {
+                UpdateRedoLogRecord* update_redo_log = new UpdateRedoLogRecord();
+                if(log_tail < head) {
+                    std::string tmp = std::move(get_range_string(head, log_tail, redo_log_hdr->log_tot_len_));
+                    update_redo_log->deserialize(tmp.c_str());
+                }
+                else {
+                    update_redo_log->deserialize(buffer_ + head);
+                }
+                head += redo_log_hdr->log_tot_len_;
+                delete redo_log_hdr;
+                return update_redo_log;
+            } break;
+            case RedoLogType::DELETE: {
+                DeleteRedoLogRecord* delete_redo_log = new DeleteRedoLogRecord();
+                if(log_tail < head) {
+                    std::string tmp = std::move(get_range_string(head, log_tail, redo_log_hdr->log_tot_len_));
+                    delete_redo_log->deserialize(tmp.c_str());
+                }
+                else {
+                    delete_redo_log->deserialize(buffer_ + head);
+                }
+                head += redo_log_hdr->log_tot_len_;
+                delete redo_log_hdr;
+                return delete_redo_log;
+            } break;
+            case RedoLogType::INSERT: {
+                InsertRedoLogRecord* insert_redo_log = new InsertRedoLogRecord();
+                if(log_tail < head) {
+                    std::string tmp = std::move(get_range_string(head, log_tail, redo_log_hdr->log_tot_len_));
+                    insert_redo_log->deserialize(tmp.c_str());
+                }
+                else {
+                    insert_redo_log->deserialize(buffer_ + head);
+                }
+                head += redo_log_hdr->log_tot_len_;
+                delete redo_log_hdr;
+                return insert_redo_log;
+            } break;
+            default:
+            std::cout << "Invalid log type\n";
+            return nullptr;
+            break;
         }
     }
 

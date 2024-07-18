@@ -135,13 +135,15 @@ void TPCCWK::init_transaction(int thread_num) {
     thread_num_ = thread_num;
     for(int i = 0; i < thread_num_; ++i) {
         new_order_txns_.emplace_back(new NewOrderTransaction());
+        new_order_txns_[i]->w_id = i;
         payment_txns_.emplace_back(new PaymentTransaction());
+        payment_txns_[i]->w_id = i;
     }
 }
 
 NativeTransaction* TPCCWK::generate_transaction(int thread_index) {
     assert(thread_index <= thread_num_);
-    if(thread_index % 2) {
+    if(thread_index % 4) {
         // std::cout << "client " << thread_index << " try to generate new_order transactions\n";
         new_order_txns_[thread_index]->generate_new_txn();
         return new_order_txns_[thread_index];
@@ -150,8 +152,21 @@ NativeTransaction* TPCCWK::generate_transaction(int thread_index) {
         // std::cout << "client " << thread_index << " try to generate payment transactions\n";
         payment_txns_[thread_index]->generate_new_txn();
         return payment_txns_[thread_index];
+        // new_order_txns_[thread_index]->generate_new_txn();
+        // return new_order_txns_[thread_index];
         // std::cout << "client " << thread_index << " try to generate new_order transactions\n";
         // new_order_txns_[thread_index]->generate_new_txn();
+        // return new_order_txns_[thread_index];
+    }
+}
+
+NativeTransaction* TPCCWK::get_transaction(int thread_index) {
+    assert(thread_index <= thread_num_);
+    if(thread_index % 4) {
+        return new_order_txns_[thread_index];
+    }
+    else {
+        return payment_txns_[thread_index];
         // return new_order_txns_[thread_index];
     }
 }

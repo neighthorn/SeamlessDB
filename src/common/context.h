@@ -40,6 +40,7 @@ public:
     bool ellipsis_;
     PlanTag plan_tag_;
     CoroutineScheduler* coro_sched_;
+    RDMABufferAllocator* rdma_buffer_allocator_;
     /*
       管理算子内状态
     */

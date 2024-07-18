@@ -101,4 +101,14 @@ namespace storage_service {
         // std::cout << "success to get_new_pages.\n";
         return;
     }
+
+    void StoragePoolImpl::GetPersistLsn(::google::protobuf::RpcController* controller,
+                       const ::storage_service::GetPersistLsnRequest* request,
+                       ::storage_service::GetPersistLsnResponse* response,
+                       ::google::protobuf::Closure* done) {
+        brpc::ClosureGuard done_guard(done);
+
+        response->set_persist_lsn(share_status_->need_replay_lsn_);
+        return;
+    }
 }

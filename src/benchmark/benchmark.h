@@ -12,4 +12,5 @@ public:
     virtual void load_meta() = 0;
     virtual void init_transaction(int thread_num) = 0;
     virtual NativeTransaction* generate_transaction(int thread_index) = 0;
+    virtual NativeTransaction* get_transaction(int thread_index) = 0;
 };

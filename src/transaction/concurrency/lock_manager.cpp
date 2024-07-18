@@ -181,7 +181,7 @@ Lock* LockManager::check_record_lock_conflic(RecordLockType lock_type, LockMode 
     return nullptr;
 }
 
-Lock* LockManager::upgrade_record_lock_type_mode(RecordLockType lock_type, LockMode lock_mode, LockRequestQueue* request_queue, Lock* req) {
+Lock* LockManager::upgrade_record_lock_type_mode(RecordLockType lock_type, LockMode lock_mode, LockRequestQueue* request_queue, Lock* req, int thread_index) {
     std::unique_lock<std::mutex> lock(latch_);
 
     Lock* tmp = check_record_lock_conflic(lock_type, lock_mode, request_queue, req);
@@ -211,12 +211,12 @@ Lock* LockManager::upgrade_record_lock_type_mode(RecordLockType lock_type, LockM
 
     // @STATE:
     if(state_open_)
-        StateManager::get_instance()->append_lock_state(req);
+        StateManager::get_instance()->append_lock_state(req, thread_index);
 
     return req;
 }
 
-Lock* LockManager::request_record_lock(int table_id, const Rid& rid, Transaction* txn, RecordLockType lock_type, LockMode lock_mode) {
+Lock* LockManager::request_record_lock(int table_id, const Rid& rid, Transaction* txn, RecordLockType lock_type, LockMode lock_mode, int thread_index) {
     // std::cout << "request_record_lock: table_id: " << table_id << ", rid.record_no = " << rid.record_no << ", lock_type: " << LockTypeStr[lock_type] << ", lock_mode: " << LockModeStr[lock_mode] << "trx_id: " << txn->get_transaction_id() << "\n";
 
     std::unique_lock<std::mutex> lock(latch_);
@@ -258,7 +258,7 @@ Lock* LockManager::request_record_lock(int table_id, const Rid& rid, Transaction
 
         // @STATE
         if(state_open_)
-            StateManager::get_instance()->append_lock_state(lock_request);
+            StateManager::get_instance()->append_lock_state(lock_request, thread_index);
 
         return lock_request;
     }
@@ -274,7 +274,7 @@ Lock* LockManager::request_record_lock(int table_id, const Rid& rid, Transaction
 
         //@STATE:
         if(state_open_)
-            StateManager::get_instance()->append_lock_state(lock_request);  
+            StateManager::get_instance()->append_lock_state(lock_request, thread_index);  
         return lock_request;
     }
 
@@ -292,7 +292,7 @@ Lock* LockManager::request_record_lock(int table_id, const Rid& rid, Transaction
             else {
                 delete lock_request;
                 lock.unlock();
-                return upgrade_record_lock_type_mode(lock_type, lock_mode, request_queue, req);
+                return upgrade_record_lock_type_mode(lock_type, lock_mode, request_queue, req, thread_index);
             }
         }
         req = req->next_;
@@ -316,12 +316,12 @@ Lock* LockManager::request_record_lock(int table_id, const Rid& rid, Transaction
 
     // @STATE:
     if(state_open_)
-        StateManager::get_instance()->append_lock_state(lock_request);
+        StateManager::get_instance()->append_lock_state(lock_request, thread_index);
 
     return lock_request;
 }
 
-Lock* LockManager::upgrade_table_lock_mode(LockMode lock_mode, LockRequestQueue* request_queue, Lock* req) {
+Lock* LockManager::upgrade_table_lock_mode(LockMode lock_mode, LockRequestQueue* request_queue, Lock* req, int thread_index) {
     std::unique_lock<std::mutex> lock(latch_);
 
     Lock* iterator = request_queue->request_queue_->next_;
@@ -342,12 +342,12 @@ Lock* LockManager::upgrade_table_lock_mode(LockMode lock_mode, LockRequestQueue*
 
     // @STATE:
     if(state_open_)
-        StateManager::get_instance()->append_lock_state(req);
+        StateManager::get_instance()->append_lock_state(req, thread_index);
 
     return req;
 }
 
-Lock* LockManager::request_table_lock(int table_id, Transaction* txn, LockMode lock_mode) {
+Lock* LockManager::request_table_lock(int table_id, Transaction* txn, LockMode lock_mode, int thread_index) {
     // std::cout << "request_table_lock: table_id: " << table_id << ", lock_mode: " << LockModeStr[lock_mode] << "trx_id: " << txn->get_transaction_id() << "\n";
     std::unique_lock<std::mutex> lock(latch_);
 
@@ -373,7 +373,7 @@ Lock* LockManager::request_table_lock(int table_id, Transaction* txn, LockMode l
 
         //@STATE:
         if(state_open_)
-            StateManager::get_instance()->append_lock_state(lock_request);
+            StateManager::get_instance()->append_lock_state(lock_request, thread_index);
         return lock_request;
     }
 
@@ -388,7 +388,7 @@ Lock* LockManager::request_table_lock(int table_id, Transaction* txn, LockMode l
 
         // @STATE:
         if(state_open_)
-            StateManager::get_instance()->append_lock_state(lock_request);
+            StateManager::get_instance()->append_lock_state(lock_request, thread_index);
         return lock_request;
     }
 
@@ -406,7 +406,7 @@ Lock* LockManager::request_table_lock(int table_id, Transaction* txn, LockMode l
                 // std::cout << "current mode need to upgrade\n";
                 delete lock_request;
                 lock.unlock();
-                return upgrade_table_lock_mode(lock_mode, request_queue, req);
+                return upgrade_table_lock_mode(lock_mode, request_queue, req, thread_index);
             }
         }
         else {
@@ -433,7 +433,7 @@ Lock* LockManager::request_table_lock(int table_id, Transaction* txn, LockMode l
 
     //@STATE:
     if(state_open_)
-        StateManager::get_instance()->append_lock_state(lock_request);
+        StateManager::get_instance()->append_lock_state(lock_request, thread_index);
     
     return lock_request;
 }
@@ -466,6 +466,6 @@ bool LockManager::unlock(Transaction* txn, Lock* lock) {
     return true;
 }
 
-void LockManager::recover_lock_table() {
-    StateManager::get_instance()->fetch_lock_states(&lock_table_);
+void LockManager::recover_lock_table(Transaction** active_txn_list, int thread_num) {
+    StateManager::get_instance()->fetch_lock_states(&lock_table_, active_txn_list, thread_num);
 }

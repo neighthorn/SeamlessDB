@@ -34,28 +34,32 @@ struct CompareLockPtr {
 
 class StateManager {
 public:
-    static bool create_instance();
+    static bool create_instance(int thread_num);
     static void destroy_instance();
     static StateManager* get_instance() {
         assert(state_mgr_ != nullptr);
         return state_mgr_;
     }
 
-    void append_lock_state(Lock* lock);
+    void append_lock_state(Lock* lock, int thread_index);
 
     void fetch_and_print_lock_states();
 
     void erase_lock_state(Lock* lock);
 
-    void flush_locks(int64_t free_size);
+    void flush_locks(int64_t curr_flush_last_lock, int64_t free_size);
 
     void flush_logs(int64_t curr_state_tail, int64_t curr_head, int64_t curr_tail);
 
     void flush_states();
 
     // fucntions for recovery
-    void fetch_lock_states(std::unordered_map<LockDataId, LockListInBucket>* lock_table);
+    void fetch_lock_states(std::unordered_map<LockDataId, LockListInBucket>* lock_table, Transaction** active_txn_list, int thread_num);
     LockRequestQueue* get_record_request_queue_(int record_no, LockListInBucket* lock_list);
+
+    void fetch_log_states();
+
+    void fetch_active_txns(Transaction** active_txn_list, int thread_num);
 
     // global state
     std::mutex state_latch_;                    // the latch is used for the statemanager to get state checkpoint
@@ -86,10 +90,11 @@ public:
     int remote_log_head_off_;
     int remote_log_tail_off_;
     int remote_log_state_tail_off_;
+    char* log_meta_mr_;
 
 private:
-     StateManager() {
-        lock_bitmap_ = new RegionBitmap(LOCK_MAX_COUNT);
+     StateManager(int thread_num) {
+        lock_bitmap_ = new RegionBitmap(LOCK_MAX_COUNT, thread_num);
         auto lock_buffer = RDMARegionAllocator::get_instance()->GetLockRegion();
         // lock_rdma_buffer_ = new RDMABufferAllocator(lock_buffer.first, lock_buffer.second);
         lock_rdma_buffer_ = new RDMACircularBuffer(lock_buffer.first, RDMARegionAllocator::get_instance()->lock_buf_size);
@@ -102,19 +107,49 @@ private:
         char* log_buffer = RDMARegionAllocator::get_instance()->GetLogRegion();
         int log_buf_size = RDMARegionAllocator::get_instance()->log_buf_size;
         log_rdma_buffer_ = new RDMACircularBuffer(log_buffer, log_buf_size);
-        need_flush_offset_ = flushed_log_offset_ = 0;
+        need_flush_offset_ = 0;
+        flushed_log_offset_ = 0;
         log_qp_ = QPManager::get_instance()->GetRemoteLogBufQPWithNodeID(primary_id);
         remote_log_head_off_ = log_buf_size;
         remote_log_tail_off_ = remote_log_head_off_ + sizeof(int64_t);
         remote_log_state_tail_off_ = remote_log_tail_off_ + sizeof(int64_t);
+        log_meta_mr_ = RDMARegionAllocator::get_instance()->GetLogMetaRegion();
+
+        stop_thread_.store(false);
+        log_flush_thread_ = std::thread(&StateManager::log_flush_thread_function, this);
+        lock_flush_thread_ = std::thread(&StateManager::lock_flush_thread_function, this);
     }
 
     ~StateManager() {
+        stop_thread_.store(true);
+        if(lock_flush_thread_.joinable()) {
+            lock_flush_thread_.join();
+        }
+        if(log_flush_thread_.joinable()) {
+            log_flush_thread_.join();
+        }
         delete lock_bitmap_;
     }
 
+    void lock_flush_thread_function() {
+        while(!stop_thread_.load()) {
+            std::unique_lock<std::mutex> lock(lock_flush_mutex_);
+            lock_flush_thread_cv_.wait(lock, [this]{
+                return flush_last_lock_ != flush_first_lock_;
+            });
+            int64_t curr_flush_last_lock_;
+            int64_t curr_free_size_;
+            {
+                std::scoped_lock<std::mutex> latch(lock_latch_);
+                lock_rdma_buffer_->get_curr_tail_free_size_(curr_flush_last_lock_, curr_free_size_);
+            }
+
+            flush_locks(curr_flush_last_lock_, curr_free_size_);
+        }
+    }
+
     void log_flush_thread_function() {
-        while(!stop_thread_) {
+        while(!stop_thread_.load()) {
             std::unique_lock<std::mutex> lock(log_flush_mutex_);
             log_flush_thread_cv_.wait(lock, [this] {
                 return need_flush_offset_ != flushed_log_offset_;
@@ -133,8 +168,13 @@ private:
     }
 
     static StateManager* state_mgr_;
+
     std::atomic<bool> stop_thread_;
     std::thread log_flush_thread_;
     std::mutex log_flush_mutex_;
     std::condition_variable log_flush_thread_cv_;
+
+    std::thread lock_flush_thread_;
+    std::mutex lock_flush_mutex_;
+    std::condition_variable lock_flush_thread_cv_;
 };

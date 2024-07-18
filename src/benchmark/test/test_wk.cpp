@@ -115,3 +115,8 @@ NativeTransaction* TestWK::generate_transaction(int thread_index) {
     test_txns_[thread_index]->generate_new_txn();
     return test_txns_[thread_index];
 }
+
+NativeTransaction* TestWK::get_transaction(int thread_index) {
+    assert(thread_index <= test_txns_.size());
+    return test_txns_[thread_index];
+}

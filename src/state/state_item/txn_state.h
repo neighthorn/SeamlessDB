@@ -15,11 +15,16 @@
  * at the end of each TxnItem.
 */
 
+// struct TxnItem {
+//     txn_id_t id;
+//     bool txn_mode;
+//     bool abort;     // this flag is used to identify whether the transaction is going to commit or abort (if the transaction is in SHRINKING state)
+//     t_id_t thread_id;
+//     TransactionState txn_state;
+//     uint64_t hash_code;
+// };
+
 struct TxnItem {
-    txn_id_t id;
-    bool txn_mode;
-    bool abort;     // this flag is used to identify whether the transaction is going to commit or abort (if the transaction is in SHRINKING state)
-    t_id_t thread_id;
-    TransactionState txn_state;
-    uint64_t hash_code;
+    txn_id_t txn_id_;
+    lsn_t prev_lsn_;
 };

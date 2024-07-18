@@ -95,10 +95,10 @@ friend class IndexScanOperatorState;
             switch(context_->plan_tag_) {
                 case T_Update:
                 case T_Delete: {
-                    lock = context_->lock_mgr_->request_table_lock(tab_.table_id_, context_->txn_, LockMode::LOCK_IX);
+                    lock = context_->lock_mgr_->request_table_lock(tab_.table_id_, context_->txn_, LockMode::LOCK_IX, context_->coro_sched_->t_id_);
                 } break;
                 case T_select: {
-                    lock = context_->lock_mgr_->request_table_lock(tab_.table_id_, context_->txn_, LockMode::LOCK_IS);
+                    lock = context_->lock_mgr_->request_table_lock(tab_.table_id_, context_->txn_, LockMode::LOCK_IS, context_->coro_sched_->t_id_);
                 } break;
                 default:
                     std::cout << "Invalid plan tag\n";
@@ -281,61 +281,61 @@ friend class IndexScanOperatorState;
                     // where id = x
                     if(lower == upper) {
                         // no record satisfies id = x, gap lock
-                        lock = lock_mgr->request_record_lock(tab_.table_id_, lower, txn, RECORD_LOCK_GAP, get_lock_mode_for_plan(context_->plan_tag_));
+                        lock = lock_mgr->request_record_lock(tab_.table_id_, lower, txn, RECORD_LOCK_GAP, get_lock_mode_for_plan(context_->plan_tag_), context_->coro_sched_->t_id_);
                     }
                     else {
                         // record id = x exists, record_not_gap lock
-                        lock = lock_mgr->request_record_lock(tab_.table_id_, lower, txn, RECORD_LOCK_REC_NOT_GAP, get_lock_mode_for_plan(context_->plan_tag_));
+                        lock = lock_mgr->request_record_lock(tab_.table_id_, lower, txn, RECORD_LOCK_REC_NOT_GAP, get_lock_mode_for_plan(context_->plan_tag_), context_->coro_sched_->t_id_);
                     }
                     min_lock_ = max_lock_ = true;
                 } else {
-                    lock = lock_mgr->request_record_lock(tab_.table_id_, upper, txn, RECORD_LOCK_GAP, get_lock_mode_for_plan(context_->plan_tag_));
+                    lock = lock_mgr->request_record_lock(tab_.table_id_, upper, txn, RECORD_LOCK_GAP, get_lock_mode_for_plan(context_->plan_tag_), context_->coro_sched_->t_id_);
                     max_lock_ = true;
                 }
             } break;
             case OP_GT: {
                 // where id > x
                 // first record id > x, next-key lock
-                lock = lock_mgr->request_record_lock(tab_.table_id_, lower, txn, RECORD_LOCK_ORDINARY, get_lock_mode_for_plan(context_->plan_tag_));
+                lock = lock_mgr->request_record_lock(tab_.table_id_, lower, txn, RECORD_LOCK_ORDINARY, get_lock_mode_for_plan(context_->plan_tag_), context_->coro_sched_->t_id_);
                 min_lock_ = true;
                 assert(lock != nullptr);
                 txn->append_lock(lock);
                 // lock upper
-                lock = lock_mgr->request_record_lock(tab_.table_id_, upper, txn, RECORD_LOCK_GAP, get_lock_mode_for_plan(context_->plan_tag_));
+                lock = lock_mgr->request_record_lock(tab_.table_id_, upper, txn, RECORD_LOCK_GAP, get_lock_mode_for_plan(context_->plan_tag_), context_->coro_sched_->t_id_);
                 max_lock_ = true;
             } break;
             case OP_GE: {
                 // where id >= x
                 if(check_match(cols_, index_conds_, lower_record.get())) {
                     // if record id = x exists, record_not_gap lock
-                    lock = lock_mgr->request_record_lock(tab_.table_id_, lower, txn, RECORD_LOCK_REC_NOT_GAP, get_lock_mode_for_plan(context_->plan_tag_));
+                    lock = lock_mgr->request_record_lock(tab_.table_id_, lower, txn, RECORD_LOCK_REC_NOT_GAP, get_lock_mode_for_plan(context_->plan_tag_), context_->coro_sched_->t_id_);
                 }
                 else {
                     // if record id = x not exists, next_key lock
-                    lock = lock_mgr->request_record_lock(tab_.table_id_, lower, txn, RECORD_LOCK_ORDINARY, get_lock_mode_for_plan(context_->plan_tag_));
+                    lock = lock_mgr->request_record_lock(tab_.table_id_, lower, txn, RECORD_LOCK_ORDINARY, get_lock_mode_for_plan(context_->plan_tag_), context_->coro_sched_->t_id_);
                 }
                 min_lock_ = true;
                 assert(lock != nullptr);
                 txn->append_lock(lock);
                 // lock upper
-                lock = lock_mgr->request_record_lock(tab_.table_id_, upper, txn, RECORD_LOCK_GAP, get_lock_mode_for_plan(context_->plan_tag_));
+                lock = lock_mgr->request_record_lock(tab_.table_id_, upper, txn, RECORD_LOCK_GAP, get_lock_mode_for_plan(context_->plan_tag_), context_->coro_sched_->t_id_);
                 max_lock_ = true;
             } break;
             case OP_LT: {
                 // where id < x
                 // first record id >= x, gap lock
-                lock = lock_mgr->request_record_lock(tab_.table_id_, upper, txn, RECORD_LOCK_GAP, get_lock_mode_for_plan(context_->plan_tag_));
+                lock = lock_mgr->request_record_lock(tab_.table_id_, upper, txn, RECORD_LOCK_GAP, get_lock_mode_for_plan(context_->plan_tag_), context_->coro_sched_->t_id_);
                 min_lock_ = true;
             } break;
             case OP_LE: {
                 // where id <= x
                 if(check_match(cols_, index_conds_, upper_record.get())) {
                     // if record id = x exists, next_key lock
-                    lock = lock_mgr->request_record_lock(tab_.table_id_, upper, txn, RECORD_LOCK_ORDINARY, get_lock_mode_for_plan(context_->plan_tag_));
+                    lock = lock_mgr->request_record_lock(tab_.table_id_, upper, txn, RECORD_LOCK_ORDINARY, get_lock_mode_for_plan(context_->plan_tag_), context_->coro_sched_->t_id_);
                 }
                 else {
                     // if record id = x not exists, gap lock
-                    lock = lock_mgr->request_record_lock(tab_.table_id_, upper, txn, RECORD_LOCK_GAP, get_lock_mode_for_plan(context_->plan_tag_));
+                    lock = lock_mgr->request_record_lock(tab_.table_id_, upper, txn, RECORD_LOCK_GAP, get_lock_mode_for_plan(context_->plan_tag_), context_->coro_sched_->t_id_);
                 }
                 max_lock_ = true;
             } break;
@@ -360,7 +360,7 @@ friend class IndexScanOperatorState;
             
             if (rec->is_deleted() == false && eval_conds(cols_, filter_conds_, rec.get())) {
                 if(min_lock_ == false) {
-                    lock = lock_mgr->request_record_lock(tab_.table_id_, rid_, txn, RECORD_LOCK_ORDINARY, get_lock_mode_for_plan(context_->plan_tag_));
+                    lock = lock_mgr->request_record_lock(tab_.table_id_, rid_, txn, RECORD_LOCK_ORDINARY, get_lock_mode_for_plan(context_->plan_tag_), context_->coro_sched_->t_id_);
                     assert(lock != nullptr);
                     txn->append_lock(lock);
                 }
@@ -372,7 +372,7 @@ friend class IndexScanOperatorState;
             }
             else {
                 if(min_lock_ == false) {
-                    lock = lock_mgr->request_record_lock(tab_.table_id_, rid_, txn, RECORD_LOCK_ORDINARY, LOCK_S);
+                    lock = lock_mgr->request_record_lock(tab_.table_id_, rid_, txn, RECORD_LOCK_ORDINARY, LOCK_S, context_->coro_sched_->t_id_);
                     assert(lock != nullptr);
                     txn->append_lock(lock);
                 }
@@ -429,7 +429,7 @@ friend class IndexScanOperatorState;
 
             if (rec->is_deleted() == false && eval_conds(cols_, filter_conds_, rec.get())) {
                 assert(context_ != nullptr);
-                lock = context_->lock_mgr_->request_record_lock(tab_.table_id_, rid_, context_->txn_, RECORD_LOCK_ORDINARY, get_lock_mode_for_plan(context_->plan_tag_));
+                lock = context_->lock_mgr_->request_record_lock(tab_.table_id_, rid_, context_->txn_, RECORD_LOCK_ORDINARY, get_lock_mode_for_plan(context_->plan_tag_), context_->coro_sched_->t_id_);
                 assert(lock != nullptr);
                 context_->txn_->append_lock(lock);
                 current_record_ = std::move(rec);
@@ -437,7 +437,7 @@ friend class IndexScanOperatorState;
             }
             else {
                 assert(context_ != nullptr);
-                lock = context_->lock_mgr_->request_record_lock(tab_.table_id_, rid_, context_->txn_, RECORD_LOCK_ORDINARY, LOCK_S);
+                lock = context_->lock_mgr_->request_record_lock(tab_.table_id_, rid_, context_->txn_, RECORD_LOCK_ORDINARY, LOCK_S, context_->coro_sched_->t_id_);
                 assert(lock != nullptr);
                 context_->txn_->append_lock(lock);
             }

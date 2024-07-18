@@ -13,7 +13,7 @@ public:
     int c_id;
     int o_id;
     int ol_cnt;
-    int itemid[16];
+    int itemid[650];
     char ol_dist_info[25];
     char datetime[Clock::DATETIME_SIZE + 1];
     SystemClock* clock;
@@ -32,7 +32,7 @@ public:
         next_o_id[w_id][d_id] ++;
         next_o_id_mutex.unlock();
         // ol_cnt = RandomGenerator::generate_random_int(5, 15);
-        ol_cnt = 5;
+        ol_cnt = 600;
         for(int i = 0; i < ol_cnt; ++i) itemid[i] = RandomGenerator::NURand(8191, 1, MAXITEMS);
 
         queries.push_back("begin;");

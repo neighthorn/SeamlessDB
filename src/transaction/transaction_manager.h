@@ -57,6 +57,8 @@ public:
         return active_transactions_[thread_id];
     }
 
+    void recover_active_txn_lists(Context* context);
+
     void get_active_txn_ids() {
         
     }

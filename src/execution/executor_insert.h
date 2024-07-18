@@ -75,7 +75,7 @@ class InsertExecutor : public AbstractExecutor {
             if(lower_rid_ != upper_rid_) {
                 throw PrimaryKeyRepeatError();
             }
-            Lock* lock = context_->lock_mgr_->request_record_lock(tab_.table_id_, lower_rid_, context_->txn_, RECORD_LOCK_INSERT_INTENTION, NON_LOCK);
+            Lock* lock = context_->lock_mgr_->request_record_lock(tab_.table_id_, lower_rid_, context_->txn_, RECORD_LOCK_INSERT_INTENTION, NON_LOCK, context_->coro_sched_->t_id_);
             assert(lock != nullptr);
             context_->txn_->append_lock(lock);
         }

@@ -48,7 +48,7 @@ struct TableStruct_storage_5fservice_2eproto {
     PROTOBUF_SECTION_VARIABLE(protodesc_cold);
   static const ::PROTOBUF_NAMESPACE_ID::internal::AuxillaryParseTableField aux[]
     PROTOBUF_SECTION_VARIABLE(protodesc_cold);
-  static const ::PROTOBUF_NAMESPACE_ID::internal::ParseTable schema[8]
+  static const ::PROTOBUF_NAMESPACE_ID::internal::ParseTable schema[10]
     PROTOBUF_SECTION_VARIABLE(protodesc_cold);
   static const ::PROTOBUF_NAMESPACE_ID::internal::FieldMetadata field_metadata[];
   static const ::PROTOBUF_NAMESPACE_ID::internal::SerializationTable serialization_table[];
@@ -74,6 +74,12 @@ extern GetOldPageRequest_PageIDDefaultTypeInternal _GetOldPageRequest_PageID_def
 class GetOldPageResponse;
 class GetOldPageResponseDefaultTypeInternal;
 extern GetOldPageResponseDefaultTypeInternal _GetOldPageResponse_default_instance_;
+class GetPersistLsnRequest;
+class GetPersistLsnRequestDefaultTypeInternal;
+extern GetPersistLsnRequestDefaultTypeInternal _GetPersistLsnRequest_default_instance_;
+class GetPersistLsnResponse;
+class GetPersistLsnResponseDefaultTypeInternal;
+extern GetPersistLsnResponseDefaultTypeInternal _GetPersistLsnResponse_default_instance_;
 class LogWriteRequest;
 class LogWriteRequestDefaultTypeInternal;
 extern LogWriteRequestDefaultTypeInternal _LogWriteRequest_default_instance_;
@@ -88,6 +94,8 @@ template<> ::storage_service::GetLatestPageResponse* Arena::CreateMaybeMessage<:
 template<> ::storage_service::GetOldPageRequest* Arena::CreateMaybeMessage<::storage_service::GetOldPageRequest>(Arena*);
 template<> ::storage_service::GetOldPageRequest_PageID* Arena::CreateMaybeMessage<::storage_service::GetOldPageRequest_PageID>(Arena*);
 template<> ::storage_service::GetOldPageResponse* Arena::CreateMaybeMessage<::storage_service::GetOldPageResponse>(Arena*);
+template<> ::storage_service::GetPersistLsnRequest* Arena::CreateMaybeMessage<::storage_service::GetPersistLsnRequest>(Arena*);
+template<> ::storage_service::GetPersistLsnResponse* Arena::CreateMaybeMessage<::storage_service::GetPersistLsnResponse>(Arena*);
 template<> ::storage_service::LogWriteRequest* Arena::CreateMaybeMessage<::storage_service::LogWriteRequest>(Arena*);
 template<> ::storage_service::LogWriteResponse* Arena::CreateMaybeMessage<::storage_service::LogWriteResponse>(Arena*);
 PROTOBUF_NAMESPACE_CLOSE
@@ -1360,6 +1368,267 @@ class GetOldPageResponse PROTOBUF_FINAL :
   mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
   friend struct ::TableStruct_storage_5fservice_2eproto;
 };
+// -------------------------------------------------------------------
+
+class GetPersistLsnRequest PROTOBUF_FINAL :
+    public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:storage_service.GetPersistLsnRequest) */ {
+ public:
+  inline GetPersistLsnRequest() : GetPersistLsnRequest(nullptr) {};
+  virtual ~GetPersistLsnRequest();
+
+  GetPersistLsnRequest(const GetPersistLsnRequest& from);
+  GetPersistLsnRequest(GetPersistLsnRequest&& from) noexcept
+    : GetPersistLsnRequest() {
+    *this = ::std::move(from);
+  }
+
+  inline GetPersistLsnRequest& operator=(const GetPersistLsnRequest& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  inline GetPersistLsnRequest& operator=(GetPersistLsnRequest&& from) noexcept {
+    if (GetArena() == from.GetArena()) {
+      if (this != &from) InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* descriptor() {
+    return GetDescriptor();
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* GetDescriptor() {
+    return GetMetadataStatic().descriptor;
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
+    return GetMetadataStatic().reflection;
+  }
+  static const GetPersistLsnRequest& default_instance();
+
+  static void InitAsDefaultInstance();  // FOR INTERNAL USE ONLY
+  static inline const GetPersistLsnRequest* internal_default_instance() {
+    return reinterpret_cast<const GetPersistLsnRequest*>(
+               &_GetPersistLsnRequest_default_instance_);
+  }
+  static constexpr int kIndexInFileMessages =
+    8;
+
+  friend void swap(GetPersistLsnRequest& a, GetPersistLsnRequest& b) {
+    a.Swap(&b);
+  }
+  inline void Swap(GetPersistLsnRequest* other) {
+    if (other == this) return;
+    if (GetArena() == other->GetArena()) {
+      InternalSwap(other);
+    } else {
+      ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
+    }
+  }
+  void UnsafeArenaSwap(GetPersistLsnRequest* other) {
+    if (other == this) return;
+    GOOGLE_DCHECK(GetArena() == other->GetArena());
+    InternalSwap(other);
+  }
+
+  // implements Message ----------------------------------------------
+
+  inline GetPersistLsnRequest* New() const final {
+    return CreateMaybeMessage<GetPersistLsnRequest>(nullptr);
+  }
+
+  GetPersistLsnRequest* New(::PROTOBUF_NAMESPACE_ID::Arena* arena) const final {
+    return CreateMaybeMessage<GetPersistLsnRequest>(arena);
+  }
+  void CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) final;
+  void MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) final;
+  void CopyFrom(const GetPersistLsnRequest& from);
+  void MergeFrom(const GetPersistLsnRequest& from);
+  PROTOBUF_ATTRIBUTE_REINITIALIZES void Clear() final;
+  bool IsInitialized() const final;
+
+  size_t ByteSizeLong() const final;
+  const char* _InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) final;
+  ::PROTOBUF_NAMESPACE_ID::uint8* _InternalSerialize(
+      ::PROTOBUF_NAMESPACE_ID::uint8* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const final;
+  int GetCachedSize() const final { return _cached_size_.Get(); }
+
+  private:
+  inline void SharedCtor();
+  inline void SharedDtor();
+  void SetCachedSize(int size) const final;
+  void InternalSwap(GetPersistLsnRequest* other);
+  friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
+  static ::PROTOBUF_NAMESPACE_ID::StringPiece FullMessageName() {
+    return "storage_service.GetPersistLsnRequest";
+  }
+  protected:
+  explicit GetPersistLsnRequest(::PROTOBUF_NAMESPACE_ID::Arena* arena);
+  private:
+  static void ArenaDtor(void* object);
+  inline void RegisterArenaDtor(::PROTOBUF_NAMESPACE_ID::Arena* arena);
+  public:
+
+  ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadata() const final;
+  private:
+  static ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadataStatic() {
+    ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&::descriptor_table_storage_5fservice_2eproto);
+    return ::descriptor_table_storage_5fservice_2eproto.file_level_metadata[kIndexInFileMessages];
+  }
+
+  public:
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // @@protoc_insertion_point(class_scope:storage_service.GetPersistLsnRequest)
+ private:
+  class _Internal;
+
+  template <typename T> friend class ::PROTOBUF_NAMESPACE_ID::Arena::InternalHelper;
+  typedef void InternalArenaConstructable_;
+  typedef void DestructorSkippable_;
+  mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
+  friend struct ::TableStruct_storage_5fservice_2eproto;
+};
+// -------------------------------------------------------------------
+
+class GetPersistLsnResponse PROTOBUF_FINAL :
+    public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:storage_service.GetPersistLsnResponse) */ {
+ public:
+  inline GetPersistLsnResponse() : GetPersistLsnResponse(nullptr) {};
+  virtual ~GetPersistLsnResponse();
+
+  GetPersistLsnResponse(const GetPersistLsnResponse& from);
+  GetPersistLsnResponse(GetPersistLsnResponse&& from) noexcept
+    : GetPersistLsnResponse() {
+    *this = ::std::move(from);
+  }
+
+  inline GetPersistLsnResponse& operator=(const GetPersistLsnResponse& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  inline GetPersistLsnResponse& operator=(GetPersistLsnResponse&& from) noexcept {
+    if (GetArena() == from.GetArena()) {
+      if (this != &from) InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* descriptor() {
+    return GetDescriptor();
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* GetDescriptor() {
+    return GetMetadataStatic().descriptor;
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
+    return GetMetadataStatic().reflection;
+  }
+  static const GetPersistLsnResponse& default_instance();
+
+  static void InitAsDefaultInstance();  // FOR INTERNAL USE ONLY
+  static inline const GetPersistLsnResponse* internal_default_instance() {
+    return reinterpret_cast<const GetPersistLsnResponse*>(
+               &_GetPersistLsnResponse_default_instance_);
+  }
+  static constexpr int kIndexInFileMessages =
+    9;
+
+  friend void swap(GetPersistLsnResponse& a, GetPersistLsnResponse& b) {
+    a.Swap(&b);
+  }
+  inline void Swap(GetPersistLsnResponse* other) {
+    if (other == this) return;
+    if (GetArena() == other->GetArena()) {
+      InternalSwap(other);
+    } else {
+      ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
+    }
+  }
+  void UnsafeArenaSwap(GetPersistLsnResponse* other) {
+    if (other == this) return;
+    GOOGLE_DCHECK(GetArena() == other->GetArena());
+    InternalSwap(other);
+  }
+
+  // implements Message ----------------------------------------------
+
+  inline GetPersistLsnResponse* New() const final {
+    return CreateMaybeMessage<GetPersistLsnResponse>(nullptr);
+  }
+
+  GetPersistLsnResponse* New(::PROTOBUF_NAMESPACE_ID::Arena* arena) const final {
+    return CreateMaybeMessage<GetPersistLsnResponse>(arena);
+  }
+  void CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) final;
+  void MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) final;
+  void CopyFrom(const GetPersistLsnResponse& from);
+  void MergeFrom(const GetPersistLsnResponse& from);
+  PROTOBUF_ATTRIBUTE_REINITIALIZES void Clear() final;
+  bool IsInitialized() const final;
+
+  size_t ByteSizeLong() const final;
+  const char* _InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) final;
+  ::PROTOBUF_NAMESPACE_ID::uint8* _InternalSerialize(
+      ::PROTOBUF_NAMESPACE_ID::uint8* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const final;
+  int GetCachedSize() const final { return _cached_size_.Get(); }
+
+  private:
+  inline void SharedCtor();
+  inline void SharedDtor();
+  void SetCachedSize(int size) const final;
+  void InternalSwap(GetPersistLsnResponse* other);
+  friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
+  static ::PROTOBUF_NAMESPACE_ID::StringPiece FullMessageName() {
+    return "storage_service.GetPersistLsnResponse";
+  }
+  protected:
+  explicit GetPersistLsnResponse(::PROTOBUF_NAMESPACE_ID::Arena* arena);
+  private:
+  static void ArenaDtor(void* object);
+  inline void RegisterArenaDtor(::PROTOBUF_NAMESPACE_ID::Arena* arena);
+  public:
+
+  ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadata() const final;
+  private:
+  static ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadataStatic() {
+    ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&::descriptor_table_storage_5fservice_2eproto);
+    return ::descriptor_table_storage_5fservice_2eproto.file_level_metadata[kIndexInFileMessages];
+  }
+
+  public:
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  enum : int {
+    kPersistLsnFieldNumber = 1,
+  };
+  // sint32 persist_lsn = 1;
+  void clear_persist_lsn();
+  ::PROTOBUF_NAMESPACE_ID::int32 persist_lsn() const;
+  void set_persist_lsn(::PROTOBUF_NAMESPACE_ID::int32 value);
+  private:
+  ::PROTOBUF_NAMESPACE_ID::int32 _internal_persist_lsn() const;
+  void _internal_set_persist_lsn(::PROTOBUF_NAMESPACE_ID::int32 value);
+  public:
+
+  // @@protoc_insertion_point(class_scope:storage_service.GetPersistLsnResponse)
+ private:
+  class _Internal;
+
+  template <typename T> friend class ::PROTOBUF_NAMESPACE_ID::Arena::InternalHelper;
+  typedef void InternalArenaConstructable_;
+  typedef void DestructorSkippable_;
+  ::PROTOBUF_NAMESPACE_ID::int32 persist_lsn_;
+  mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
+  friend struct ::TableStruct_storage_5fservice_2eproto;
+};
 // ===================================================================
 
 class StorageService_Stub;
@@ -1386,6 +1655,10 @@ class StorageService : public ::PROTOBUF_NAMESPACE_ID::Service {
   virtual void GetLatestPage(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
                        const ::storage_service::GetLatestPageRequest* request,
                        ::storage_service::GetLatestPageResponse* response,
+                       ::google::protobuf::Closure* done);
+  virtual void GetPersistLsn(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::storage_service::GetPersistLsnRequest* request,
+                       ::storage_service::GetPersistLsnResponse* response,
                        ::google::protobuf::Closure* done);
 
   // implements Service ----------------------------------------------
@@ -1427,6 +1700,10 @@ class StorageService_Stub : public StorageService {
   void GetLatestPage(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
                        const ::storage_service::GetLatestPageRequest* request,
                        ::storage_service::GetLatestPageResponse* response,
+                       ::google::protobuf::Closure* done);
+  void GetPersistLsn(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                       const ::storage_service::GetPersistLsnRequest* request,
+                       ::storage_service::GetPersistLsnResponse* response,
                        ::google::protobuf::Closure* done);
  private:
   ::PROTOBUF_NAMESPACE_ID::RpcChannel* channel_;
@@ -2035,9 +2312,41 @@ GetOldPageResponse::mutable_data() {
   return &data_;
 }
 
+// -------------------------------------------------------------------
+
+// GetPersistLsnRequest
+
+// -------------------------------------------------------------------
+
+// GetPersistLsnResponse
+
+// sint32 persist_lsn = 1;
+inline void GetPersistLsnResponse::clear_persist_lsn() {
+  persist_lsn_ = 0;
+}
+inline ::PROTOBUF_NAMESPACE_ID::int32 GetPersistLsnResponse::_internal_persist_lsn() const {
+  return persist_lsn_;
+}
+inline ::PROTOBUF_NAMESPACE_ID::int32 GetPersistLsnResponse::persist_lsn() const {
+  // @@protoc_insertion_point(field_get:storage_service.GetPersistLsnResponse.persist_lsn)
+  return _internal_persist_lsn();
+}
+inline void GetPersistLsnResponse::_internal_set_persist_lsn(::PROTOBUF_NAMESPACE_ID::int32 value) {
+  
+  persist_lsn_ = value;
+}
+inline void GetPersistLsnResponse::set_persist_lsn(::PROTOBUF_NAMESPACE_ID::int32 value) {
+  _internal_set_persist_lsn(value);
+  // @@protoc_insertion_point(field_set:storage_service.GetPersistLsnResponse.persist_lsn)
+}
+
 #ifdef __GNUC__
   #pragma GCC diagnostic pop
 #endif  // __GNUC__
+// -------------------------------------------------------------------
+
+// -------------------------------------------------------------------
+
 // -------------------------------------------------------------------
 
 // -------------------------------------------------------------------

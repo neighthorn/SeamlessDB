@@ -118,8 +118,8 @@ public:
 
     ALWAYS_INLINE
     offset_t GetTxnListBitmapAddr() {
-        assert(txn_list_bitmap_addr != -1);
-        return txn_list_bitmap_addr;
+        // assert(txn_list_bitmap_addr != -1);
+        // return txn_list_bitmap_addr;
     }
 
     ALWAYS_INLINE
@@ -127,9 +127,9 @@ public:
         assert(txn_list_base_addr != -1);
         assert(txn_size != -1);
         assert(index != -1);
-        assert(txn_list_bitmap_ != nullptr);
-        std::cout << "index: " << index << ", bitmap_size: " << txn_list_bitmap_->bitmap_size_ << "\n";
-        assert(index < txn_list_bitmap_->bitmap_size_ * 8);
+        // assert(txn_list_bitmap_ != nullptr);
+        // std::cout << "index: " << index << ", bitmap_size: " << txn_list_bitmap_->bitmap_size_ << "\n";
+        // assert(index < txn_list_bitmap_->bitmap_size_ * 8);
         return txn_list_base_addr + index * txn_size;
     }
 
@@ -195,7 +195,7 @@ private:
     // size_t txn_size = sizeof(TxnItem);                // size for each txn_item in txn_list
     // size_t txn_bitmap_size = MAX_CONN_LIMIT;            // size for txn_list bitmap, initiated 
     offset_t txn_list_latch_addr = -1;   // base address for txn_list_latch
-    offset_t txn_list_bitmap_addr = -1;  // base address for txn_list bitmap
+    // offset_t txn_list_bitmap_addr = -1;  // base address for txn_list bitmap
     offset_t txn_list_base_addr = -1;    // base address for txn_list
     size_t txn_size = -1;                // size for each txn_item in txn_list
 
@@ -203,5 +203,5 @@ public:
     RNicHandler* opened_rnic = nullptr;
     RdmaCtrlPtr global_rdma_ctrl;           // rdma controller used by QPManager and local RDMA Region
     std::vector<RemoteNode> remote_nodes;   // remote state nodes
-    RegionBitmap* txn_list_bitmap_ = nullptr;        // txn_list bitmap
+    // RegionBitmap* txn_list_bitmap_ = nullptr;        // txn_list bitmap
 };

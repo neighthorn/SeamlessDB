@@ -49,6 +49,14 @@ class GetOldPageResponseDefaultTypeInternal {
  public:
   ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<GetOldPageResponse> _instance;
 } _GetOldPageResponse_default_instance_;
+class GetPersistLsnRequestDefaultTypeInternal {
+ public:
+  ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<GetPersistLsnRequest> _instance;
+} _GetPersistLsnRequest_default_instance_;
+class GetPersistLsnResponseDefaultTypeInternal {
+ public:
+  ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<GetPersistLsnResponse> _instance;
+} _GetPersistLsnResponse_default_instance_;
 }  // namespace storage_service
 static void InitDefaultsscc_info_GetLatestPageRequest_storage_5fservice_2eproto() {
   GOOGLE_PROTOBUF_VERIFY_VERSION;
@@ -136,6 +144,34 @@ static void InitDefaultsscc_info_GetOldPageResponse_storage_5fservice_2eproto() 
 ::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<0> scc_info_GetOldPageResponse_storage_5fservice_2eproto =
     {{ATOMIC_VAR_INIT(::PROTOBUF_NAMESPACE_ID::internal::SCCInfoBase::kUninitialized), 0, 0, InitDefaultsscc_info_GetOldPageResponse_storage_5fservice_2eproto}, {}};
 
+static void InitDefaultsscc_info_GetPersistLsnRequest_storage_5fservice_2eproto() {
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
+
+  {
+    void* ptr = &::storage_service::_GetPersistLsnRequest_default_instance_;
+    new (ptr) ::storage_service::GetPersistLsnRequest();
+    ::PROTOBUF_NAMESPACE_ID::internal::OnShutdownDestroyMessage(ptr);
+  }
+  ::storage_service::GetPersistLsnRequest::InitAsDefaultInstance();
+}
+
+::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<0> scc_info_GetPersistLsnRequest_storage_5fservice_2eproto =
+    {{ATOMIC_VAR_INIT(::PROTOBUF_NAMESPACE_ID::internal::SCCInfoBase::kUninitialized), 0, 0, InitDefaultsscc_info_GetPersistLsnRequest_storage_5fservice_2eproto}, {}};
+
+static void InitDefaultsscc_info_GetPersistLsnResponse_storage_5fservice_2eproto() {
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
+
+  {
+    void* ptr = &::storage_service::_GetPersistLsnResponse_default_instance_;
+    new (ptr) ::storage_service::GetPersistLsnResponse();
+    ::PROTOBUF_NAMESPACE_ID::internal::OnShutdownDestroyMessage(ptr);
+  }
+  ::storage_service::GetPersistLsnResponse::InitAsDefaultInstance();
+}
+
+::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<0> scc_info_GetPersistLsnResponse_storage_5fservice_2eproto =
+    {{ATOMIC_VAR_INIT(::PROTOBUF_NAMESPACE_ID::internal::SCCInfoBase::kUninitialized), 0, 0, InitDefaultsscc_info_GetPersistLsnResponse_storage_5fservice_2eproto}, {}};
+
 static void InitDefaultsscc_info_LogWriteRequest_storage_5fservice_2eproto() {
   GOOGLE_PROTOBUF_VERIFY_VERSION;
 
@@ -164,7 +200,7 @@ static void InitDefaultsscc_info_LogWriteResponse_storage_5fservice_2eproto() {
 ::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<0> scc_info_LogWriteResponse_storage_5fservice_2eproto =
     {{ATOMIC_VAR_INIT(::PROTOBUF_NAMESPACE_ID::internal::SCCInfoBase::kUninitialized), 0, 0, InitDefaultsscc_info_LogWriteResponse_storage_5fservice_2eproto}, {}};
 
-static ::PROTOBUF_NAMESPACE_ID::Metadata file_level_metadata_storage_5fservice_2eproto[8];
+static ::PROTOBUF_NAMESPACE_ID::Metadata file_level_metadata_storage_5fservice_2eproto[10];
 static constexpr ::PROTOBUF_NAMESPACE_ID::EnumDescriptor const** file_level_enum_descriptors_storage_5fservice_2eproto = nullptr;
 static const ::PROTOBUF_NAMESPACE_ID::ServiceDescriptor* file_level_service_descriptors_storage_5fservice_2eproto[1];
 
@@ -224,6 +260,17 @@ const ::PROTOBUF_NAMESPACE_ID::uint32 TableStruct_storage_5fservice_2eproto::off
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
   PROTOBUF_FIELD_OFFSET(::storage_service::GetOldPageResponse, data_),
+  ~0u,  // no _has_bits_
+  PROTOBUF_FIELD_OFFSET(::storage_service::GetPersistLsnRequest, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  ~0u,  // no _has_bits_
+  PROTOBUF_FIELD_OFFSET(::storage_service::GetPersistLsnResponse, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  PROTOBUF_FIELD_OFFSET(::storage_service::GetPersistLsnResponse, persist_lsn_),
 };
 static const ::PROTOBUF_NAMESPACE_ID::internal::MigrationSchema schemas[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
   { 0, -1, sizeof(::storage_service::LogWriteRequest)},
@@ -234,6 +281,8 @@ static const ::PROTOBUF_NAMESPACE_ID::internal::MigrationSchema schemas[] PROTOB
   { 32, -1, sizeof(::storage_service::GetOldPageRequest_PageID)},
   { 40, -1, sizeof(::storage_service::GetOldPageRequest)},
   { 49, -1, sizeof(::storage_service::GetOldPageResponse)},
+  { 55, -1, sizeof(::storage_service::GetPersistLsnRequest)},
+  { 60, -1, sizeof(::storage_service::GetPersistLsnResponse)},
 };
 
 static ::PROTOBUF_NAMESPACE_ID::Message const * const file_default_instances[] = {
@@ -245,6 +294,8 @@ static ::PROTOBUF_NAMESPACE_ID::Message const * const file_default_instances[] =
   reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::storage_service::_GetOldPageRequest_PageID_default_instance_),
   reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::storage_service::_GetOldPageRequest_default_instance_),
   reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::storage_service::_GetOldPageResponse_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::storage_service::_GetPersistLsnRequest_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::storage_service::_GetPersistLsnResponse_default_instance_),
 };
 
 const char descriptor_table_protodef_storage_5fservice_2eproto[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) =
@@ -261,34 +312,40 @@ const char descriptor_table_protodef_storage_5fservice_2eproto[] PROTOBUF_SECTIO
   "ds\030\002 \003(\021\022\023\n\013up_limit_id\030\003 \001(\021\022\024\n\014low_lim"
   "it_id\030\004 \001(\021\032=\n\006PageID\022\020\n\010table_id\030\001 \001(\021\022"
   "\020\n\010slice_id\030\002 \001(\021\022\017\n\007page_no\030\003 \001(\021\"\"\n\022Ge"
-  "tOldPageResponse\022\014\n\004data\030\001 \003(\0142\230\002\n\016Stora"
-  "geService\022O\n\010LogWrite\022 .storage_service."
-  "LogWriteRequest\032!.storage_service.LogWri"
-  "teResponse\022U\n\nGetOldPage\022\".storage_servi"
-  "ce.GetOldPageRequest\032#.storage_service.G"
-  "etOldPageResponse\022^\n\rGetLatestPage\022%.sto"
-  "rage_service.GetLatestPageRequest\032&.stor"
-  "age_service.GetLatestPageResponseB\003\200\001\001b\006"
-  "proto3"
+  "tOldPageResponse\022\014\n\004data\030\001 \003(\014\"\026\n\024GetPer"
+  "sistLsnRequest\",\n\025GetPersistLsnResponse\022"
+  "\023\n\013persist_lsn\030\001 \001(\0212\370\002\n\016StorageService\022"
+  "O\n\010LogWrite\022 .storage_service.LogWriteRe"
+  "quest\032!.storage_service.LogWriteResponse"
+  "\022U\n\nGetOldPage\022\".storage_service.GetOldP"
+  "ageRequest\032#.storage_service.GetOldPageR"
+  "esponse\022^\n\rGetLatestPage\022%.storage_servi"
+  "ce.GetLatestPageRequest\032&.storage_servic"
+  "e.GetLatestPageResponse\022^\n\rGetPersistLsn"
+  "\022%.storage_service.GetPersistLsnRequest\032"
+  "&.storage_service.GetPersistLsnResponseB"
+  "\003\200\001\001b\006proto3"
   ;
 static const ::PROTOBUF_NAMESPACE_ID::internal::DescriptorTable*const descriptor_table_storage_5fservice_2eproto_deps[1] = {
 };
-static ::PROTOBUF_NAMESPACE_ID::internal::SCCInfoBase*const descriptor_table_storage_5fservice_2eproto_sccs[8] = {
+static ::PROTOBUF_NAMESPACE_ID::internal::SCCInfoBase*const descriptor_table_storage_5fservice_2eproto_sccs[10] = {
   &scc_info_GetLatestPageRequest_storage_5fservice_2eproto.base,
   &scc_info_GetLatestPageRequest_PageID_storage_5fservice_2eproto.base,
   &scc_info_GetLatestPageResponse_storage_5fservice_2eproto.base,
   &scc_info_GetOldPageRequest_storage_5fservice_2eproto.base,
   &scc_info_GetOldPageRequest_PageID_storage_5fservice_2eproto.base,
   &scc_info_GetOldPageResponse_storage_5fservice_2eproto.base,
+  &scc_info_GetPersistLsnRequest_storage_5fservice_2eproto.base,
+  &scc_info_GetPersistLsnResponse_storage_5fservice_2eproto.base,
   &scc_info_LogWriteRequest_storage_5fservice_2eproto.base,
   &scc_info_LogWriteResponse_storage_5fservice_2eproto.base,
 };
 static ::PROTOBUF_NAMESPACE_ID::internal::once_flag descriptor_table_storage_5fservice_2eproto_once;
 const ::PROTOBUF_NAMESPACE_ID::internal::DescriptorTable descriptor_table_storage_5fservice_2eproto = {
-  false, false, descriptor_table_protodef_storage_5fservice_2eproto, "storage_service.proto", 846,
-  &descriptor_table_storage_5fservice_2eproto_once, descriptor_table_storage_5fservice_2eproto_sccs, descriptor_table_storage_5fservice_2eproto_deps, 8, 0,
+  false, false, descriptor_table_protodef_storage_5fservice_2eproto, "storage_service.proto", 1012,
+  &descriptor_table_storage_5fservice_2eproto_once, descriptor_table_storage_5fservice_2eproto_sccs, descriptor_table_storage_5fservice_2eproto_deps, 10, 0,
   schemas, file_default_instances, TableStruct_storage_5fservice_2eproto::offsets,
-  file_level_metadata_storage_5fservice_2eproto, 8, file_level_enum_descriptors_storage_5fservice_2eproto, file_level_service_descriptors_storage_5fservice_2eproto,
+  file_level_metadata_storage_5fservice_2eproto, 10, file_level_enum_descriptors_storage_5fservice_2eproto, file_level_service_descriptors_storage_5fservice_2eproto,
 };
 
 // Force running AddDescriptors() at dynamic initialization time.
@@ -2125,6 +2182,368 @@ void GetOldPageResponse::InternalSwap(GetOldPageResponse* other) {
 
 // ===================================================================
 
+void GetPersistLsnRequest::InitAsDefaultInstance() {
+}
+class GetPersistLsnRequest::_Internal {
+ public:
+};
+
+GetPersistLsnRequest::GetPersistLsnRequest(::PROTOBUF_NAMESPACE_ID::Arena* arena)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena) {
+  SharedCtor();
+  RegisterArenaDtor(arena);
+  // @@protoc_insertion_point(arena_constructor:storage_service.GetPersistLsnRequest)
+}
+GetPersistLsnRequest::GetPersistLsnRequest(const GetPersistLsnRequest& from)
+  : ::PROTOBUF_NAMESPACE_ID::Message() {
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  // @@protoc_insertion_point(copy_constructor:storage_service.GetPersistLsnRequest)
+}
+
+void GetPersistLsnRequest::SharedCtor() {
+}
+
+GetPersistLsnRequest::~GetPersistLsnRequest() {
+  // @@protoc_insertion_point(destructor:storage_service.GetPersistLsnRequest)
+  SharedDtor();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+void GetPersistLsnRequest::SharedDtor() {
+  GOOGLE_DCHECK(GetArena() == nullptr);
+}
+
+void GetPersistLsnRequest::ArenaDtor(void* object) {
+  GetPersistLsnRequest* _this = reinterpret_cast< GetPersistLsnRequest* >(object);
+  (void)_this;
+}
+void GetPersistLsnRequest::RegisterArenaDtor(::PROTOBUF_NAMESPACE_ID::Arena*) {
+}
+void GetPersistLsnRequest::SetCachedSize(int size) const {
+  _cached_size_.Set(size);
+}
+const GetPersistLsnRequest& GetPersistLsnRequest::default_instance() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&::scc_info_GetPersistLsnRequest_storage_5fservice_2eproto.base);
+  return *internal_default_instance();
+}
+
+
+void GetPersistLsnRequest::Clear() {
+// @@protoc_insertion_point(message_clear_start:storage_service.GetPersistLsnRequest)
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+const char* GetPersistLsnRequest::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
+#define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  ::PROTOBUF_NAMESPACE_ID::Arena* arena = GetArena(); (void)arena;
+  while (!ctx->Done(&ptr)) {
+    ::PROTOBUF_NAMESPACE_ID::uint32 tag;
+    ptr = ::PROTOBUF_NAMESPACE_ID::internal::ReadTag(ptr, &tag);
+    CHK_(ptr);
+        if ((tag & 7) == 4 || tag == 0) {
+          ctx->SetLastTag(tag);
+          goto success;
+        }
+        ptr = UnknownFieldParse(tag,
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+            ptr, ctx);
+        CHK_(ptr != nullptr);
+        continue;
+  }  // while
+success:
+  return ptr;
+failure:
+  ptr = nullptr;
+  goto success;
+#undef CHK_
+}
+
+::PROTOBUF_NAMESPACE_ID::uint8* GetPersistLsnRequest::_InternalSerialize(
+    ::PROTOBUF_NAMESPACE_ID::uint8* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+  // @@protoc_insertion_point(serialize_to_array_start:storage_service.GetPersistLsnRequest)
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
+  }
+  // @@protoc_insertion_point(serialize_to_array_end:storage_service.GetPersistLsnRequest)
+  return target;
+}
+
+size_t GetPersistLsnRequest::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:storage_service.GetPersistLsnRequest)
+  size_t total_size = 0;
+
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
+  }
+  int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
+  SetCachedSize(cached_size);
+  return total_size;
+}
+
+void GetPersistLsnRequest::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:storage_service.GetPersistLsnRequest)
+  GOOGLE_DCHECK_NE(&from, this);
+  const GetPersistLsnRequest* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<GetPersistLsnRequest>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:storage_service.GetPersistLsnRequest)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:storage_service.GetPersistLsnRequest)
+    MergeFrom(*source);
+  }
+}
+
+void GetPersistLsnRequest::MergeFrom(const GetPersistLsnRequest& from) {
+// @@protoc_insertion_point(class_specific_merge_from_start:storage_service.GetPersistLsnRequest)
+  GOOGLE_DCHECK_NE(&from, this);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  (void) cached_has_bits;
+
+}
+
+void GetPersistLsnRequest::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:storage_service.GetPersistLsnRequest)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+void GetPersistLsnRequest::CopyFrom(const GetPersistLsnRequest& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:storage_service.GetPersistLsnRequest)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool GetPersistLsnRequest::IsInitialized() const {
+  return true;
+}
+
+void GetPersistLsnRequest::InternalSwap(GetPersistLsnRequest* other) {
+  using std::swap;
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
+}
+
+::PROTOBUF_NAMESPACE_ID::Metadata GetPersistLsnRequest::GetMetadata() const {
+  return GetMetadataStatic();
+}
+
+
+// ===================================================================
+
+void GetPersistLsnResponse::InitAsDefaultInstance() {
+}
+class GetPersistLsnResponse::_Internal {
+ public:
+};
+
+GetPersistLsnResponse::GetPersistLsnResponse(::PROTOBUF_NAMESPACE_ID::Arena* arena)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena) {
+  SharedCtor();
+  RegisterArenaDtor(arena);
+  // @@protoc_insertion_point(arena_constructor:storage_service.GetPersistLsnResponse)
+}
+GetPersistLsnResponse::GetPersistLsnResponse(const GetPersistLsnResponse& from)
+  : ::PROTOBUF_NAMESPACE_ID::Message() {
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  persist_lsn_ = from.persist_lsn_;
+  // @@protoc_insertion_point(copy_constructor:storage_service.GetPersistLsnResponse)
+}
+
+void GetPersistLsnResponse::SharedCtor() {
+  persist_lsn_ = 0;
+}
+
+GetPersistLsnResponse::~GetPersistLsnResponse() {
+  // @@protoc_insertion_point(destructor:storage_service.GetPersistLsnResponse)
+  SharedDtor();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+void GetPersistLsnResponse::SharedDtor() {
+  GOOGLE_DCHECK(GetArena() == nullptr);
+}
+
+void GetPersistLsnResponse::ArenaDtor(void* object) {
+  GetPersistLsnResponse* _this = reinterpret_cast< GetPersistLsnResponse* >(object);
+  (void)_this;
+}
+void GetPersistLsnResponse::RegisterArenaDtor(::PROTOBUF_NAMESPACE_ID::Arena*) {
+}
+void GetPersistLsnResponse::SetCachedSize(int size) const {
+  _cached_size_.Set(size);
+}
+const GetPersistLsnResponse& GetPersistLsnResponse::default_instance() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&::scc_info_GetPersistLsnResponse_storage_5fservice_2eproto.base);
+  return *internal_default_instance();
+}
+
+
+void GetPersistLsnResponse::Clear() {
+// @@protoc_insertion_point(message_clear_start:storage_service.GetPersistLsnResponse)
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  persist_lsn_ = 0;
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+const char* GetPersistLsnResponse::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
+#define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  ::PROTOBUF_NAMESPACE_ID::Arena* arena = GetArena(); (void)arena;
+  while (!ctx->Done(&ptr)) {
+    ::PROTOBUF_NAMESPACE_ID::uint32 tag;
+    ptr = ::PROTOBUF_NAMESPACE_ID::internal::ReadTag(ptr, &tag);
+    CHK_(ptr);
+    switch (tag >> 3) {
+      // sint32 persist_lsn = 1;
+      case 1:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 8)) {
+          persist_lsn_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarintZigZag32(&ptr);
+          CHK_(ptr);
+        } else goto handle_unusual;
+        continue;
+      default: {
+      handle_unusual:
+        if ((tag & 7) == 4 || tag == 0) {
+          ctx->SetLastTag(tag);
+          goto success;
+        }
+        ptr = UnknownFieldParse(tag,
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+            ptr, ctx);
+        CHK_(ptr != nullptr);
+        continue;
+      }
+    }  // switch
+  }  // while
+success:
+  return ptr;
+failure:
+  ptr = nullptr;
+  goto success;
+#undef CHK_
+}
+
+::PROTOBUF_NAMESPACE_ID::uint8* GetPersistLsnResponse::_InternalSerialize(
+    ::PROTOBUF_NAMESPACE_ID::uint8* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+  // @@protoc_insertion_point(serialize_to_array_start:storage_service.GetPersistLsnResponse)
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  // sint32 persist_lsn = 1;
+  if (this->persist_lsn() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteSInt32ToArray(1, this->_internal_persist_lsn(), target);
+  }
+
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
+  }
+  // @@protoc_insertion_point(serialize_to_array_end:storage_service.GetPersistLsnResponse)
+  return target;
+}
+
+size_t GetPersistLsnResponse::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:storage_service.GetPersistLsnResponse)
+  size_t total_size = 0;
+
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  // sint32 persist_lsn = 1;
+  if (this->persist_lsn() != 0) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SInt32Size(
+        this->_internal_persist_lsn());
+  }
+
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
+  }
+  int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
+  SetCachedSize(cached_size);
+  return total_size;
+}
+
+void GetPersistLsnResponse::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:storage_service.GetPersistLsnResponse)
+  GOOGLE_DCHECK_NE(&from, this);
+  const GetPersistLsnResponse* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<GetPersistLsnResponse>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:storage_service.GetPersistLsnResponse)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:storage_service.GetPersistLsnResponse)
+    MergeFrom(*source);
+  }
+}
+
+void GetPersistLsnResponse::MergeFrom(const GetPersistLsnResponse& from) {
+// @@protoc_insertion_point(class_specific_merge_from_start:storage_service.GetPersistLsnResponse)
+  GOOGLE_DCHECK_NE(&from, this);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  if (from.persist_lsn() != 0) {
+    _internal_set_persist_lsn(from._internal_persist_lsn());
+  }
+}
+
+void GetPersistLsnResponse::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:storage_service.GetPersistLsnResponse)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+void GetPersistLsnResponse::CopyFrom(const GetPersistLsnResponse& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:storage_service.GetPersistLsnResponse)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool GetPersistLsnResponse::IsInitialized() const {
+  return true;
+}
+
+void GetPersistLsnResponse::InternalSwap(GetPersistLsnResponse* other) {
+  using std::swap;
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
+  swap(persist_lsn_, other->persist_lsn_);
+}
+
+::PROTOBUF_NAMESPACE_ID::Metadata GetPersistLsnResponse::GetMetadata() const {
+  return GetMetadataStatic();
+}
+
+
+// ===================================================================
+
 StorageService::~StorageService() {}
 
 const ::PROTOBUF_NAMESPACE_ID::ServiceDescriptor* StorageService::descriptor() {
@@ -2160,6 +2579,14 @@ void StorageService::GetLatestPage(::PROTOBUF_NAMESPACE_ID::RpcController* contr
   done->Run();
 }
 
+void StorageService::GetPersistLsn(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                         const ::storage_service::GetPersistLsnRequest*,
+                         ::storage_service::GetPersistLsnResponse*,
+                         ::google::protobuf::Closure* done) {
+  controller->SetFailed("Method GetPersistLsn() not implemented.");
+  done->Run();
+}
+
 void StorageService::CallMethod(const ::PROTOBUF_NAMESPACE_ID::MethodDescriptor* method,
                              ::PROTOBUF_NAMESPACE_ID::RpcController* controller,
                              const ::PROTOBUF_NAMESPACE_ID::Message* request,
@@ -2191,6 +2618,14 @@ void StorageService::CallMethod(const ::PROTOBUF_NAMESPACE_ID::MethodDescriptor*
                  response),
              done);
       break;
+    case 3:
+      GetPersistLsn(controller,
+             ::PROTOBUF_NAMESPACE_ID::internal::DownCast<const ::storage_service::GetPersistLsnRequest*>(
+                 request),
+             ::PROTOBUF_NAMESPACE_ID::internal::DownCast<::storage_service::GetPersistLsnResponse*>(
+                 response),
+             done);
+      break;
     default:
       GOOGLE_LOG(FATAL) << "Bad method index; this should never happen.";
       break;
@@ -2207,6 +2642,8 @@ const ::PROTOBUF_NAMESPACE_ID::Message& StorageService::GetRequestPrototype(
       return ::storage_service::GetOldPageRequest::default_instance();
     case 2:
       return ::storage_service::GetLatestPageRequest::default_instance();
+    case 3:
+      return ::storage_service::GetPersistLsnRequest::default_instance();
     default:
       GOOGLE_LOG(FATAL) << "Bad method index; this should never happen.";
       return *::PROTOBUF_NAMESPACE_ID::MessageFactory::generated_factory()
@@ -2224,6 +2661,8 @@ const ::PROTOBUF_NAMESPACE_ID::Message& StorageService::GetResponsePrototype(
       return ::storage_service::GetOldPageResponse::default_instance();
     case 2:
       return ::storage_service::GetLatestPageResponse::default_instance();
+    case 3:
+      return ::storage_service::GetPersistLsnResponse::default_instance();
     default:
       GOOGLE_LOG(FATAL) << "Bad method index; this should never happen.";
       return *::PROTOBUF_NAMESPACE_ID::MessageFactory::generated_factory()
@@ -2263,6 +2702,13 @@ void StorageService_Stub::GetLatestPage(::PROTOBUF_NAMESPACE_ID::RpcController* 
   channel_->CallMethod(descriptor()->method(2),
                        controller, request, response, done);
 }
+void StorageService_Stub::GetPersistLsn(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
+                              const ::storage_service::GetPersistLsnRequest* request,
+                              ::storage_service::GetPersistLsnResponse* response,
+                              ::google::protobuf::Closure* done) {
+  channel_->CallMethod(descriptor()->method(3),
+                       controller, request, response, done);
+}
 
 // @@protoc_insertion_point(namespace_scope)
 }  // namespace storage_service
@@ -2290,6 +2736,12 @@ template<> PROTOBUF_NOINLINE ::storage_service::GetOldPageRequest* Arena::Create
 }
 template<> PROTOBUF_NOINLINE ::storage_service::GetOldPageResponse* Arena::CreateMaybeMessage< ::storage_service::GetOldPageResponse >(Arena* arena) {
   return Arena::CreateMessageInternal< ::storage_service::GetOldPageResponse >(arena);
+}
+template<> PROTOBUF_NOINLINE ::storage_service::GetPersistLsnRequest* Arena::CreateMaybeMessage< ::storage_service::GetPersistLsnRequest >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::storage_service::GetPersistLsnRequest >(arena);
+}
+template<> PROTOBUF_NOINLINE ::storage_service::GetPersistLsnResponse* Arena::CreateMaybeMessage< ::storage_service::GetPersistLsnResponse >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::storage_service::GetPersistLsnResponse >(arena);
 }
 PROTOBUF_NAMESPACE_CLOSE
 

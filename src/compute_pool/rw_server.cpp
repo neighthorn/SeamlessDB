@@ -16,6 +16,7 @@
 #include "util/json_util.h"
 #include "util/state_util.h"
 #include "state/allocator/offset_allocator.h"
+#include "storage/storage_service.pb.h"
 #include "state/state_item/op_state.h"
 
 #include "debug_log.h"
@@ -337,6 +338,70 @@ std::shared_ptr<PortalStmt> rebuild_exec_plan_from_state(RWNode *node, Context *
     return portal_stmt;
 }
 
+void replay_log_for_resumption(SmManager* sm_mgr) {
+    StateManager* state_mgr = StateManager::get_instance();
+    brpc::Channel* lsn_channel_ = new brpc::Channel();
+    brpc::ChannelOptions options;
+    options.protocol = FLAGS_protocol;
+    options.connection_type = FLAGS_connection_type;
+    options.timeout_ms = FLAGS_timeout_ms;
+    options.max_retry = FLAGS_max_retry;
+
+    state_mgr->fetch_log_states();
+
+    if(lsn_channel_->Init(FLAGS_server.c_str(), &options) != 0) {
+        std::cout << "Failed to initialize lsn_channel.\n";
+        exit(1);
+    }
+
+    storage_service::StorageService_Stub stub(lsn_channel_);
+    storage_service::GetPersistLsnRequest request;
+    storage_service::GetPersistLsnResponse* response = new storage_service::GetPersistLsnResponse;
+    brpc::Controller* cntl = new brpc::Controller;
+    brpc::CallId cid = cntl->call_id();
+
+    stub.GetPersistLsn(cntl, &request, response, NULL);
+    int persist_lsn = response->persist_lsn();
+
+    // std::cout << "persist_lsn: " << persist_lsn << "\n";
+
+    int64_t head = state_mgr->curr_log_head_;
+    int64_t tail = state_mgr->curr_log_tail_;
+    // std::cout << "replay: head = " << head << ", tail = " << tail << "\n";
+    RedoLogRecord* redo_log = nullptr;
+    while(head != tail) {
+        redo_log = state_mgr->log_rdma_buffer_->read_log(head, persist_lsn);
+        if(redo_log == nullptr) continue;
+        switch(redo_log->log_type_) {
+            case RedoLogType::UPDATE: {
+                UpdateRedoLogRecord* update_redo_log = static_cast<UpdateRedoLogRecord*>(redo_log);
+                std::string table_name = std::string(update_redo_log->table_name_, update_redo_log->table_name_size_);
+                auto index_handle = sm_mgr->primary_index_[table_name].get();
+                if(index_handle == nullptr) {
+                    throw RMDBError("table name " + std::string(update_redo_log->table_name_) + " not found!");
+                }
+                index_handle->update_record(update_redo_log->rid_, update_redo_log->new_value_.data, nullptr);
+            } break;
+            case RedoLogType::DELETE: {
+                DeleteRedoLogRecord* delete_redo_log = static_cast<DeleteRedoLogRecord*>(redo_log);
+                std::string table_name = std::string(delete_redo_log->table_name_, delete_redo_log->table_name_size_);
+                auto index_handle = sm_mgr->primary_index_[table_name].get();
+
+                index_handle->update_record(delete_redo_log->rid_, delete_redo_log->delete_value_.data, nullptr);
+            } break;
+            case RedoLogType::INSERT: {
+                InsertRedoLogRecord* insert_redo_log = static_cast<InsertRedoLogRecord*>(redo_log);
+                std::string table_name = std::string(insert_redo_log->table_name_, insert_redo_log->table_name_size_);
+                auto index_handle = sm_mgr->primary_index_[table_name].get();
+
+                index_handle->replay_insert_record(insert_redo_log->rid_, insert_redo_log->key_, insert_redo_log->insert_value_.data);
+            } break;
+            default:
+            break;
+        }
+    }
+}
+
 void client_handler(int* sock_fd, RWNode* node) {
     /*
         sql_id
@@ -388,7 +453,8 @@ void client_handler(int* sock_fd, RWNode* node) {
         Coroutine Scheduler, QP Manager, Meta Manager
     */
     CoroutineScheduler* coro_sched = new CoroutineScheduler(connection_id, CORO_NUM);
-
+    auto local_rdma_region_range = RDMARegionAllocator::get_instance()->GetThreadLocalRegion(connection_id);
+    RDMABufferAllocator* rdma_buffer_allocator = new RDMABufferAllocator(local_rdma_region_range.first, local_rdma_region_range.second);
     QPManager* qp_mgr = QPManager::get_instance();
     bool rdma_allocated = true;
     Transaction* txn = node->txn_mgr_->get_transaction(connection_id);
@@ -400,7 +466,7 @@ void client_handler(int* sock_fd, RWNode* node) {
     OperatorStateManager *op_state_manager = new OperatorStateManager(connection_id, coro_sched, meta_mgr, qp_mgr);
 
     Context* context = new Context(node->lock_mgr_, node->log_mgr_, txn, coro_sched, op_state_manager, data_send, &offset, rdma_allocated);
-    
+    context->rdma_buffer_allocator_ = rdma_buffer_allocator;
     
 
     while (true) {
@@ -408,6 +474,8 @@ void client_handler(int* sock_fd, RWNode* node) {
         memset(data_recv, 0, BUFFER_LENGTH);
 
         i_recvBytes = read(fd, data_recv, BUFFER_LENGTH);
+
+        // std::cout << "data_recv: " << data_recv << "\n";
 
         if (i_recvBytes == 0) {
             std::cout << "Maybe the client has closed" << std::endl;
@@ -427,6 +495,26 @@ void client_handler(int* sock_fd, RWNode* node) {
             exit(1);
         }
         else if(strcmp(data_recv, "reconnect_prepare") == 0) {
+            if(state_open_ == 1) {
+                // @STATE: prepare for reconnection, the current thread is responsible for the lock recover and log replay
+
+                // auto recover_start = std::chrono::high_resolution_clock::now();
+                node->txn_mgr_->recover_active_txn_lists(context);
+                // auto recover_end = std::chrono::high_resolution_clock::now();
+                // auto recover_duration = std::chrono::duration_cast<std::chrono::microseconds>(recover_end - recover_start).count();
+                // std::cout << "recover_txn_list_time: " << recover_duration << "\n";
+                // std::cout << "finish recover active_txn_list\n";
+                node->lock_mgr_->recover_lock_table(node->txn_mgr_->active_transactions_, client_num);
+                // recover_end = std::chrono::high_resolution_clock::now();
+                // recover_duration = std::chrono::duration_cast<std::chrono::microseconds>(recover_end - recover_start).count();
+                // std::cout << "recover_lock_table_time: " << recover_duration << "\n";
+                // std::cout << "finish recover lock_table\n";
+                replay_log_for_resumption(node->sm_mgr_);
+                // recover_end = std::chrono::high_resolution_clock::now();
+                // recover_duration = std::chrono::duration_cast<std::chrono::microseconds>(recover_end - recover_start).count();
+                // std::cout << "recover_log_time: " << recover_duration << "\n";
+                // std::cout << "finish recover log\n";
+            } 
             #ifdef TIME_OPEN
                 auto reconnect_start = std::chrono::high_resolution_clock::now();
             #endif
@@ -530,6 +618,11 @@ void client_handler(int* sock_fd, RWNode* node) {
             memcpy(data_send, str.c_str(), str.length());
             data_send[str.length()] = '\0';
             offset = str.length();
+            if (write(fd, data_send, offset + 1) == -1) {
+                std::cout << "fail\n"; 
+                break;
+            }
+            // std::cout << "success\n";
 
             #ifdef TIME_OPEN
                 auto reconnect_end = std::chrono::high_resolution_clock::now();
@@ -539,6 +632,18 @@ void client_handler(int* sock_fd, RWNode* node) {
             #endif
             continue;
         }
+        // else if(strcmp(data_recv, "reconnect") == 0) {
+        //     // @STATE: reconnection, recover the transaction state and continue to execute
+
+        // }
+
+            // #ifdef TIME_OPEN
+            //     auto reconnect_end = std::chrono::high_resolution_clock::now();
+            //     auto reconnect_period = std::chrono::duration_cast<std::chrono::microseconds>(reconnect_end - reconnect_start).count();
+            //     std::cout << "time for reconnect: " << reconnect_period << "\n";
+            // #endif
+            // continue;
+        // }
         else if(strcmp(data_recv, "reconnect") == 0) {
             // @STATE: reconnection, recover the transaction state and continue to execute
 

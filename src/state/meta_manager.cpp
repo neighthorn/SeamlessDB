@@ -11,7 +11,6 @@ MetaManager* MetaManager::global_meta_mgr = nullptr;
 MetaManager::MetaManager(const std::string& config_path) {
   std::cout << "begin\n";
   // std::string config_path = "../src/config/compute_server_config.json";
-  // std::string config_path = "../src/config/compute_server_config.json";
   cJSON* cjson = parse_json_file(config_path);
   std::cout << "get json file\n";
   cJSON* local_node = cJSON_GetObjectItem(cjson, "rw_node");
@@ -28,10 +27,10 @@ MetaManager::MetaManager(const std::string& config_path) {
   std::cout << "MetaManager: finish parse config file\n";
 
   // txn_list_bitmap_ = new TxnListBitmap(MAX_THREAD_NUM);
-  txn_list_bitmap_ = new RegionBitmap(MAX_THREAD_NUM);
+  // txn_list_bitmap_ = new RegionBitmap(MAX_THREAD_NUM, thread_num);
   std::cout << "MetaManager: finish create txn_list bitmap\n";
-  txn_list_bitmap_addr = 0;
-  txn_list_base_addr = txn_list_bitmap_->bitmap_size_;
+  // txn_list_bitmap_addr = 0;
+  txn_list_base_addr = 0;
   txn_size = sizeof(TxnItem);
   
   cJSON* ip = NULL;

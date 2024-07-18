@@ -39,7 +39,7 @@ class SeqScanExecutor : public AbstractExecutor {
         fed_conds_ = conds_;
 
         if(context_ != nullptr) {
-            Lock* lock = context_->lock_mgr_->request_table_lock(tab.table_id_, context_->txn_, LockMode::LOCK_S);
+            Lock* lock = context_->lock_mgr_->request_table_lock(tab.table_id_, context_->txn_, LockMode::LOCK_S, context_->coro_sched_->t_id_);
             assert(lock != nullptr);
             context_->txn_->append_lock(lock);
         }

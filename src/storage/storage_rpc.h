@@ -33,6 +33,11 @@ public:
                        ::storage_service::GetLatestPageResponse* response,
                        ::google::protobuf::Closure* done);
 
+    virtual void GetPersistLsn(::google::protobuf::RpcController* controller,
+                       const ::storage_service::GetPersistLsnRequest* request,
+                       ::storage_service::GetPersistLsnResponse* response,
+                       ::google::protobuf::Closure* done);
+
 private:
     DiskManager* disk_manager_;
     LogStore *log_store_;

@@ -10,6 +10,8 @@ void TPCHWK::create_table() {
     struct stat st;
     if(stat(db_name.c_str(), &st) == 0 && S_ISDIR(st.st_mode)) {
        chdir(db_name.c_str());
+       load_meta();
+       return;
     }
     else {
         std::string cmd = "mkdir " + db_name;
@@ -127,14 +129,15 @@ void TPCHWK::load_data() {
 
 void TPCHWK::load_meta() {
     std::string db_name = "db_tpch";
-    struct stat st;
-    if(stat(db_name.c_str(), &st) == 0 && S_ISDIR(st.st_mode)) {
-        chdir(db_name.c_str());
-    }
-    else {
-        std::cout << "failed to find db_tpch database\n";
-        assert(0);
-    }
+    // struct stat st;
+    
+    // if(stat(db_name.c_str(), &st) == 0 && S_ISDIR(st.st_mode)) {
+    //     chdir(db_name.c_str());
+    // }
+    // else {
+    //     std::cout << "failed to find db_tpch database\n";
+    //     assert(0);
+    // }
 
     std::ifstream ifs(DB_META_NAME);
     ifs >> sm_mgr_->db_;

@@ -1,0 +1,37 @@
+# ide
+.idea/
+.vscode/
+
+# macos
+.DS_Store
+
+**/result/
+
+# build
+**/build/
+/build/
+/rucbase_client/build/
+/cmake-build-debug/
+/cmake-build-wsl_profile_debug
+*.out
+/build_debug
+
+# bison & flex
+#lex.yy.cpp
+#yacc.tab.h
+#yacc.tab.cpp
+
+# python
+__pycache__/
+
+# backup
+*_backup/
+
+# tmp
+/tmp/
+/src/parser/build/
+*.zip
+output.txt
+
+# test_db
+/test_db/

@@ -73,7 +73,7 @@ public:
             str = "... ...\n";
         }
         str += "Total record(s): " + std::to_string(num_rec) + '\n';
-        std::cout << "context->offset_ = " << *context->offset_ << std::endl;
+        // std::cout << "context->offset_ = " << *context->offset_ << std::endl;
         memcpy(context->data_send_ + *(context->offset_), str.c_str(), str.length());
         *(context->offset_) = *(context->offset_) + str.length();
     }

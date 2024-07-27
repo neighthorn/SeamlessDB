@@ -39,17 +39,17 @@ def run_experiment(block, theta, progress):
     # Run rw_server active and redirect output
     active_output_file = f"{tpch_result_dir}/active_{theta}_{block}.output"
     with open(active_output_file, 'w') as active_output:
-        active_process = subprocess.Popen(["./bin/rw_server", "active"], stdout=active_output)
+        active_process = subprocess.Popen(["./bin/rw_server", "active", "ro"], stdout=active_output)
     
     # Run rw_server backup and redirect output
     back_output_file = f"{tpch_result_dir}/back_{theta}_{block}.output"
     with open(back_output_file, 'w') as back_output:
-        backup_process = subprocess.Popen(["./bin/rw_server", "backup"], stdout=back_output)
+        backup_process = subprocess.Popen(["./bin/rw_server", "backup", "ro"], stdout=back_output)
 
     time.sleep(10)
 
     # Run proxy
-    proxy_process = subprocess.Popen(["./bin/proxy"])
+    proxy_process = subprocess.Popen(["./bin/proxy", "ro"])
 
     # Wait for normal_time * 80% and then terminate active server
     time.sleep(normal_time * progress)

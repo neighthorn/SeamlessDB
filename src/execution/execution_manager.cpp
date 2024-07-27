@@ -149,6 +149,7 @@ void QlManager::select_from(std::unique_ptr<AbstractExecutor> executorTreeRoot, 
     // Print records
     size_t num_rec = 0;
     // 执行query_plan
+    std::cout << "before select\n";
     for (executorTreeRoot->beginTuple(); !executorTreeRoot->is_end(); executorTreeRoot->nextTuple()) {
         auto Tuple = executorTreeRoot->Next();
         std::vector<std::string> columns;
@@ -168,7 +169,7 @@ void QlManager::select_from(std::unique_ptr<AbstractExecutor> executorTreeRoot, 
         rec_printer.print_record(columns, context);
         num_rec++;
     }
-    std::cout << "normal num_rec = " << num_rec << std::endl;
+    // std::cout << "normal num_rec = " << num_rec << std::endl;
     // Print footer
     rec_printer.print_separator(context);
     // Print record count
@@ -181,6 +182,7 @@ void QlManager::re_run_select_from(std::unique_ptr<AbstractExecutor> executorTre
     /*
         re run select from
     */
+   std::cout << "begin re run\n";
     std::vector<std::string> captions;
     captions.reserve(sel_cols.size());
     for (auto &sel_col : sel_cols) {

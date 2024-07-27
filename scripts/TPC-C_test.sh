@@ -4,7 +4,7 @@
 cd ../build || { echo "Failed to enter build directory"; exit 1; }
 
 # 启动 ./bin/proxy
-./bin/proxy &
+./bin/proxy rw &
 
 # 等待 10 秒
 sleep 10

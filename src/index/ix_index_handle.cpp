@@ -8,10 +8,12 @@ IxIndexHandle::IxIndexHandle(DiskManager *disk_manager, BufferPoolManager *buffe
     // disk_manager_->read_page(fd, IX_FILE_HDR_PAGE, (char *)&file_hdr_, sizeof(file_hdr_));
     char* buf = new char[PAGE_SIZE];
     memset(buf, 0, PAGE_SIZE);
-    disk_manager_->read_page(fd, IX_FILE_HDR_PAGE, buf, PAGE_SIZE);
+    // disk_manager_->read_page(fd, IX_FILE_HDR_PAGE, buf, PAGE_SIZE);
+    PageId pageid = PageId{table_meta.table_id_, IX_FILE_HDR_PAGE};
+    Page* page = buffer_pool_manager_->fetch_page(pageid);
     // file_hdr_= IxFileHdr();
     file_hdr_ = new IxFileHdr();
-    file_hdr_->deserialize(buf);
+    file_hdr_->deserialize(page->get_data());
     // disk_manager管理的fd对应的文件中，设置从file_hdr_->num_pages开始分配page_no
     // disk_manager_->set_fd2pageno(fd, file_hdr_->num_pages);
     // int now_page_no = disk_manager_->get_fd2pageno(fd);

@@ -12,7 +12,7 @@
 
 class StorageServer {
 public:
-    StorageServer(int machine_id, int local_rpc_port, int compute_node_num, DiskManager* disk_manager, LogStore *log_store, ShareStatus *share_status, BufferPoolManager* buffer_pool_mgr)
+    StorageServer(int machine_id, int local_rpc_port, DiskManager* disk_manager, LogStore *log_store, ShareStatus *share_status, BufferPoolManager* buffer_pool_mgr)
         : disk_manager_(disk_manager), log_store_(log_store), share_status_(share_status), buffer_pool_mgr_(buffer_pool_mgr){
         brpc::Server server;
         storage_service::StoragePoolImpl storage_pool_rpc(disk_manager, log_store, share_status, buffer_pool_mgr_);

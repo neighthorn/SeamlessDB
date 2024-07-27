@@ -71,6 +71,7 @@ public:
   ALWAYS_INLINE
   std::pair<char *, char *> GetThreadLocalJoinBlockRegion(t_id_t tid) {
     assert(tid < thread_num);
+    std::cout << "tid: " << tid << "\n";
     return std::make_pair(thread_local_join_block_mr + tid * PER_THREAD_JOIN_BLOCK_SIZE, thread_local_join_block_mr + (tid + 1) * PER_THREAD_JOIN_BLOCK_SIZE);
   }
 

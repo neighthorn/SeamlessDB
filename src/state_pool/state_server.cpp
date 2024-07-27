@@ -122,16 +122,16 @@ int main(int argc, char* argv[]) {
     size_t join_plan_size   = ((size_t) cJSON_GetObjectItem(state_node, "join_plan_buf_size_GB")->valueint) * 1024 * 1024 * 1024;
     size_t join_block_size  = ((size_t) cJSON_GetObjectItem(state_node, "join_block_buf_size_GB")->valueint) * 1024 * 1024 * 1024;
 
-    cJSON *master_node = cJSON_GetObjectItem(cjson, "master_node");
-    std::string master_node_ip = cJSON_GetObjectItem(master_node, "master_node_ip")->valuestring;
-    cJSON_Delete(cjson);
+    // cJSON *master_node = cJSON_GetObjectItem(cjson, "master_node");
+    // std::string master_node_ip = cJSON_GetObjectItem(master_node, "master_node_ip")->valuestring;
+    // cJSON_Delete(cjson);
 
     std::cout << "node_id: " << node_id 
                 << "\nlocal_port: " << local_port
                 << "\ntxn_list_size: " << txn_list_size
                 << "\nlog_buf_size: " << log_buf_size
                 << "\nlock_buf_size: " << lock_buf_size
-                << "\nmaster_node_ip: " << master_node_ip 
+                // << "\nmaster_node_ip: " << master_node_ip 
                 << "\njoin_plan_size: " << join_plan_size
                 << "\njoin_block_size: " << join_block_size
                 << "\n";

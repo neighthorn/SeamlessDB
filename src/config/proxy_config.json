@@ -3,15 +3,24 @@
         "ip": "10.77.110.145",
         "port": 12191,
         "thread_num": 16,
-        "workload": "tpch",
-        "record_num": 10 
+        "workload": "tpcc",
+        "record_num": 32,
+        "resumption_open": 1
     },
     "back_rw_node": {
         "ip": "10.77.110.146",
         "port": 12194
     },
-    "ro_nodes": {
-        "ips": ["10.77.110.147"],
-        "ports": [12196]
+    "ro_node": {
+        "ip": "10.77.110.145",
+        "port": 12197,
+        "thread_num": 1,
+        "workload": "tpch",
+        "record_num": 1,
+        "resumption_open": 1
+    },
+    "back_ro_node": {
+        "ip": "10.77.110.146",
+        "port": 12199
     }
 }

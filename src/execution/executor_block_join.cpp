@@ -339,7 +339,8 @@ void BlockNestedLoopJoinExecutor::find_next_valid_tuple() {
             left_block_->beginTuple();
             right_->nextTuple();
         } 
-        write_state_if_allow(1);
+        if(node_type_ == 1)
+            write_state_if_allow(1);
 
         left_blocks_->nextBlock();
         left_block_ = left_blocks_->Next();

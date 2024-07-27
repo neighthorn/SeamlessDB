@@ -15,7 +15,7 @@
 
 DEFINE_string(protocol, "baidu_std", "Protocol type");
 DEFINE_string(connection_type, "", "Connection type. Available values: single, pooled, short");
-DEFINE_string(server, "127.0.0.1:12190", "IP address of server");
+DEFINE_string(server, "10.77.110.148:12190", "IP address of server");
 DEFINE_int32(timeout_ms, 0x7fffffff, "RPC timeout in milliseconds");
 DEFINE_int32(max_retry, 3, "Max retries(not including the first RPC)");
 DEFINE_int32(interval_ms, 10, "Milliseconds between consecutive requests");
@@ -78,15 +78,18 @@ public:
         // load test workload
         if(workload_ == "test") {
             TestWK* test_wk = new TestWK(sm_mgr_, index_mgr_, record_num_, mvcc_mgr_);
-            test_wk->load_meta();
+            test_wk->create_table();
+            // test_wk->load_meta();
         }
         else if(workload == "tpcc") {
             TPCCWK* tpcc_wk = new TPCCWK(sm_mgr_, index_mgr_, record_num_, mvcc_mgr_);
-            tpcc_wk->load_meta();
+            tpcc_wk->create_table();
+            // tpcc_wk->load_meta();
         } 
         else if(workload == "tpch") {
             TPCHWK* tpch_wk = new TPCHWK(sm_mgr_, index_mgr_, record_num_, mvcc_mgr_);
-            tpch_wk->load_meta();
+            tpch_wk->create_table();
+            // tpch_wk->load_meta();
         }
         else {
             std::cerr << "workload not supported!\n";

@@ -27,6 +27,7 @@ int state_open_ = 0;
 double state_theta_ = -1.0;
 double src_scale_factor_ = 1000.0;
 int block_size_ = 500;
+int node_type_ = 0; // rw_server default
 
 int back_up_resumption_ = 0;
 
@@ -465,7 +466,7 @@ void client_handler(int* sock_fd, RWNode* node) {
     */
     OperatorStateManager *op_state_manager = new OperatorStateManager(connection_id, coro_sched, meta_mgr, qp_mgr);
 
-    Context* context = new Context(node->lock_mgr_, node->log_mgr_, txn, coro_sched, op_state_manager, data_send, &offset, rdma_allocated);
+    Context* context = new Context(node->lock_mgr_, node->log_mgr_, txn, coro_sched, op_state_manager, qp_mgr, data_send, &offset, rdma_allocated);
     context->rdma_buffer_allocator_ = rdma_buffer_allocator;
     
 
@@ -495,7 +496,7 @@ void client_handler(int* sock_fd, RWNode* node) {
             exit(1);
         }
         else if(strcmp(data_recv, "reconnect_prepare") == 0) {
-            if(state_open_ == 1) {
+            if(state_open_ == 1 && node_type_ == 0) {
                 // @STATE: prepare for reconnection, the current thread is responsible for the lock recover and log replay
 
                 // auto recover_start = std::chrono::high_resolution_clock::now();
@@ -515,101 +516,110 @@ void client_handler(int* sock_fd, RWNode* node) {
                 // std::cout << "recover_log_time: " << recover_duration << "\n";
                 // std::cout << "finish recover log\n";
             } 
-            #ifdef TIME_OPEN
-                auto reconnect_start = std::chrono::high_resolution_clock::now();
-            #endif
+            else if(state_open_ == 1 && node_type_ == 1){    
+                #ifdef TIME_OPEN
+                    auto reconnect_start = std::chrono::high_resolution_clock::now();
+                #endif
 
-            // @STATE: prepare for reconnection, the current thread is responsible for the lock recover and log replay
+                // @STATE: prepare for reconnection, the current thread is responsible for the lock recover and log replay
+                
+                // node->lock_mgr_->recover_lock_table();
+                // TODO: log replay
+                /*
+                    手动创建事务
+                */
+                node->txn_mgr_->begin(context->txn_, context->log_mgr_);
+
+                /*
+                    read state from remote
+                */
+                #ifdef TIME_OPEN
+                    auto read_state_start = std::chrono::high_resolution_clock::now();
+                #endif
+                auto sql_state = context->op_state_mgr_->read_sql_from_state();
+                /*
+                    read op meta and op checkpoints
+                */
+                auto op_ck_meta = context->op_state_mgr_->read_op_checkpoint_meta();
+                std::cout << "Read Op CK meta: checkpoint_num: " << op_ck_meta->checkpoint_num << ", total_size: " << op_ck_meta->total_size << "op_ck_meta->total_src_op: " << op_ck_meta->total_src_op << "\n";
+                RwServerDebug::getInstance()->DEBUG_PRINT("[READ OP META FROM STATE][Before][thread id: " + std::to_string(op_ck_meta->thread_id) + "][checkpoint_num: " + std::to_string(op_ck_meta->checkpoint_num) + "][total size: " + std::to_string(op_ck_meta->total_size) + "][total srp: " + std::to_string(op_ck_meta->total_src_op));
+
+                #ifdef TIME_OPEN
+                    auto read_state_end = std::chrono::high_resolution_clock::now();
+                    auto read_state_period = std::chrono::duration_cast<std::chrono::microseconds>(read_state_end - read_state_start).count();
+                    std::cout << "time for read state: " << read_state_period << "\n";
+                    RwServerDebug::getInstance()->DEBUG_PRINT("[time for read state:  " + std::to_string(read_state_period) + "]");
+                #endif 
             
-            // node->lock_mgr_->recover_lock_table();
-            // TODO: log replay
-            /*
-                手动创建事务
-            */
-            node->txn_mgr_->begin(context->txn_, context->log_mgr_);
+                if(op_ck_meta->checkpoint_num != 0) {
+                    auto op_checkpoints = context->op_state_mgr_->read_op_checkpoints(op_ck_meta.get());
+                    /*
+                        重建exec plan
+                    */
+                    #ifdef TIME_OPEN
+                        auto reconstruct_exec_plan_start = std::chrono::high_resolution_clock::now();
+                    #endif
 
-            /*
-                read state from remote
-            */
-            #ifdef TIME_OPEN
-                auto read_state_start = std::chrono::high_resolution_clock::now();
-            #endif
-            auto sql_state = context->op_state_mgr_->read_sql_from_state();
-            /*
-                read op meta and op checkpoints
-            */
-            auto op_ck_meta = context->op_state_mgr_->read_op_checkpoint_meta();
-            std::cout << "Read Op CK meta: checkpoint_num: " << op_ck_meta->checkpoint_num << ", total_size: " << op_ck_meta->total_size << "op_ck_meta->total_src_op: " << op_ck_meta->total_src_op << "\n";
-            RwServerDebug::getInstance()->DEBUG_PRINT("[READ OP META FROM STATE][Before][thread id: " + std::to_string(op_ck_meta->thread_id) + "][checkpoint_num: " + std::to_string(op_ck_meta->checkpoint_num) + "][total size: " + std::to_string(op_ck_meta->total_size) + "][total srp: " + std::to_string(op_ck_meta->total_src_op));
+                    auto exec_plan = rebuild_exec_plan_from_state(node, context, sql_state.get(), op_ck_meta.get(), op_checkpoints);
+                    #ifdef TIME_OPEN
+                        auto reconstruct_exec_plan_end = std::chrono::high_resolution_clock::now();
+                        auto reconstruct_exec_plan_period = std::chrono::duration_cast<std::chrono::microseconds>(reconstruct_exec_plan_end - reconstruct_exec_plan_start).count();
+                        std::cout << "time for reconstruct exec plan: " << reconstruct_exec_plan_period << "\n";
+                        RwServerDebug::getInstance()->DEBUG_PRINT("[time for reconstruct exec plan: " + std::to_string(reconstruct_exec_plan_period) + "]");
+                    #endif
 
-            #ifdef TIME_OPEN
-                auto read_state_end = std::chrono::high_resolution_clock::now();
-                auto read_state_period = std::chrono::duration_cast<std::chrono::microseconds>(read_state_end - read_state_start).count();
-                std::cout << "time for read state: " << read_state_period << "\n";
-                RwServerDebug::getInstance()->DEBUG_PRINT("[time for read state:  " + std::to_string(read_state_period) + "]");
-            #endif 
-        
-            if(op_ck_meta->checkpoint_num != 0) {
-                auto op_checkpoints = context->op_state_mgr_->read_op_checkpoints(op_ck_meta.get());
-                /*
-                    重建exec plan
-                */
-                #ifdef TIME_OPEN
-                    auto reconstruct_exec_plan_start = std::chrono::high_resolution_clock::now();
-                #endif
+                    /*
+                        断点续作
+                    */
+                    #ifdef TIME_OPEN
+                        auto re_run_start = std::chrono::high_resolution_clock::now();
+                    #endif
+                    node->portal_->re_run(exec_plan, node->ql_mgr_, context);
+                    
+                    #ifdef TIME_OPEN
+                        auto re_run_end = std::chrono::high_resolution_clock::now();
+                        auto re_run_period = std::chrono::duration_cast<std::chrono::microseconds>(re_run_end - re_run_start).count();
+                        std::cout << "time for re_run: " << re_run_period << "\n";
+                        RwServerDebug::getInstance()->DEBUG_PRINT("[time for re_run: " + std::to_string(re_run_period) + "]");
+                    #endif
+                }
+                else {
+                    /*
+                        重建exec plan
+                    */
+                    #ifdef TIME_OPEN
+                        auto reconstruct_exec_plan_start = std::chrono::high_resolution_clock::now();
+                    #endif
+                    auto exec_plan = rebuild_exec_plan_without_state(node, context, sql_state.get());
 
-                auto exec_plan = rebuild_exec_plan_from_state(node, context, sql_state.get(), op_ck_meta.get(), op_checkpoints);
-                #ifdef TIME_OPEN
-                    auto reconstruct_exec_plan_end = std::chrono::high_resolution_clock::now();
-                    auto reconstruct_exec_plan_period = std::chrono::duration_cast<std::chrono::microseconds>(reconstruct_exec_plan_end - reconstruct_exec_plan_start).count();
-                    std::cout << "time for reconstruct exec plan: " << reconstruct_exec_plan_period << "\n";
-                    RwServerDebug::getInstance()->DEBUG_PRINT("[time for reconstruct exec plan: " + std::to_string(reconstruct_exec_plan_period) + "]");
-                #endif
+                    #ifdef TIME_OPEN
+                        auto reconstruct_exec_plan_end = std::chrono::high_resolution_clock::now();
+                        auto reconstruct_exec_plan_period = std::chrono::duration_cast<std::chrono::microseconds>(reconstruct_exec_plan_end - reconstruct_exec_plan_start).count();
+                        std::cout << "time for reconstruct exec plan: " << reconstruct_exec_plan_period << "\n";
+                        RwServerDebug::getInstance()->DEBUG_PRINT("[time for reconstruct exec plan: " + std::to_string(reconstruct_exec_plan_period) + "]");
+                    #endif
 
-                /*
-                    断点续作
-                */
-                #ifdef TIME_OPEN
-                    auto re_run_start = std::chrono::high_resolution_clock::now();
-                #endif
-                node->portal_->re_run(exec_plan, node->ql_mgr_, context);
-                
-                #ifdef TIME_OPEN
-                    auto re_run_end = std::chrono::high_resolution_clock::now();
-                    auto re_run_period = std::chrono::duration_cast<std::chrono::microseconds>(re_run_end - re_run_start).count();
-                    std::cout << "time for re_run: " << re_run_period << "\n";
-                    RwServerDebug::getInstance()->DEBUG_PRINT("[time for re_run: " + std::to_string(re_run_period) + "]");
-                #endif
-            } else {
-                /*
-                    重建exec plan
-                */
-                #ifdef TIME_OPEN
-                    auto reconstruct_exec_plan_start = std::chrono::high_resolution_clock::now();
-                #endif
-                auto exec_plan = rebuild_exec_plan_without_state(node, context, sql_state.get());
+                    /*
+                        断点续作
+                    */
+                    #ifdef TIME_OPEN
+                        auto re_run_start = std::chrono::high_resolution_clock::now();
+                    #endif
 
+                    node->portal_->run(exec_plan, node->ql_mgr_, context);
+                    
+                    #ifdef TIME_OPEN
+                        auto re_run_end = std::chrono::high_resolution_clock::now();
+                        auto re_run_period = std::chrono::duration_cast<std::chrono::microseconds>(re_run_end - re_run_start).count();
+                        std::cout << "time for re_run: " << re_run_period << "\n";
+                        RwServerDebug::getInstance()->DEBUG_PRINT("[time for re run: " + std::to_string(re_run_period) + "]");
+                    #endif
+                }
                 #ifdef TIME_OPEN
-                    auto reconstruct_exec_plan_end = std::chrono::high_resolution_clock::now();
-                    auto reconstruct_exec_plan_period = std::chrono::duration_cast<std::chrono::microseconds>(reconstruct_exec_plan_end - reconstruct_exec_plan_start).count();
-                    std::cout << "time for reconstruct exec plan: " << reconstruct_exec_plan_period << "\n";
-                    RwServerDebug::getInstance()->DEBUG_PRINT("[time for reconstruct exec plan: " + std::to_string(reconstruct_exec_plan_period) + "]");
-                #endif
-
-                /*
-                    断点续作
-                */
-                #ifdef TIME_OPEN
-                    auto re_run_start = std::chrono::high_resolution_clock::now();
-                #endif
-
-                node->portal_->run(exec_plan, node->ql_mgr_, context);
-                
-                #ifdef TIME_OPEN
-                    auto re_run_end = std::chrono::high_resolution_clock::now();
-                    auto re_run_period = std::chrono::duration_cast<std::chrono::microseconds>(re_run_end - re_run_start).count();
-                    std::cout << "time for re_run: " << re_run_period << "\n";
-                    RwServerDebug::getInstance()->DEBUG_PRINT("[time for re run: " + std::to_string(re_run_period) + "]");
+                    auto reconnect_end = std::chrono::high_resolution_clock::now();
+                    auto reconnect_period = std::chrono::duration_cast<std::chrono::microseconds>(reconnect_end - reconnect_start).count();
+                    std::cout << "time for reconnect: " << reconnect_period << "\n";
+                    RwServerDebug::getInstance()->DEBUG_PRINT("[time for reconnect: " + std::to_string(reconnect_period) + "]");
                 #endif
             }
 
@@ -624,12 +634,6 @@ void client_handler(int* sock_fd, RWNode* node) {
             }
             // std::cout << "success\n";
 
-            #ifdef TIME_OPEN
-                auto reconnect_end = std::chrono::high_resolution_clock::now();
-                auto reconnect_period = std::chrono::duration_cast<std::chrono::microseconds>(reconnect_end - reconnect_start).count();
-                std::cout << "time for reconnect: " << reconnect_period << "\n";
-                RwServerDebug::getInstance()->DEBUG_PRINT("[time for reconnect: " + std::to_string(reconnect_period) + "]");
-            #endif
             continue;
         }
         // else if(strcmp(data_recv, "reconnect") == 0) {
@@ -731,7 +735,9 @@ void client_handler(int* sock_fd, RWNode* node) {
                     #ifdef TIME_OPEN
                     auto run_start = std::chrono::high_resolution_clock::now();
                     #endif
+                    std::cout << "before run sql: " << data_recv << "\n";
                     node->portal_->run(portalStmt, node->ql_mgr_, context);
+                    std::cout << "after run sql: " << data_recv << "\n";
                      #ifdef TIME_OPEN
                     auto run_end = std::chrono::high_resolution_clock::now();
                     auto run_duration = std::chrono::duration_cast<std::chrono::microseconds>(run_end - run_start).count();
@@ -778,53 +784,12 @@ void client_handler(int* sock_fd, RWNode* node) {
         }
 
         sql_id++;
-
-        if(state_open_) {
-            // @STATE:
-            // StateManager::get_instance()->flush_states();
-            // StateManager::get_instance()->fetch_and_print_lock_states();
-        }
-
         /*
             test for operator checkpoint
         */
         {
-            // if(state_open_) {
-            //     // auto sql_state = context->op_state_mgr_->read_sql_from_state();
-            //     // RwServerDebug::getInstance()->DEBUG_PRINT("[READ SQL FROM STATE][sql_id: " + std::to_string(sql_state->sql_id) + "][sql: " + sql_state->sql + "]");
-            // }
-
-            /*
-                test op checkpoint
-            */
-            // if(state_open_) {
-            //     /*
-            //         read sql state
-            //     */
-            //     auto sql_state = context->op_state_mgr_->read_sql_from_state();
-            //     /*
-            //         read op meta and op checkpoints
-            //     */
-            //     auto op_ck_meta = context->op_state_mgr_->read_op_checkpoint_meta();
-            //     RwServerDebug::getInstance()->DEBUG_PRINT("[READ OP META FROM STATE][Before][thread id: " + std::to_string(op_ck_meta->thread_id) + "][checkpoint_num: " + std::to_string(op_ck_meta->checkpoint_num) + "][total size: " + std::to_string(op_ck_meta->total_size) + "]");
-            //     if(op_ck_meta->checkpoint_num != 0) {
-            //         auto op_checkpoints = context->op_state_mgr_->read_op_checkpoints(op_ck_meta.get());
-            //         /*
-            //             重建exec plan
-            //         */
-            //         auto exec_plan = rebuild_exec_plan_from_state(node, context, sql_state.get(), op_ck_meta.get(), op_checkpoints);
-                    
-            //         /*
-            //             断点续作
-            //         */
-            //         node->portal_->re_run(exec_plan, node->ql_mgr_, context);
-            //     }
-                
-                
-
-
-            // }
             if(state_open_) {
+                StateManager::get_instance()->flush_states();
                 // auto op_ck_meta = context->op_state_mgr_->read_op_checkpoint_meta();
                 // RwServerDebug::getInstance()->DEBUG_PRINT("[READ OP META FROM STATE][Before][thread id: " + std::to_string(op_ck_meta->thread_id) + "][checkpoint_num: " + std::to_string(op_ck_meta->checkpoint_num) + "][total size: " + std::to_string(op_ck_meta->total_size) + "]");
 
@@ -963,8 +928,8 @@ void RWNode::start_server() {
 }
 
 int main(int argc, char** argv) {
-    if(argc < 2) {
-        std::cout << "Please specify the server type.";
+    if(argc < 3) {
+        std::cout << "Please specify the server type: active/backup, rw/ro.";
         exit(1);
     }
 
@@ -980,19 +945,33 @@ int main(int argc, char** argv) {
 
     std::cout << config_path << "\n";
 
+    if(strcmp(argv[2], "rw") == 0) {
+        node_type_ = 0;
+    }
+    else {
+        node_type_ = 1;
+    }
+
     cJSON* cjson = parse_json_file(config_path);
 
-    cJSON* rw_node = cJSON_GetObjectItem(cjson, "rw_node");
-    int node_id = cJSON_GetObjectItem(rw_node, "machine_id")->valueint;
-    int local_rpc_port = cJSON_GetObjectItem(rw_node, "local_rpc_port")->valueint;
-    std::string workload = cJSON_GetObjectItem(rw_node, "workload")->valuestring;
-    int record_num = cJSON_GetObjectItem(rw_node, "record_num")->valueint;
-    int thread_num = cJSON_GetObjectItem(rw_node, "thread_num")->valueint;
-    state_open_ = cJSON_GetObjectItem(rw_node, "state_open")->valueint;
-    block_size_ = cJSON_GetObjectItem(rw_node, "block_size")->valueint;
-    state_theta_ = cJSON_GetObjectItem(rw_node, "state_theta")->valuedouble;
-    src_scale_factor_ = cJSON_GetObjectItem(rw_node, "src_scale_factor")->valuedouble;
-    int buffer_pool_size = cJSON_GetObjectItem(rw_node, "buffer_pool_size")->valueint;
+    cJSON* node;
+    if(node_type_ == 0) {
+        node = cJSON_GetObjectItem(cjson, "rw_node");
+    }
+    else {
+        node = cJSON_GetObjectItem(cjson, "ro_node");
+    }
+
+    int node_id = cJSON_GetObjectItem(node, "machine_id")->valueint;
+    int local_rpc_port = cJSON_GetObjectItem(node, "local_rpc_port")->valueint;
+    std::string workload = cJSON_GetObjectItem(node, "workload")->valuestring;
+    int record_num = cJSON_GetObjectItem(node, "record_num")->valueint;
+    int thread_num = cJSON_GetObjectItem(node, "thread_num")->valueint;
+    state_open_ = cJSON_GetObjectItem(node, "state_open")->valueint;
+    block_size_ = cJSON_GetObjectItem(node, "block_size")->valueint;
+    state_theta_ = cJSON_GetObjectItem(node, "state_theta")->valuedouble;
+    src_scale_factor_ = cJSON_GetObjectItem(node, "src_scale_factor")->valuedouble;
+    int buffer_pool_size = cJSON_GetObjectItem(node, "buffer_pool_size")->valueint;
     
     client_num = thread_num;
     commit_txns = new int[client_num];

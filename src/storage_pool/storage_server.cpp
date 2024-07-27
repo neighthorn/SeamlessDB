@@ -41,17 +41,17 @@ int main(int argc, char* argv[]) {
 
     std::cout << "finish resolving storage_node config\n";
 
-    cJSON* remote_compute_node = cJSON_GetObjectItem(cjson, "remote_compute_node");
-    cJSON* remote_compute_node_ips = cJSON_GetObjectItem(remote_compute_node, "compute_node_ips");
-    cJSON* remote_compute_node_ports = cJSON_GetObjectItem(remote_compute_node, "compute_node_ports");
-    int compute_node_num = cJSON_GetArraySize(remote_compute_node_ips);
-    std::cout << "compute_node_num: " << compute_node_num << "\n";
-    std::vector<std::string> compute_node_ips;
-    std::vector<int> compute_node_ports;
-    for(int i = 0; i < compute_node_num; ++i) {
-        compute_node_ips.emplace_back(cJSON_GetArrayItem(remote_compute_node_ips, i)->valuestring);
-        compute_node_ports.emplace_back(cJSON_GetArrayItem(remote_compute_node_ports, i)->valueint);
-    }
+    // cJSON* remote_compute_node = cJSON_GetObjectItem(cjson, "remote_compute_node");
+    // cJSON* remote_compute_node_ips = cJSON_GetObjectItem(remote_compute_node, "compute_node_ips");
+    // cJSON* remote_compute_node_ports = cJSON_GetObjectItem(remote_compute_node, "compute_node_ports");
+    // int compute_node_num = cJSON_GetArraySize(remote_compute_node_ips);
+    // std::cout << "compute_node_num: " << compute_node_num << "\n";
+    // std::vector<std::string> compute_node_ips;
+    // std::vector<int> compute_node_ports;
+    // for(int i = 0; i < compute_node_num; ++i) {
+    //     compute_node_ips.emplace_back(cJSON_GetArrayItem(remote_compute_node_ips, i)->valuestring);
+    //     compute_node_ports.emplace_back(cJSON_GetArrayItem(remote_compute_node_ports, i)->valueint);
+    // }
 
     std::cout << "finish resolving config.json\n";
 
@@ -78,7 +78,7 @@ int main(int argc, char* argv[]) {
     auto log_replay = std::make_shared<LogReplay>(log_store.get(), disk_manager.get(), ix_manager.get(), sm_manager.get(), &share_status);
 
     std::cout << "try to start server\n";
-    auto server = std::make_shared<StorageServer>(node_id, local_rpc_port, compute_node_num, disk_manager.get(), log_store.get(), &share_status, buffer_pool_manager.get());
+    auto server = std::make_shared<StorageServer>(node_id, local_rpc_port, disk_manager.get(), log_store.get(), &share_status, buffer_pool_manager.get());
 
     return 0;
 }

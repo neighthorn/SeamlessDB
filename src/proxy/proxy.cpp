@@ -10,6 +10,7 @@
 #define MAX_MEM_BUFFER_SIZE 8192
 #define TXN_NUM_PER_THREAD 1
 int client_num;
+int node_type = 0;  // default rw_server
 
 Statistics* Statistics::statistics_ = nullptr;
 
@@ -67,23 +68,23 @@ int init_tcp_sock(const char *server_host, int server_port) {
     serv_addr.sin_addr = *((struct in_addr *)host->h_addr);
     bzero(&(serv_addr.sin_zero), 8);
 
-    struct timeval sendtimeout;
-    sendtimeout.tv_sec = 0;
-    sendtimeout.tv_usec = 30000;
-    if(setsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, &sendtimeout, sizeof(sendtimeout)) < 0) {
-        std::cerr << "Error setting send timeout\n";
-        close(sockfd);
-        return -1;
-    }
+    // struct timeval sendtimeout;
+    // sendtimeout.tv_sec = 0;
+    // sendtimeout.tv_usec = 300000;
+    // if(setsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, &sendtimeout, sizeof(sendtimeout)) < 0) {
+    //     std::cerr << "Error setting send timeout\n";
+    //     close(sockfd);
+    //     return -1;
+    // }
 
-    struct timeval recvtimeout;
-    recvtimeout.tv_sec = 0;
-    recvtimeout.tv_usec = 30000;
-    if(setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &recvtimeout, sizeof(recvtimeout)) < 0) {
-        std::cerr << "Error setting receive timeout\n";
-        close(sockfd);
-        return -1;
-    }
+    // struct timeval recvtimeout;
+    // recvtimeout.tv_sec = 0;
+    // recvtimeout.tv_usec = 300000;
+    // if(setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &recvtimeout, sizeof(recvtimeout)) < 0) {
+    //     std::cerr << "Error setting receive timeout\n";
+    //     close(sockfd);
+    //     return -1;
+    // }
 
     if (connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(struct sockaddr)) == -1) {
         fprintf(stderr, "Failed to connect. errmsg=%d:%s\n", errno, strerror(errno));
@@ -98,7 +99,7 @@ void send_recv_sql(int sockfd, std::string sql, char* recv_buf, int thread_index
     // std::string str = "";
     // str += "sockfd: " + std::to_string(sockfd);
 
-    // std::cout << sql << std::endl;
+    std::cout << sql << std::endl;
 
 // mutex.lock();
     if((send_bytes = write(sockfd, sql.c_str(), sql.length() + 1)) == -1) {
@@ -106,6 +107,7 @@ void send_recv_sql(int sockfd, std::string sql, char* recv_buf, int thread_index
         exit(1);
     }
 // mutex.unlock();
+    // str += sql;
     // str += " finish send \n";
     // std::cout << str;
 
@@ -138,7 +140,8 @@ void run_client(BenchMark* benchmark, std::string remote_ip, int remote_port, in
     sockfd = init_tcp_sock(remote_ip.c_str(), remote_port);
 
     // set connection id
-    // std::cout << "thread " << thread_index << " begin to set connection_id\n";
+    std::cout << "thread " << thread_index << " begin to set connection_id\n";
+    std::cout << "ip: " << remote_ip << ", port: " << remote_port << "\n";
     memset(recv_buf, '\0', MAX_MEM_BUFFER_SIZE);
     send_recv_sql(sockfd, std::to_string(thread_index), recv_buf, thread_index, 1);
 
@@ -322,9 +325,14 @@ bool notify_backup_rw_to_recover(std::string back_ip, int back_port) {
     std::cout << "back up connection established\n";
 
     memset(recv_buf, '\0', MAX_MEM_BUFFER_SIZE);
-    send_recv_sql(sock_fd, std::to_string(client_num), recv_buf, client_num, 0);
+    if(node_type == 0)
+        send_recv_sql(sock_fd, std::to_string(client_num), recv_buf, client_num, 0);
+    else 
+        send_recv_sql(sock_fd, std::to_string(0), recv_buf, client_num, 0);
 
-    while(conn_closed == false);
+    while(conn_closed == false) {
+        usleep(10000);
+    }
 
     auto start_time = std::chrono::high_resolution_clock::now();
     memset(recv_buf, '\0', MAX_MEM_BUFFER_SIZE);
@@ -350,14 +358,13 @@ void run_proxy(Proxy* proxy) {
     // std::vector<std::exception_ptr> exceptions(proxy->rw_node_thread_num_);
     
     assert(proxy->bench_mark_ != nullptr);
-    std::cout << "after create statistic instance\n";
 
     commit_txns = new int[proxy->rw_node_thread_num_];
     abort_txns = new int[proxy->rw_node_thread_num_];
     next_sql_index = new int[proxy->rw_node_thread_num_];
     memset(commit_txns, 0, sizeof(int) * proxy->rw_node_thread_num_);
     memset(abort_txns, 0, sizeof(int) * proxy->rw_node_thread_num_);
-    
+    memset(next_sql_index, 0, sizeof(int) * proxy->rw_node_thread_num_);
     // auto start_time = std::chrono::high_resolution_clock::now();
 
     for(int i = 0; i < proxy->rw_node_thread_num_; ++i) {
@@ -366,9 +373,13 @@ void run_proxy(Proxy* proxy) {
         brefore_latency.push_back(0);
         remain_backup_latency.push_back(0);
     }
+    std::cout << "finish init arrays\n";
 
     Statistics::create_instance();
+    std::cout << "finish create statistic instance\n";
     Statistics::get_instance()->start_time_throughput_calc();
+    conn_closed = false;
+    std::cout << "after create statistic instance\n";
     
     server_start_time = std::chrono::high_resolution_clock::now();
     for(int i = 0; i < proxy->rw_node_thread_num_; ++i) {
@@ -415,14 +426,16 @@ void run_proxy(Proxy* proxy) {
     //     // rw_cv_.notify_all();
     // }
 
-    for(int i = 0; i < proxy->rw_node_thread_num_; ++i) {
-        proxy->rw_threads_.emplace_back([i, proxy]() {
-            try {
-                reconnect_to_backup_rw(proxy->back_rw_ip_, proxy->back_rw_port_, i, proxy->bench_mark_);
-            } catch(ConnectionClosedException e) {
-                std::cout << "get connection close exception\n";
-            }
-        }); 
+    if(node_type == 0) {
+        for(int i = 0; i < proxy->rw_node_thread_num_; ++i) {
+            proxy->rw_threads_.emplace_back([i, proxy]() {
+                try {
+                    reconnect_to_backup_rw(proxy->back_rw_ip_, proxy->back_rw_port_, i, proxy->bench_mark_);
+                } catch(ConnectionClosedException e) {
+                    std::cout << "get connection close exception\n";
+                }
+            }); 
+        }
     }
 
     // for(int i = 0; i < proxy->rw_node_thread_num_; ++i) {
@@ -478,10 +491,24 @@ void run_proxy(Proxy* proxy) {
 }
 
 int main(int argc, char** argv) {
+    if(argc < 2) {
+        std::cout << "Please specify the server type: rw/ro.";
+        exit(1);
+    }
+
     std::string config_path = "../src/config/proxy_config.json";
 
     cJSON* cjson = parse_json_file(config_path);
-    cJSON* rw_node = cJSON_GetObjectItem(cjson, "rw_node");
+    cJSON* rw_node;
+    if(strcmp(argv[1], "rw") == 0) {
+        rw_node = cJSON_GetObjectItem(cjson, "rw_node");
+        node_type = 0;
+    }
+    else {
+        rw_node = cJSON_GetObjectItem(cjson, "ro_node");
+        node_type = 1;
+    }
+
     std::string workload = cJSON_GetObjectItem(rw_node, "workload")->valuestring;
     int record_num = cJSON_GetObjectItem(rw_node, "record_num")->valueint;
     int thread_num = cJSON_GetObjectItem(rw_node, "thread_num")->valueint;
@@ -492,7 +519,14 @@ int main(int argc, char** argv) {
     proxy->rw_node_ip_ = cJSON_GetObjectItem(rw_node, "ip")->valuestring;
     proxy->rw_node_port_ = cJSON_GetObjectItem(rw_node, "port")->valueint;
 
-    cJSON* back_rw_node = cJSON_GetObjectItem(cjson, "back_rw_node");
+    cJSON* back_rw_node;
+    if(node_type == 0) {
+        back_rw_node = cJSON_GetObjectItem(cjson, "back_rw_node");
+    }
+    else {
+        back_rw_node = cJSON_GetObjectItem(cjson, "back_ro_node");
+    }
+     
     proxy->back_rw_ip_ = cJSON_GetObjectItem(back_rw_node, "ip")->valuestring;
     proxy->back_rw_port_ = cJSON_GetObjectItem(back_rw_node, "port")->valueint;
 

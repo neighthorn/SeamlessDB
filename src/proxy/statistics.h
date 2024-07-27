@@ -11,6 +11,7 @@ public:
     static bool create_instance() {
         statistics_ = new Statistics();
         // std::thread()
+        return true;
     }
     static void destroy_instance() {
         delete statistics_;

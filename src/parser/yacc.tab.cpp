@@ -67,7 +67,7 @@
 
 
 /* First part of user prologue.  */
-#line 1 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 1 "/root/SeamlessDB/src/parser/yacc.y"
 
 #include "ast.h"
 #include "yacc.tab.h"
@@ -83,7 +83,7 @@ void yyerror(YYLTYPE *locp, void* yyscanner, const char* s) {
 
 using namespace ast;
 
-#line 87 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 87 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
 
 # ifndef YY_CAST
 #  ifdef __cplusplus
@@ -1635,497 +1635,497 @@ yyreduce:
   switch (yyn)
     {
   case 2: /* start: stmt ';'  */
-#line 62 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 62 "/root/SeamlessDB/src/parser/yacc.y"
     {
         parse_tree = (yyvsp[-1].sv_node);
         YYACCEPT;
     }
-#line 1644 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 1644 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
     break;
 
   case 3: /* start: HELP  */
-#line 67 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 67 "/root/SeamlessDB/src/parser/yacc.y"
     {
         parse_tree = std::make_shared<Help>();
         YYACCEPT;
     }
-#line 1653 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 1653 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
     break;
 
   case 4: /* start: EXIT  */
-#line 72 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 72 "/root/SeamlessDB/src/parser/yacc.y"
     {
         parse_tree = nullptr;
         YYACCEPT;
     }
-#line 1662 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 1662 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
     break;
 
   case 5: /* start: T_EOF  */
-#line 77 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 77 "/root/SeamlessDB/src/parser/yacc.y"
     {
         parse_tree = nullptr;
         YYACCEPT;
     }
-#line 1671 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 1671 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
     break;
 
   case 10: /* txnStmt: TXN_BEGIN  */
-#line 92 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 92 "/root/SeamlessDB/src/parser/yacc.y"
     {
         (yyval.sv_node) = std::make_shared<TxnBegin>();
     }
-#line 1679 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 1679 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
     break;
 
   case 11: /* txnStmt: TXN_COMMIT  */
-#line 96 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 96 "/root/SeamlessDB/src/parser/yacc.y"
     {
         (yyval.sv_node) = std::make_shared<TxnCommit>();
     }
-#line 1687 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 1687 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
     break;
 
   case 12: /* txnStmt: TXN_ABORT  */
-#line 100 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 100 "/root/SeamlessDB/src/parser/yacc.y"
     {
         (yyval.sv_node) = std::make_shared<TxnAbort>();
     }
-#line 1695 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 1695 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
     break;
 
   case 13: /* txnStmt: TXN_ROLLBACK  */
-#line 104 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 104 "/root/SeamlessDB/src/parser/yacc.y"
     {
         (yyval.sv_node) = std::make_shared<TxnRollback>();
     }
-#line 1703 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 1703 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
     break;
 
   case 14: /* dbStmt: SHOW TABLES  */
-#line 111 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 111 "/root/SeamlessDB/src/parser/yacc.y"
     {
         (yyval.sv_node) = std::make_shared<ShowTables>();
     }
-#line 1711 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 1711 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
     break;
 
   case 15: /* ddl: CREATE TABLE tbName '(' fieldList ',' primary_key ')'  */
-#line 118 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 118 "/root/SeamlessDB/src/parser/yacc.y"
     {
         (yyval.sv_node) = std::make_shared<CreateTable>((yyvsp[-5].sv_str), (yyvsp[-3].sv_fields), (yyvsp[-1].sv_primarykey));
     }
-#line 1719 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 1719 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
     break;
 
   case 16: /* ddl: DROP TABLE tbName  */
-#line 122 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 122 "/root/SeamlessDB/src/parser/yacc.y"
     {
         (yyval.sv_node) = std::make_shared<DropTable>((yyvsp[0].sv_str));
     }
-#line 1727 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 1727 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
     break;
 
   case 17: /* ddl: DESC tbName  */
-#line 126 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 126 "/root/SeamlessDB/src/parser/yacc.y"
     {
         (yyval.sv_node) = std::make_shared<DescTable>((yyvsp[0].sv_str));
     }
-#line 1735 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 1735 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
     break;
 
   case 18: /* ddl: CREATE INDEX tbName '(' colNameList ')'  */
-#line 130 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 130 "/root/SeamlessDB/src/parser/yacc.y"
     {
         (yyval.sv_node) = std::make_shared<CreateIndex>((yyvsp[-3].sv_str), (yyvsp[-1].sv_strs));
     }
-#line 1743 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 1743 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
     break;
 
   case 19: /* ddl: DROP INDEX tbName '(' colNameList ')'  */
-#line 134 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 134 "/root/SeamlessDB/src/parser/yacc.y"
     {
         (yyval.sv_node) = std::make_shared<DropIndex>((yyvsp[-3].sv_str), (yyvsp[-1].sv_strs));
     }
-#line 1751 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 1751 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
     break;
 
   case 20: /* dml: INSERT INTO tbName VALUES '(' valueList ')'  */
-#line 141 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 141 "/root/SeamlessDB/src/parser/yacc.y"
     {
         (yyval.sv_node) = std::make_shared<InsertStmt>((yyvsp[-4].sv_str), (yyvsp[-1].sv_vals));
     }
-#line 1759 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 1759 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
     break;
 
   case 21: /* dml: DELETE FROM tbName optWhereClause  */
-#line 145 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 145 "/root/SeamlessDB/src/parser/yacc.y"
     {
         (yyval.sv_node) = std::make_shared<DeleteStmt>((yyvsp[-1].sv_str), (yyvsp[0].sv_conds));
     }
-#line 1767 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 1767 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
     break;
 
   case 22: /* dml: UPDATE tbName SET setClauses optWhereClause  */
-#line 149 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 149 "/root/SeamlessDB/src/parser/yacc.y"
     {
         (yyval.sv_node) = std::make_shared<UpdateStmt>((yyvsp[-3].sv_str), (yyvsp[-1].sv_set_clauses), (yyvsp[0].sv_conds));
     }
-#line 1775 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 1775 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
     break;
 
   case 23: /* dml: SELECT selector FROM tableList optWhereClause opt_order_clause  */
-#line 153 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 153 "/root/SeamlessDB/src/parser/yacc.y"
     {
         (yyval.sv_node) = std::make_shared<SelectStmt>((yyvsp[-4].sv_cols), (yyvsp[-2].sv_strs), (yyvsp[-1].sv_conds), (yyvsp[0].sv_orderby));
     }
-#line 1783 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 1783 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
     break;
 
   case 24: /* fieldList: field  */
-#line 160 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 160 "/root/SeamlessDB/src/parser/yacc.y"
     {
         (yyval.sv_fields) = std::vector<std::shared_ptr<Field>>{(yyvsp[0].sv_field)};
     }
-#line 1791 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 1791 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
     break;
 
   case 25: /* fieldList: fieldList ',' field  */
-#line 164 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 164 "/root/SeamlessDB/src/parser/yacc.y"
     {
         (yyval.sv_fields).push_back((yyvsp[0].sv_field));
     }
-#line 1799 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 1799 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
     break;
 
   case 26: /* colNameList: colName  */
-#line 171 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 171 "/root/SeamlessDB/src/parser/yacc.y"
     {
         (yyval.sv_strs) = std::vector<std::string>{(yyvsp[0].sv_str)};
     }
-#line 1807 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 1807 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
     break;
 
   case 27: /* colNameList: colNameList ',' colName  */
-#line 175 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 175 "/root/SeamlessDB/src/parser/yacc.y"
     {
         (yyval.sv_strs).push_back((yyvsp[0].sv_str));
     }
-#line 1815 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 1815 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
     break;
 
   case 28: /* field: colName type  */
-#line 182 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 182 "/root/SeamlessDB/src/parser/yacc.y"
     {
         (yyval.sv_field) = std::make_shared<ColDef>((yyvsp[-1].sv_str), (yyvsp[0].sv_type_len));
     }
-#line 1823 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 1823 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
     break;
 
   case 29: /* type: INT  */
-#line 189 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 189 "/root/SeamlessDB/src/parser/yacc.y"
     {
         (yyval.sv_type_len) = std::make_shared<TypeLen>(SV_TYPE_INT, sizeof(int));
     }
-#line 1831 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 1831 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
     break;
 
   case 30: /* type: CHAR '(' VALUE_INT ')'  */
-#line 193 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 193 "/root/SeamlessDB/src/parser/yacc.y"
     {
         (yyval.sv_type_len) = std::make_shared<TypeLen>(SV_TYPE_STRING, (yyvsp[-1].sv_int));
     }
-#line 1839 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 1839 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
     break;
 
   case 31: /* type: FLOAT  */
-#line 197 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 197 "/root/SeamlessDB/src/parser/yacc.y"
     {
         (yyval.sv_type_len) = std::make_shared<TypeLen>(SV_TYPE_FLOAT, sizeof(float));
     }
-#line 1847 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 1847 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
     break;
 
   case 32: /* valueList: value  */
-#line 204 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 204 "/root/SeamlessDB/src/parser/yacc.y"
     {
         (yyval.sv_vals) = std::vector<std::shared_ptr<Value>>{(yyvsp[0].sv_val)};
     }
-#line 1855 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 1855 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
     break;
 
   case 33: /* valueList: valueList ',' value  */
-#line 208 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 208 "/root/SeamlessDB/src/parser/yacc.y"
     {
         (yyval.sv_vals).push_back((yyvsp[0].sv_val));
     }
-#line 1863 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 1863 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
     break;
 
   case 34: /* value: VALUE_INT  */
-#line 215 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 215 "/root/SeamlessDB/src/parser/yacc.y"
     {
         (yyval.sv_val) = std::make_shared<IntLit>((yyvsp[0].sv_int));
     }
-#line 1871 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 1871 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
     break;
 
   case 35: /* value: VALUE_FLOAT  */
-#line 219 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 219 "/root/SeamlessDB/src/parser/yacc.y"
     {
         (yyval.sv_val) = std::make_shared<FloatLit>((yyvsp[0].sv_float));
     }
-#line 1879 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 1879 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
     break;
 
   case 36: /* value: VALUE_STRING  */
-#line 223 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 223 "/root/SeamlessDB/src/parser/yacc.y"
     {
         (yyval.sv_val) = std::make_shared<StringLit>((yyvsp[0].sv_str));
     }
-#line 1887 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 1887 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
     break;
 
   case 37: /* condition: col op expr  */
-#line 230 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 230 "/root/SeamlessDB/src/parser/yacc.y"
     {
         (yyval.sv_cond) = std::make_shared<BinaryExpr>((yyvsp[-2].sv_col), (yyvsp[-1].sv_comp_op), (yyvsp[0].sv_expr));
     }
-#line 1895 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 1895 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
     break;
 
   case 38: /* optWhereClause: %empty  */
-#line 236 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 236 "/root/SeamlessDB/src/parser/yacc.y"
                       { /* ignore*/ }
-#line 1901 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 1901 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
     break;
 
   case 39: /* optWhereClause: WHERE whereClause  */
-#line 238 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 238 "/root/SeamlessDB/src/parser/yacc.y"
     {
         (yyval.sv_conds) = (yyvsp[0].sv_conds);
     }
-#line 1909 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 1909 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
     break;
 
   case 40: /* whereClause: condition  */
-#line 245 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 245 "/root/SeamlessDB/src/parser/yacc.y"
     {
         (yyval.sv_conds) = std::vector<std::shared_ptr<BinaryExpr>>{(yyvsp[0].sv_cond)};
     }
-#line 1917 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 1917 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
     break;
 
   case 41: /* whereClause: whereClause AND condition  */
-#line 249 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 249 "/root/SeamlessDB/src/parser/yacc.y"
     {
         (yyval.sv_conds).push_back((yyvsp[0].sv_cond));
     }
-#line 1925 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 1925 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
     break;
 
   case 42: /* col: tbName '.' colName  */
-#line 256 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 256 "/root/SeamlessDB/src/parser/yacc.y"
     {
         (yyval.sv_col) = std::make_shared<Col>((yyvsp[-2].sv_str), (yyvsp[0].sv_str));
     }
-#line 1933 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 1933 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
     break;
 
   case 43: /* col: colName  */
-#line 260 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 260 "/root/SeamlessDB/src/parser/yacc.y"
     {
         (yyval.sv_col) = std::make_shared<Col>("", (yyvsp[0].sv_str));
     }
-#line 1941 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 1941 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
     break;
 
   case 44: /* colList: col  */
-#line 267 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 267 "/root/SeamlessDB/src/parser/yacc.y"
     {
         (yyval.sv_cols) = std::vector<std::shared_ptr<Col>>{(yyvsp[0].sv_col)};
     }
-#line 1949 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 1949 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
     break;
 
   case 45: /* colList: colList ',' col  */
-#line 271 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 271 "/root/SeamlessDB/src/parser/yacc.y"
     {
         (yyval.sv_cols).push_back((yyvsp[0].sv_col));
     }
-#line 1957 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 1957 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
     break;
 
   case 46: /* op: '='  */
-#line 278 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 278 "/root/SeamlessDB/src/parser/yacc.y"
     {
         (yyval.sv_comp_op) = SV_OP_EQ;
     }
-#line 1965 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 1965 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
     break;
 
   case 47: /* op: '<'  */
-#line 282 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 282 "/root/SeamlessDB/src/parser/yacc.y"
     {
         (yyval.sv_comp_op) = SV_OP_LT;
     }
-#line 1973 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 1973 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
     break;
 
   case 48: /* op: '>'  */
-#line 286 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 286 "/root/SeamlessDB/src/parser/yacc.y"
     {
         (yyval.sv_comp_op) = SV_OP_GT;
     }
-#line 1981 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 1981 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
     break;
 
   case 49: /* op: NEQ  */
-#line 290 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 290 "/root/SeamlessDB/src/parser/yacc.y"
     {
         (yyval.sv_comp_op) = SV_OP_NE;
     }
-#line 1989 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 1989 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
     break;
 
   case 50: /* op: LEQ  */
-#line 294 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 294 "/root/SeamlessDB/src/parser/yacc.y"
     {
         (yyval.sv_comp_op) = SV_OP_LE;
     }
-#line 1997 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 1997 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
     break;
 
   case 51: /* op: GEQ  */
-#line 298 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 298 "/root/SeamlessDB/src/parser/yacc.y"
     {
         (yyval.sv_comp_op) = SV_OP_GE;
     }
-#line 2005 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 2005 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
     break;
 
   case 52: /* expr: value  */
-#line 305 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 305 "/root/SeamlessDB/src/parser/yacc.y"
     {
         (yyval.sv_expr) = std::static_pointer_cast<Expr>((yyvsp[0].sv_val));
     }
-#line 2013 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 2013 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
     break;
 
   case 53: /* expr: col  */
-#line 309 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 309 "/root/SeamlessDB/src/parser/yacc.y"
     {
         (yyval.sv_expr) = std::static_pointer_cast<Expr>((yyvsp[0].sv_col));
     }
-#line 2021 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 2021 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
     break;
 
   case 54: /* setClauses: setClause  */
-#line 316 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 316 "/root/SeamlessDB/src/parser/yacc.y"
     {
         (yyval.sv_set_clauses) = std::vector<std::shared_ptr<SetClause>>{(yyvsp[0].sv_set_clause)};
     }
-#line 2029 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 2029 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
     break;
 
   case 55: /* setClauses: setClauses ',' setClause  */
-#line 320 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 320 "/root/SeamlessDB/src/parser/yacc.y"
     {
         (yyval.sv_set_clauses).push_back((yyvsp[0].sv_set_clause));
     }
-#line 2037 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 2037 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
     break;
 
   case 56: /* setClause: colName '=' value  */
-#line 327 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 327 "/root/SeamlessDB/src/parser/yacc.y"
     {
         (yyval.sv_set_clause) = std::make_shared<SetClause>((yyvsp[-2].sv_str), (yyvsp[0].sv_val));
     }
-#line 2045 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 2045 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
     break;
 
   case 57: /* selector: '*'  */
-#line 334 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 334 "/root/SeamlessDB/src/parser/yacc.y"
     {
         (yyval.sv_cols) = {};
     }
-#line 2053 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 2053 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
     break;
 
   case 59: /* tableList: tbName  */
-#line 342 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 342 "/root/SeamlessDB/src/parser/yacc.y"
     {
         (yyval.sv_strs) = std::vector<std::string>{(yyvsp[0].sv_str)};
     }
-#line 2061 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 2061 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
     break;
 
   case 60: /* tableList: tableList ',' tbName  */
-#line 346 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 346 "/root/SeamlessDB/src/parser/yacc.y"
     {
         (yyval.sv_strs).push_back((yyvsp[0].sv_str));
     }
-#line 2069 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 2069 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
     break;
 
   case 61: /* tableList: tableList JOIN tbName  */
-#line 350 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 350 "/root/SeamlessDB/src/parser/yacc.y"
     {
         (yyval.sv_strs).push_back((yyvsp[0].sv_str));
     }
-#line 2077 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 2077 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
     break;
 
   case 62: /* opt_order_clause: ORDER BY order_clause  */
-#line 357 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 357 "/root/SeamlessDB/src/parser/yacc.y"
     { 
         (yyval.sv_orderby) = (yyvsp[0].sv_orderby); 
     }
-#line 2085 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 2085 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
     break;
 
   case 63: /* opt_order_clause: %empty  */
-#line 360 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 360 "/root/SeamlessDB/src/parser/yacc.y"
                       { /* ignore*/ }
-#line 2091 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 2091 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
     break;
 
   case 64: /* order_clause: col opt_asc_desc  */
-#line 365 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 365 "/root/SeamlessDB/src/parser/yacc.y"
     { 
         (yyval.sv_orderby) = std::make_shared<OrderBy>((yyvsp[-1].sv_col), (yyvsp[0].sv_orderby_dir));
     }
-#line 2099 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 2099 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
     break;
 
   case 65: /* primary_key: PRIMARY KEY '(' colList ')'  */
-#line 372 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 372 "/root/SeamlessDB/src/parser/yacc.y"
     {
         (yyval.sv_primarykey) = std::make_shared<PrimaryKey>((yyvsp[-1].sv_cols));
     }
-#line 2107 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 2107 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
     break;
 
   case 66: /* opt_asc_desc: ASC  */
-#line 378 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 378 "/root/SeamlessDB/src/parser/yacc.y"
                  { (yyval.sv_orderby_dir) = OrderBy_ASC;     }
-#line 2113 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 2113 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
     break;
 
   case 67: /* opt_asc_desc: DESC  */
-#line 379 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 379 "/root/SeamlessDB/src/parser/yacc.y"
                  { (yyval.sv_orderby_dir) = OrderBy_DESC;    }
-#line 2119 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 2119 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
     break;
 
   case 68: /* opt_asc_desc: %empty  */
-#line 380 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 380 "/root/SeamlessDB/src/parser/yacc.y"
             { (yyval.sv_orderby_dir) = OrderBy_DEFAULT; }
-#line 2125 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 2125 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
     break;
 
 
-#line 2129 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.tab.cpp"
+#line 2129 "/root/SeamlessDB/src/parser/yacc.tab.cpp"
 
       default: break;
     }
@@ -2354,5 +2354,5 @@ yyreturnlab:
   return yyresult;
 }
 
-#line 386 "/home/ysm/projects/cloud-rucbase/src/parser/yacc.y"
+#line 386 "/root/SeamlessDB/src/parser/yacc.y"
 

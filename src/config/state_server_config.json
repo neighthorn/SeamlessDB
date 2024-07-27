@@ -8,11 +8,7 @@
         "sql_buf_size_MB": 300,
         "plan_buf_size_GB": 1,
         "cursor_buf_size_GB": 1,
-        "join_plan_buf_size_GB": 1,
+        "join_plan_buf_size_GB": 2,
         "join_block_buf_size_GB": 5
-    },
-    "master_node": {
-        "master_node_ip": "10.77.110.145",
-        "master_node_port": 12192
     }
 }

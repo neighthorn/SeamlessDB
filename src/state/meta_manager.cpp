@@ -1,6 +1,7 @@
 #include "meta_manager.h"
 
 #include "util/json_util.h"
+#include "common/config.h"
 #include <fstream>
 
 MetaManager* MetaManager::global_meta_mgr = nullptr;
@@ -13,7 +14,15 @@ MetaManager::MetaManager(const std::string& config_path) {
   // std::string config_path = "../src/config/compute_server_config.json";
   cJSON* cjson = parse_json_file(config_path);
   std::cout << "get json file\n";
-  cJSON* local_node = cJSON_GetObjectItem(cjson, "rw_node");
+  cJSON* local_node;
+
+  if(node_type_ == 0) {
+    local_node = cJSON_GetObjectItem(cjson, "rw_node");
+  }
+  else {
+    local_node = cJSON_GetObjectItem(cjson, "ro_node");
+  }
+  
   local_machine_id = (node_id_t)cJSON_GetObjectItem(local_node, "machine_id")->valueint;
   int local_port = cJSON_GetObjectItem(local_node, "local_rdma_port")->valueint;
   std::cout << "local port: " << local_port << "\n";
@@ -35,11 +44,9 @@ MetaManager::MetaManager(const std::string& config_path) {
   
   cJSON* ip = NULL;
   cJSON* port = NULL;
-  for(int i = 0; i < remote_node_cnt; ++i) {
-    ip = cJSON_GetArrayItem(remote_ip_array, i);
-    port = cJSON_GetArrayItem(remote_port_array, i);
-    remote_nodes.push_back(RemoteNode{.node_id = i, .ip = ip->valuestring, .port = port->valueint});
-  }
+  ip = cJSON_GetArrayItem(remote_ip_array, node_type_);
+  port = cJSON_GetArrayItem(remote_port_array, node_type_);
+  remote_nodes.push_back(RemoteNode{.node_id = 0, .ip = ip->valuestring, .port = port->valueint});
 
   cJSON_Delete(cjson);
   // cJSON* remote_ips = 

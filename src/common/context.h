@@ -17,10 +17,10 @@ class Context {
 public:
     Context (LockManager *lock_mgr, LogManager *log_mgr, 
             Transaction *txn, CoroutineScheduler* coro_sched, 
-            OperatorStateManager *op_state_mgr,
+            OperatorStateManager *op_state_mgr, QPManager* qp_mgr,
             char *data_send = nullptr, int *offset = &const_offset,
             bool rdma_allocated = false, int state_slot_index = -1, PlanTag plan_tag = T_Invalid)
-        : lock_mgr_(lock_mgr), log_mgr_(log_mgr), txn_(txn), rdma_allocated_(rdma_allocated),
+        : lock_mgr_(lock_mgr), log_mgr_(log_mgr), txn_(txn), rdma_allocated_(rdma_allocated), qp_mgr_(qp_mgr),
           data_send_(data_send), offset_(offset), plan_tag_(plan_tag), coro_sched_(coro_sched), op_state_mgr_(op_state_mgr),
           state_slot_index_(state_slot_index) {
             ellipsis_ = false;

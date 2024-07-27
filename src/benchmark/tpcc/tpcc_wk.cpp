@@ -143,7 +143,7 @@ void TPCCWK::init_transaction(int thread_num) {
 
 NativeTransaction* TPCCWK::generate_transaction(int thread_index) {
     assert(thread_index <= thread_num_);
-    if(thread_index % 4) {
+    if(thread_index % 2) {
         // std::cout << "client " << thread_index << " try to generate new_order transactions\n";
         new_order_txns_[thread_index]->generate_new_txn();
         return new_order_txns_[thread_index];
@@ -162,7 +162,7 @@ NativeTransaction* TPCCWK::generate_transaction(int thread_index) {
 
 NativeTransaction* TPCCWK::get_transaction(int thread_index) {
     assert(thread_index <= thread_num_);
-    if(thread_index % 4) {
+    if(thread_index % 2) {
         return new_order_txns_[thread_index];
     }
     else {

@@ -24,6 +24,7 @@ void QPManager::BuildQPConnection(MetaManager* meta_man) {
       get memory attr from meta_manager
     */
 
+    std::cout << "begin build qp conns for node: " << remote_node.node_id << "\n";
     MemoryAttr remote_log_buf_mr = meta_man->GetRemoteLogBufMR(remote_node.node_id);
     MemoryAttr remote_lock_buf_mr = meta_man->GetRemoteLockBufMR(remote_node.node_id);
     MemoryAttr remote_txn_list_mr = meta_man->GetRemoteTxnListMR(remote_node.node_id);
@@ -44,29 +45,29 @@ void QPManager::BuildQPConnection(MetaManager* meta_man) {
     //                                                          meta_man->opened_rnic,
     //                                                          &local_mr);
     assert(meta_man->opened_rnic != nullptr);
-    RCQP* txn_list_qp = meta_man->global_rdma_ctrl->create_rc_qp(create_rc_idx(remote_node.node_id, (int)global_tid * 8),
+    RCQP* txn_list_qp = meta_man->global_rdma_ctrl->create_rc_qp(create_rc_idx(remote_node.node_id, (int)global_tid * 7),
                                                             meta_man->opened_rnic, &local_mr);
     assert(txn_list_qp != nullptr);
-    RCQP* lock_buf_qp = meta_man->global_rdma_ctrl->create_rc_qp(create_rc_idx(remote_node.node_id, (int)global_tid *  + 1),
+    RCQP* lock_buf_qp = meta_man->global_rdma_ctrl->create_rc_qp(create_rc_idx(remote_node.node_id, (int)global_tid * 7 + 1),
                                                             meta_man->opened_rnic, &local_mr);
     assert(lock_buf_qp != nullptr);
-    RCQP* log_buf_qp = meta_man->global_rdma_ctrl->create_rc_qp(create_rc_idx(remote_node.node_id, (int)global_tid*6 + 2),
+    RCQP* log_buf_qp = meta_man->global_rdma_ctrl->create_rc_qp(create_rc_idx(remote_node.node_id, (int)global_tid*7 + 2),
                                                             meta_man->opened_rnic, &local_mr);
     assert(log_buf_qp != nullptr);
-    RCQP* sql_buf_qp = meta_man->global_rdma_ctrl->create_rc_qp(create_rc_idx(remote_node.node_id, (int)global_tid *6 + 3),
+    RCQP* sql_buf_qp = meta_man->global_rdma_ctrl->create_rc_qp(create_rc_idx(remote_node.node_id, (int)global_tid *7 + 3),
                                                             meta_man->opened_rnic, &local_mr);
     assert(sql_buf_qp != nullptr);
-    RCQP* plan_buf_qp = meta_man->global_rdma_ctrl->create_rc_qp(create_rc_idx(remote_node.node_id, (int)global_tid * 6 + 4),
+    RCQP* plan_buf_qp = meta_man->global_rdma_ctrl->create_rc_qp(create_rc_idx(remote_node.node_id, (int)global_tid * 7 + 4),
                                                             meta_man->opened_rnic, &local_mr);
     assert(plan_buf_qp != nullptr);
 
     /*
        create qp of join state
     */
-    RCQP *join_plan_buf_qp   =  meta_man->global_rdma_ctrl->create_rc_qp(create_rc_idx(remote_node.node_id, (int)global_tid * 6 + 5),
+    RCQP *join_plan_buf_qp   =  meta_man->global_rdma_ctrl->create_rc_qp(create_rc_idx(remote_node.node_id, (int)global_tid * 7 + 5),
                                                             meta_man->opened_rnic, &local_mr);
     assert(join_plan_buf_qp != nullptr);
-    RCQP *join_block_buf_qp  =  meta_man->global_rdma_ctrl->create_rc_qp(create_rc_idx(remote_node.node_id, (int)global_tid * 6 + 6),
+    RCQP *join_block_buf_qp  =  meta_man->global_rdma_ctrl->create_rc_qp(create_rc_idx(remote_node.node_id, (int)global_tid * 7 + 6),
                                                             meta_man->opened_rnic, &local_mr);
     assert(join_block_buf_qp != nullptr);                                                        
 
@@ -81,7 +82,7 @@ void QPManager::BuildQPConnection(MetaManager* meta_man) {
       if (rc == SUCC) {
         txn_list_qp->bind_remote_mr(remote_txn_list_mr);  // Bind the hash mr as the default remote mr for convenient parameter passing
         txn_list_qps[remote_node.node_id] = txn_list_qp;
-        RDMA_LOG(INFO) << "Thread " << global_tid << ": Txn QP connected! with remote node: " << remote_node.node_id << " ip: " << remote_node.ip;
+        // RDMA_LOG(INFO) << "Thread " << global_tid << ": Txn QP connected! with remote node: " << remote_node.node_id << " ip: " << remote_node.ip;
       }
       usleep(2000);
     } while (rc != SUCC);
@@ -91,7 +92,7 @@ void QPManager::BuildQPConnection(MetaManager* meta_man) {
       if (rc == SUCC) {
         lock_buf_qp->bind_remote_mr(remote_lock_buf_mr);  // Bind the hash mr as the default remote mr for convenient parameter passing
         lock_buf_qps[remote_node.node_id] = lock_buf_qp;
-        RDMA_LOG(INFO) << "Thread " << global_tid << ": Lock QP connected! with remote node: " << remote_node.node_id << " ip: " << remote_node.ip;
+        // RDMA_LOG(INFO) << "Thread " << global_tid << ": Lock QP connected! with remote node: " << remote_node.node_id << " ip: " << remote_node.ip;
       }
       usleep(2000);
     } while (rc != SUCC);
@@ -101,7 +102,7 @@ void QPManager::BuildQPConnection(MetaManager* meta_man) {
       if (rc == SUCC) {
         log_buf_qp->bind_remote_mr(remote_log_buf_mr);  // Bind the log mr as the default remote mr for convenient parameter passing
         log_buf_qps[remote_node.node_id] = log_buf_qp;
-        RDMA_LOG(INFO) << "Thread " << global_tid << ": Log QP connected! with remote node: " << remote_node.node_id << " ip: " << remote_node.ip;
+        // RDMA_LOG(INFO) << "Thread " << global_tid << ": Log QP connected! with remote node: " << remote_node.node_id << " ip: " << remote_node.ip;
       }
       usleep(2000);
     } while (rc != SUCC);
@@ -111,7 +112,7 @@ void QPManager::BuildQPConnection(MetaManager* meta_man) {
       if(rc == SUCC) {
         sql_buf_qp->bind_remote_mr(remote_sql_buf_mr);
         sql_buf_qps[remote_node.node_id] = sql_buf_qp;
-        RDMA_LOG(INFO) << "Thread " << global_tid << ": SQL QP connected! with remote node: " << remote_node.node_id << " ip: " << remote_node.ip;
+        // RDMA_LOG(INFO) << "Thread " << global_tid << ": SQL QP connected! with remote node: " << remote_node.node_id << " ip: " << remote_node.ip;
       }
       usleep(2000);
     } while(rc != SUCC);
@@ -121,7 +122,7 @@ void QPManager::BuildQPConnection(MetaManager* meta_man) {
       if(rc == SUCC) {
         plan_buf_qp->bind_remote_mr(remote_plan_buf_mr);
         plan_buf_qps[remote_node.node_id] = plan_buf_qp;
-        RDMA_LOG(INFO) << "Thread " << global_tid << ": Plan QP connected! with remote node: " << remote_node.node_id << " ip: " << remote_node.ip;
+        // RDMA_LOG(INFO) << "Thread " << global_tid << ": Plan QP connected! with remote node: " << remote_node.node_id << " ip: " << remote_node.ip;
       }
       usleep(2000);
     } while(rc != SUCC);
@@ -131,7 +132,7 @@ void QPManager::BuildQPConnection(MetaManager* meta_man) {
       if(rc == SUCC) {
         join_plan_buf_qp->bind_remote_mr(remote_join_plan_buf_mr);
         join_plan_buf_qps[remote_node.node_id] = join_plan_buf_qp;
-        RDMA_LOG(INFO) << "Thread " << global_tid << ": JOIN Plan QP connected! with remote node: " << remote_node.node_id << " ip: " << remote_node.ip;
+        // RDMA_LOG(INFO) << "Thread " << global_tid << ": JOIN Plan QP connected! with remote node: " << remote_node.node_id << " ip: " << remote_node.ip;
       }
       usleep(2000);
     } while(rc != SUCC);
@@ -141,7 +142,7 @@ void QPManager::BuildQPConnection(MetaManager* meta_man) {
       if(rc == SUCC) {
         join_block_buf_qp->bind_remote_mr(remote_join_block_buf_mr);
         join_block_buf_qps[remote_node.node_id] = join_block_buf_qp;
-        RDMA_LOG(INFO) << "Thread " << global_tid << ": JOIN Block QP connected! with remote node: " << remote_node.node_id << " ip: " << remote_node.ip;
+        // RDMA_LOG(INFO) << "Thread " << global_tid << ": JOIN Block QP connected! with remote node: " << remote_node.node_id << " ip: " << remote_node.ip;
       }
       usleep(2000);
     } while(rc != SUCC);

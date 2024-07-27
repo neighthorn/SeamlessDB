@@ -1,6 +1,7 @@
 #!/bin/bash
 # 定义常量 normal_time, SQL正常执行时间(s)
-normal_time=1678
+# normal_time=1678
+normal_time=500
 
 # 检查是否传入 percent 参数
 if [ -z "$1" ]; then
@@ -24,11 +25,12 @@ echo $sleep_time
 cd ../build || { echo "Failed to enter build directory"; exit 1; }
 
 # 启动 ./bin/proxy
-./bin/proxy &
+./bin/proxy ro &
 
 # 第一次 sleep
 sleep "$sleep_time"
 
+echo 'try to kill'
 # 查找并杀死名为 'rw_server active' 的进程
 ps aux | grep 'rw_server active' | grep -v grep | awk '{print $2}' | xargs -r kill
 

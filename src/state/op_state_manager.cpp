@@ -466,7 +466,7 @@ void OperatorStateManager::write_op_checkpoint_meta() {
     */
     ck_meta_->serialize(op_checkpoint_meta_buffer_);
     if(!coro_sched_->RDMAWriteSync(0, op_checkpoint_qp_, op_checkpoint_meta_buffer_, offset, CheckPointMetaSize)) {
-        RDMA_LOG(ERROR) << "Failed to write operator state meta into state_node.";
+        RDMA_LOG(ERROR) << "Failed to write operator state meta into state_node. offset=" << offset << ", checkpointmetasize=" << CheckPointMetaSize;
         assert(0);
     }
 

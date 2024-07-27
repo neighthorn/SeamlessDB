@@ -357,7 +357,7 @@ void BlockNestedLoopJoinExecutor::find_next_valid_tuple() {
 /*
     根据代价估计函数，判断是否需要写状态
 */
-std::pair<bool, double> BlockNestedLoopJoinExecutor::judge_state_cost(BlockCheckpointInfo *current_ck_info) {
+std::pair<bool, double> BlockNestedLoopJoinExecutor::judge_state_reward(BlockCheckpointInfo *current_ck_info) {
     /*
         current ck info: 当前状态 info
         latest  ck info: 上一次状态的 info
@@ -485,7 +485,7 @@ void BlockNestedLoopJoinExecutor::write_state_if_allow(int type) {
     */
     default: {
         if(state_open_) {
-            auto [able_to_write, src_op] = judge_state_cost(&current_ck_info);
+            auto [able_to_write, src_op] = judge_state_reward(&current_ck_info);
             if(able_to_write) {
                 auto [status, actual_size] = context_->op_state_mgr_->add_operator_state_to_buffer(this, src_op);
                 if(status) {

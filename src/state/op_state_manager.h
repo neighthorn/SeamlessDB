@@ -5,7 +5,7 @@
 #include "allocator/rdma_region_allocator.h"
 #include "optimizer/plan.h"
 
-class StateManager;
+class ContextManager;
 class MetaManager;
 class AbstractExecutor;
 class QPManager;

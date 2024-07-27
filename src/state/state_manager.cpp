@@ -4,20 +4,20 @@
 
 #define get_lock_remote_offset(off, bitmap_size) off * LOCK_STATE_SIZE_REMOTE + bitmap_size
 
-StateManager* StateManager::state_mgr_ = nullptr;
+ContextManager* ContextManager::state_mgr_ = nullptr;
 
-bool StateManager::create_instance(int thread_num) {
+bool ContextManager::create_instance(int thread_num) {
     if(state_mgr_ == nullptr)
-        state_mgr_ = new (std::nothrow) StateManager(thread_num);
+        state_mgr_ = new (std::nothrow) ContextManager(thread_num);
     return (state_mgr_ == nullptr);
 }
 
-void StateManager::destroy_instance() {
+void ContextManager::destroy_instance() {
     delete state_mgr_;
     state_mgr_ = nullptr;
 }
 
-void StateManager::append_lock_state(Lock* lock, int thread_index)  {
+void ContextManager::append_lock_state(Lock* lock, int thread_index)  {
     if(lock->offset_ == -1) {
         int lock_off = lock_bitmap_->get_first_free_bit(thread_index);
         lock->offset_ = lock_off;
@@ -25,13 +25,13 @@ void StateManager::append_lock_state(Lock* lock, int thread_index)  {
     lock_rdma_buffer_->write_lock(lock);
 }
 
-void StateManager::erase_lock_state(Lock* lock) {
+void ContextManager::erase_lock_state(Lock* lock) {
     int offset = lock->offset_;
     // lock_states_.remove_if(CompareLockPtr(lock));
     lock_bitmap_->set_bit_to_free(offset);
 }
 
-void StateManager::flush_locks(int64_t curr_flush_last_lock_, int64_t free_size) {
+void ContextManager::flush_locks(int64_t curr_flush_last_lock_, int64_t free_size) {
     // std::cout << "flush lock\n";
     // int lock_num = lock_states_.size();
     // int req_num = 0;
@@ -74,7 +74,7 @@ void StateManager::flush_locks(int64_t curr_flush_last_lock_, int64_t free_size)
     // lock_states_.clear();
 }
 
-void StateManager::flush_logs(int64_t curr_state_tail, int64_t curr_head, int64_t curr_tail) {
+void ContextManager::flush_logs(int64_t curr_state_tail, int64_t curr_head, int64_t curr_tail) {
     // std::cout << "flush log********\n";
     memcpy(log_meta_mr_, &curr_head, sizeof(int64_t));
     memcpy(log_meta_mr_ + sizeof(int64_t), &curr_tail, sizeof(int64_t));
@@ -119,7 +119,7 @@ void StateManager::flush_logs(int64_t curr_state_tail, int64_t curr_head, int64_
     log_flush_thread_cv_.notify_all();
 }
 
-void StateManager::flush_states() {
+void ContextManager::checkpoint() {
     // only one flush_states operation can be invoked simultaneously
     std::unique_lock<std::mutex> latch(state_latch_);
 
@@ -154,7 +154,7 @@ void StateManager::flush_states() {
 }
 
 // used for test
-void StateManager::fetch_and_print_lock_states() {
+void ContextManager::fetch_and_print_lock_states() {
     char* lock_region = RDMARegionAllocator::get_instance()->GetLockRegion().first;
     char* origin_bitmap = new char[lock_bitmap_->bitmap_size_];
 
@@ -181,7 +181,7 @@ void StateManager::fetch_and_print_lock_states() {
     // }
 }
 
-LockRequestQueue* StateManager::get_record_request_queue_(int record_no, LockListInBucket* lock_list) {
+LockRequestQueue* ContextManager::get_record_request_queue_(int record_no, LockListInBucket* lock_list) {
     LockRequestQueue* request_queue = lock_list->first_lock_queue_;
     while(request_queue != nullptr) {
         if(request_queue->record_no_ == record_no) {
@@ -193,7 +193,7 @@ LockRequestQueue* StateManager::get_record_request_queue_(int record_no, LockLis
     return nullptr;
 }
 
-void StateManager::fetch_lock_states(std::unordered_map<LockDataId, LockListInBucket>* lock_table, Transaction** active_txn_list, int thread_num) {
+void ContextManager::fetch_lock_states(std::unordered_map<LockDataId, LockListInBucket>* lock_table, Transaction** active_txn_list, int thread_num) {
 
     std::unordered_map<int, int> index_id_map_for_txn;
     for(int i = 0; i < thread_num; ++i) {
@@ -283,7 +283,7 @@ void StateManager::fetch_lock_states(std::unordered_map<LockDataId, LockListInBu
     }
 }
 
-void StateManager::fetch_log_states() {
+void ContextManager::fetch_log_states() {
     std::cout << "begin fetch_log_state:\n";
     memset(log_meta_mr_, 0, sizeof(int64_t) * 3);
     if(!coro_sched_->RDMAReadSync(0, log_qp_, log_meta_mr_, remote_log_head_off_, sizeof(int64_t) * 3)) {
@@ -328,7 +328,7 @@ void StateManager::fetch_log_states() {
     }
 }
 
-void StateManager::fetch_active_txns(Transaction** active_txn_list, int thread_num) {
+void ContextManager::fetch_active_txns(Transaction** active_txn_list, int thread_num) {
     RCQP* qp = QPManager::get_instance()->GetRemoteTxnListQPWithNodeID(0);
     char* remote_txn_buf = RDMARegionAllocator::get_instance()->GetThreadLocalRegion(0).first;
     int buf_size = sizeof(TxnItem) * thread_num;

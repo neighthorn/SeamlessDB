@@ -102,5 +102,5 @@ void TransactionManager::abort(Transaction * txn, Context* context) {
 }
 
 void TransactionManager::recover_active_txn_lists(Context* context) {
-    StateManager::get_instance()->fetch_active_txns(active_transactions_, thread_num_);
+    ContextManager::get_instance()->fetch_active_txns(active_transactions_, thread_num_);
 }

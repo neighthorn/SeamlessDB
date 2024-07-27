@@ -32,33 +32,35 @@ struct CompareLockPtr {
     }
 };
 
-class StateManager {
+class ContextManager {
 public:
     static bool create_instance(int thread_num);
     static void destroy_instance();
-    static StateManager* get_instance() {
+    static ContextManager* get_instance() {
         assert(state_mgr_ != nullptr);
         return state_mgr_;
     }
 
+    // implementation of the write_context_entry() for lock
     void append_lock_state(Lock* lock, int thread_index);
 
     void fetch_and_print_lock_states();
 
+    // implementation of the write_context_entry() for lock
     void erase_lock_state(Lock* lock);
 
+    // implementation of the r_write_context_entry() for lock
     void flush_locks(int64_t curr_flush_last_lock, int64_t free_size);
 
+    // // implementation of the r_write_context_entry() for log
     void flush_logs(int64_t curr_state_tail, int64_t curr_head, int64_t curr_tail);
 
-    void flush_states();
+    void checkpoint();
 
-    // fucntions for recovery
+    // implementation for read_context() interfaces
     void fetch_lock_states(std::unordered_map<LockDataId, LockListInBucket>* lock_table, Transaction** active_txn_list, int thread_num);
     LockRequestQueue* get_record_request_queue_(int record_no, LockListInBucket* lock_list);
-
     void fetch_log_states();
-
     void fetch_active_txns(Transaction** active_txn_list, int thread_num);
 
     // global state
@@ -93,7 +95,7 @@ public:
     char* log_meta_mr_;
 
 private:
-     StateManager(int thread_num) {
+     ContextManager(int thread_num) {
         lock_bitmap_ = new RegionBitmap(LOCK_MAX_COUNT, thread_num);
         auto lock_buffer = RDMARegionAllocator::get_instance()->GetLockRegion();
         // lock_rdma_buffer_ = new RDMABufferAllocator(lock_buffer.first, lock_buffer.second);
@@ -116,11 +118,11 @@ private:
         log_meta_mr_ = RDMARegionAllocator::get_instance()->GetLogMetaRegion();
 
         stop_thread_.store(false);
-        log_flush_thread_ = std::thread(&StateManager::log_flush_thread_function, this);
-        lock_flush_thread_ = std::thread(&StateManager::lock_flush_thread_function, this);
+        log_flush_thread_ = std::thread(&ContextManager::log_flush_thread_function, this);
+        lock_flush_thread_ = std::thread(&ContextManager::lock_flush_thread_function, this);
     }
 
-    ~StateManager() {
+    ~ContextManager() {
         stop_thread_.store(true);
         if(lock_flush_thread_.joinable()) {
             lock_flush_thread_.join();
@@ -167,7 +169,7 @@ private:
         }
     }
 
-    static StateManager* state_mgr_;
+    static ContextManager* state_mgr_;
 
     std::atomic<bool> stop_thread_;
     std::thread log_flush_thread_;

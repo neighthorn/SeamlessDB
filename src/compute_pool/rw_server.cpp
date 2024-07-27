@@ -340,7 +340,7 @@ std::shared_ptr<PortalStmt> rebuild_exec_plan_from_state(RWNode *node, Context *
 }
 
 void replay_log_for_resumption(SmManager* sm_mgr) {
-    StateManager* state_mgr = StateManager::get_instance();
+    ContextManager* state_mgr = ContextManager::get_instance();
     brpc::Channel* lsn_channel_ = new brpc::Channel();
     brpc::ChannelOptions options;
     options.protocol = FLAGS_protocol;
@@ -789,7 +789,7 @@ void client_handler(int* sock_fd, RWNode* node) {
         */
         {
             if(state_open_) {
-                StateManager::get_instance()->flush_states();
+                ContextManager::get_instance()->checkpoint();
                 // auto op_ck_meta = context->op_state_mgr_->read_op_checkpoint_meta();
                 // RwServerDebug::getInstance()->DEBUG_PRINT("[READ OP META FROM STATE][Before][thread id: " + std::to_string(op_ck_meta->thread_id) + "][checkpoint_num: " + std::to_string(op_ck_meta->checkpoint_num) + "][total size: " + std::to_string(op_ck_meta->total_size) + "]");
 

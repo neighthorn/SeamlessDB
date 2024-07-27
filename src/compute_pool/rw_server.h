@@ -50,7 +50,7 @@ public:
         QPManager::create_instance(thread_num_);
         std::cout << "finish create qp manager\n";
         QPManager::BuildALLQPConnection(MetaManager::get_instance());
-        StateManager::create_instance(thread_num);
+        ContextManager::create_instance(thread_num);
         std::cout << "finishi create state manager\n";
         
         // /*
@@ -69,7 +69,7 @@ public:
         lock_mgr_ = new LockManager();
         txn_mgr_ = new TransactionManager(lock_mgr_, sm_mgr_, thread_num_);
         ql_mgr_ = new QlManager(sm_mgr_, txn_mgr_);
-        log_mgr_ = new LogManager(log_channel_, StateManager::get_instance()->log_rdma_buffer_);
+        log_mgr_ = new LogManager(log_channel_, ContextManager::get_instance()->log_rdma_buffer_);
         planner_ = new Planner(sm_mgr_);
         optimizer_ = new Optimizer(planner_);
         portal_ = new Portal(sm_mgr_);

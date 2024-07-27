@@ -211,7 +211,7 @@ Lock* LockManager::upgrade_record_lock_type_mode(RecordLockType lock_type, LockM
 
     // @STATE:
     if(state_open_)
-        StateManager::get_instance()->append_lock_state(req, thread_index);
+        ContextManager::get_instance()->append_lock_state(req, thread_index);
 
     return req;
 }
@@ -258,7 +258,7 @@ Lock* LockManager::request_record_lock(int table_id, const Rid& rid, Transaction
 
         // @STATE
         if(state_open_)
-            StateManager::get_instance()->append_lock_state(lock_request, thread_index);
+            ContextManager::get_instance()->append_lock_state(lock_request, thread_index);
 
         return lock_request;
     }
@@ -274,7 +274,7 @@ Lock* LockManager::request_record_lock(int table_id, const Rid& rid, Transaction
 
         //@STATE:
         if(state_open_)
-            StateManager::get_instance()->append_lock_state(lock_request, thread_index);  
+            ContextManager::get_instance()->append_lock_state(lock_request, thread_index);  
         return lock_request;
     }
 
@@ -316,7 +316,7 @@ Lock* LockManager::request_record_lock(int table_id, const Rid& rid, Transaction
 
     // @STATE:
     if(state_open_)
-        StateManager::get_instance()->append_lock_state(lock_request, thread_index);
+        ContextManager::get_instance()->append_lock_state(lock_request, thread_index);
 
     return lock_request;
 }
@@ -342,7 +342,7 @@ Lock* LockManager::upgrade_table_lock_mode(LockMode lock_mode, LockRequestQueue*
 
     // @STATE:
     if(state_open_)
-        StateManager::get_instance()->append_lock_state(req, thread_index);
+        ContextManager::get_instance()->append_lock_state(req, thread_index);
 
     return req;
 }
@@ -373,7 +373,7 @@ Lock* LockManager::request_table_lock(int table_id, Transaction* txn, LockMode l
 
         //@STATE:
         if(state_open_)
-            StateManager::get_instance()->append_lock_state(lock_request, thread_index);
+            ContextManager::get_instance()->append_lock_state(lock_request, thread_index);
         return lock_request;
     }
 
@@ -388,7 +388,7 @@ Lock* LockManager::request_table_lock(int table_id, Transaction* txn, LockMode l
 
         // @STATE:
         if(state_open_)
-            StateManager::get_instance()->append_lock_state(lock_request, thread_index);
+            ContextManager::get_instance()->append_lock_state(lock_request, thread_index);
         return lock_request;
     }
 
@@ -433,7 +433,7 @@ Lock* LockManager::request_table_lock(int table_id, Transaction* txn, LockMode l
 
     //@STATE:
     if(state_open_)
-        StateManager::get_instance()->append_lock_state(lock_request, thread_index);
+        ContextManager::get_instance()->append_lock_state(lock_request, thread_index);
     
     return lock_request;
 }
@@ -459,7 +459,7 @@ bool LockManager::unlock(Transaction* txn, Lock* lock) {
     // @STATE:
     // TODO:
     if(state_open_)
-        StateManager::get_instance()->erase_lock_state(lock);
+        ContextManager::get_instance()->erase_lock_state(lock);
 
     delete lock;
 
@@ -467,5 +467,5 @@ bool LockManager::unlock(Transaction* txn, Lock* lock) {
 }
 
 void LockManager::recover_lock_table(Transaction** active_txn_list, int thread_num) {
-    StateManager::get_instance()->fetch_lock_states(&lock_table_, active_txn_list, thread_num);
+    ContextManager::get_instance()->fetch_lock_states(&lock_table_, active_txn_list, thread_num);
 }

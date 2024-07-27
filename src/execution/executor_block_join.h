@@ -160,7 +160,7 @@ private:
     /*
         根据代价估计函数，判断是否需要写状态
     */
-    std::pair<bool, double> judge_state_cost(BlockCheckpointInfo *current_ck_info) ;
+    std::pair<bool, double> judge_state_reward(BlockCheckpointInfo *current_ck_info) ;
 
     /*
         递归计算RC op

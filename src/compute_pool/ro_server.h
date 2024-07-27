@@ -60,7 +60,7 @@ public:
         auto table = sm_mgr_->db_.get_table("test_table");
         std::cout << table.table_id_ << " " << table.record_length_ << "\n";
         
-        StateManager::create_instance();
+        ContextManager::create_instance();
         MetaManager::create_instance();
         std::cout << "finish create meta manager\n";
         RDMARegionAllocator::create_instance(MetaManager::get_instance(), thread_num_);

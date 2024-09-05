@@ -29,6 +29,59 @@ void RandomGenerator::generate_random_str(char* str, int len) {
     str[len] = '\0';
 }
 
+int RandomGenerator::get_region_key_from_nation(char* nation) {
+    if(strstr(nation, "ALGERIA") != nullptr || strstr(nation, "ETHIOPIA") != nullptr || strstr(nation, "KENYA") != nullptr
+        || strstr(nation, "MOROCCO") != nullptr || strstr(nation, "MOZAMBIQUE") != nullptr) {
+        return 0;
+    }
+    if(strstr(nation, "ARGENTINA") != nullptr || strstr(nation, "BRAZIL") != nullptr || strstr(nation, "CANADA") != nullptr
+        || strstr(nation, "PERU") != nullptr || strstr(nation, "UNITED STATES") != nullptr) {
+        return 1;
+    }
+    if(strstr(nation, "INDIA") != nullptr || strstr(nation, "INDONESIA") != nullptr || strstr(nation, "JAPAN") != nullptr
+        || strstr(nation, "CHINA") != nullptr || strstr(nation, "VIETNAM") != nullptr) {
+        return 2;
+    }
+    if(strstr(nation, "FRANCE") != nullptr || strstr(nation, "GERMANY") != nullptr || strstr(nation, "ROMANIA") != nullptr
+        || strstr(nation, "RUSSIA") != nullptr || strstr(nation, "UNITED KINGDOM") != nullptr) {
+        return 3;
+    }
+    if(strstr(nation, "EGYPT") != nullptr || strstr(nation, "IRAN") != nullptr || strstr(nation, "IRAQ") != nullptr
+        || strstr(nation, "JORDAN") != nullptr || strstr(nation, "SAUDI ARABIA") != nullptr) {
+        return 4;
+    }
+}
+
+void RandomGenerator::generate_random_region(char* str, int len) {
+    int region_key = generate_random_int(0, 4);
+    get_region_from_region_key(str, len, region_key);
+}
+
+void RandomGenerator::get_region_from_region_key(char* str, int len, int region_key) {
+    memset(str, 0, len);
+
+    switch(region_key) {
+        case 0: {
+            memcpy(str, "AFRICA", 6);
+        } break;
+        case 1: {
+            memcpy(str, "AMERICA", 7);
+        } break;
+        case 2: {
+            memcpy(str, "ASIA", 4);
+        } break;
+        case 3: {
+            memcpy(str, "EUROPE", 6);
+        } break;
+        case 4: {
+            memcpy(str, "MIDDLE EAST", 11);
+        } break;
+        default: 
+            generate_random_str(str, len);
+            break;
+    }
+}
+
 void RandomGenerator::generate_random_numer_str(char* str, int len) {
     for(int i = 0; i < len; ++i)
         str[i] = generate_random_int(0, 9) + '0';

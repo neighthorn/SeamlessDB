@@ -92,6 +92,7 @@ where
     and c_nationkey = s_nationkey
     and s_nationkey = n_nationkey
     and n_regionkey = r_regionkey
+    and r_name = ?
     and o_orderdate >= date '2024-01-01' 
     and o_orderdate < date '2024-06-06' + interval '1' year
 */

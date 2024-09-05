@@ -132,6 +132,7 @@ int push_conds(Condition *cond, std::shared_ptr<Plan> plan)
     return false;
 }
 
+// 查找table表的scan plan并返回，同时将table表加入到已经join到表队列joined_tables
 std::shared_ptr<Plan> pop_scan(int *scantbl, std::string table, std::vector<std::string> &joined_tables, 
                 std::vector<std::shared_ptr<Plan>> plans)
 {
@@ -169,7 +170,9 @@ std::shared_ptr<Plan> Planner::physical_optimization(std::shared_ptr<Query> quer
     return plan;
 }
 
-
+static std::map<CompOp, CompOp> swap_op = {
+                        {OP_EQ, OP_EQ}, {OP_NE, OP_NE}, {OP_LT, OP_GT}, {OP_GT, OP_LT}, {OP_LE, OP_GE}, {OP_GE, OP_LE},
+                    };
 
 std::shared_ptr<Plan> Planner::make_one_rel(std::shared_ptr<Query> query)
 {
@@ -202,90 +205,128 @@ std::shared_ptr<Plan> Planner::make_one_rel(std::shared_ptr<Query> query)
     // 获取where条件
     auto conds = std::move(query->conds);
     std::shared_ptr<Plan> table_join_executors;
-    
-    int scantbl[tables.size()];
-    for(size_t i = 0; i < tables.size(); i++)
-    {
-        scantbl[i] = -1;
-    }
-    // 假设在ast中已经添加了jointree，这里需要修改的逻辑是，先处理jointree，然后再考虑剩下的部分
-    if(conds.size() >= 1)
-    {
-        // 有连接条件
+    table_join_executors = table_scan_executors[0];
 
-        // 根据连接条件，生成第一层join
-        std::vector<std::string> joined_tables(tables.size());
+    for(size_t i = 1; i < tables.size(); ++i) {
         auto it = conds.begin();
-        while (it != conds.end()) {
-            std::shared_ptr<Plan> left , right;
-            left = pop_scan(scantbl, it->lhs_col.tab_name, joined_tables, table_scan_executors);
-            right = pop_scan(scantbl, it->rhs_col.tab_name, joined_tables, table_scan_executors);
-            std::vector<Condition> join_conds{*it};
-            //建立join
-            table_join_executors = std::make_shared<JoinPlan>(T_NestLoop, current_sql_id_, current_plan_id_++, std::move(left), std::move(right), join_conds);
-            it = conds.erase(it);
-            break;
-        }
-        // 根据连接条件，生成第2-n层join
-        it = conds.begin();
-        while (it != conds.end()) {
-            std::shared_ptr<Plan> left_need_to_join_executors = nullptr;
-            std::shared_ptr<Plan> right_need_to_join_executors = nullptr;
-            bool isneedreverse = false;
-            if (std::find(joined_tables.begin(), joined_tables.end(), it->lhs_col.tab_name) == joined_tables.end()) {
-                left_need_to_join_executors = pop_scan(scantbl, it->lhs_col.tab_name, joined_tables, table_scan_executors);
-                isneedreverse = true;
-            }
-            if (std::find(joined_tables.begin(), joined_tables.end(), it->rhs_col.tab_name) == joined_tables.end()) {
-                right_need_to_join_executors = pop_scan(scantbl, it->rhs_col.tab_name, joined_tables, table_scan_executors);
-            } 
+        std::vector<Condition> join_conds;
 
-            if(left_need_to_join_executors != nullptr && right_need_to_join_executors != nullptr) {
-                std::vector<Condition> join_conds{*it};
-                std::shared_ptr<Plan> temp_join_executors = std::make_shared<JoinPlan>(T_NestLoop, 
-                                                                    current_sql_id_, current_plan_id_++,
-                                                                    std::move(left_need_to_join_executors), 
-                                                                    std::move(right_need_to_join_executors), 
-                                                                    join_conds);
-                table_join_executors = std::make_shared<JoinPlan>(T_NestLoop, 
-                                                                    current_sql_id_, current_plan_id_++,
-                                                                    std::move(temp_join_executors), 
-                                                                    std::move(table_join_executors), 
-                                                                    std::vector<Condition>());
-            } else if(left_need_to_join_executors != nullptr || right_need_to_join_executors != nullptr) {
-                if(isneedreverse) {
-                    std::map<CompOp, CompOp> swap_op = {
-                        {OP_EQ, OP_EQ}, {OP_NE, OP_NE}, {OP_LT, OP_GT}, {OP_GT, OP_LT}, {OP_LE, OP_GE}, {OP_GE, OP_LE},
-                    };
+        // 找到当前待连接表(tables[i])的连接条件
+        while(it != conds.end()) {
+            if(it->lhs_col.tab_name == tables[i]) {
+                // rhs是已经join了的表（左子树）
+                if(std::find(tables.begin(), tables.begin() + i, it->rhs_col.tab_name) != tables.end()) {
+                    // 此时需要将条件反转，即待连接表上的谓词放到右边
                     std::swap(it->lhs_col, it->rhs_col);
                     it->op = swap_op.at(it->op);
-                    right_need_to_join_executors = std::move(left_need_to_join_executors);
-                }
-                std::vector<Condition> join_conds{*it};
-                table_join_executors = std::make_shared<JoinPlan>(T_NestLoop, 
-                                                                    current_sql_id_, current_plan_id_++,
-                                                                    std::move(table_join_executors),
-                                                                    std::move(right_need_to_join_executors), 
-                                                                    join_conds);
-            } else {
-                push_conds(std::move(&(*it)), table_join_executors);
-            }
-            it = conds.erase(it);
-        }
-    } else {
-        table_join_executors = table_scan_executors[0];
-        scantbl[0] = 1;
-    }
 
-    //连接剩余表
-    for (size_t i = 0; i < tables.size(); i++) {
-        if(scantbl[i] == -1) {
-            table_join_executors = std::make_shared<JoinPlan>(T_NestLoop, 
-                                                    current_sql_id_, current_plan_id_++,
-                                                    std::move(table_scan_executors[i]), 
-                                                    std::move(table_join_executors), std::vector<Condition>());
+                    join_conds.push_back(*it);
+                
+                    it = conds.erase(it);
+                    break;
+                }
+            } 
+            else if(it->rhs_col.tab_name == tables[i]) {
+                if(std::find(tables.begin(), tables.begin() + i, it->lhs_col.tab_name) != tables.end()) {
+                    join_conds.push_back(*it);
+                    it = conds.erase(it);
+                    break;
+                }
+            }
+
+            ++it;
         }
+
+        table_join_executors = std::make_shared<JoinPlan>(T_NestLoop, 
+                                                        current_sql_id_, current_plan_id_++, 
+                                                        std::move(table_join_executors), 
+                                                        std::move(table_scan_executors[i]), 
+                                                        join_conds);
     }
+    
+    // int scantbl[tables.size()]; // 标记是否已经被加入到了算子树中
+    // for(size_t i = 0; i < tables.size(); i++)
+    // {
+    //     scantbl[i] = -1;
+    // }
+    // // 假设在ast中已经添加了jointree，这里需要修改的逻辑是，先处理jointree，然后再考虑剩下的部分
+    // if(conds.size() >= 1)
+    // {
+    //     // 有连接条件
+
+    //     // 根据连接条件，生成第一层join
+    //     std::vector<std::string> joined_tables(tables.size());
+    //     auto it = conds.begin();
+    //     while (it != conds.end()) {
+    //         std::shared_ptr<Plan> left , right;
+    //         left = pop_scan(scantbl, it->lhs_col.tab_name, joined_tables, table_scan_executors);
+    //         right = pop_scan(scantbl, it->rhs_col.tab_name, joined_tables, table_scan_executors);
+    //         std::vector<Condition> join_conds{*it};
+    //         //建立join
+    //         table_join_executors = std::make_shared<JoinPlan>(T_NestLoop, current_sql_id_, current_plan_id_++, std::move(left), std::move(right), join_conds);
+    //         it = conds.erase(it);
+    //         break;
+    //     }
+    //     // 根据连接条件，生成第2-n层join
+    //     it = conds.begin();
+    //     while (it != conds.end()) {
+    //         std::shared_ptr<Plan> left_need_to_join_executors = nullptr;
+    //         std::shared_ptr<Plan> right_need_to_join_executors = nullptr;
+    //         bool isneedreverse = false;
+    //         if (std::find(joined_tables.begin(), joined_tables.end(), it->lhs_col.tab_name) == joined_tables.end()) {
+    //             left_need_to_join_executors = pop_scan(scantbl, it->lhs_col.tab_name, joined_tables, table_scan_executors);
+    //             isneedreverse = true;
+    //         }
+    //         if (std::find(joined_tables.begin(), joined_tables.end(), it->rhs_col.tab_name) == joined_tables.end()) {
+    //             right_need_to_join_executors = pop_scan(scantbl, it->rhs_col.tab_name, joined_tables, table_scan_executors);
+    //         } 
+
+    //         if(left_need_to_join_executors != nullptr && right_need_to_join_executors != nullptr) {
+    //             std::vector<Condition> join_conds{*it};
+    //             std::shared_ptr<Plan> temp_join_executors = std::make_shared<JoinPlan>(T_NestLoop, 
+    //                                                                 current_sql_id_, current_plan_id_++,
+    //                                                                 std::move(left_need_to_join_executors), 
+    //                                                                 std::move(right_need_to_join_executors), 
+    //                                                                 join_conds);
+    //             table_join_executors = std::make_shared<JoinPlan>(T_NestLoop, 
+    //                                                                 current_sql_id_, current_plan_id_++,
+    //                                                                 std::move(temp_join_executors), 
+    //                                                                 std::move(table_join_executors), 
+    //                                                                 std::vector<Condition>());
+    //         } else if(left_need_to_join_executors != nullptr || right_need_to_join_executors != nullptr) {
+    //             if(isneedreverse) {
+    //                 std::map<CompOp, CompOp> swap_op = {
+    //                     {OP_EQ, OP_EQ}, {OP_NE, OP_NE}, {OP_LT, OP_GT}, {OP_GT, OP_LT}, {OP_LE, OP_GE}, {OP_GE, OP_LE},
+    //                 };
+    //                 std::swap(it->lhs_col, it->rhs_col);
+    //                 it->op = swap_op.at(it->op);
+    //                 right_need_to_join_executors = std::move(left_need_to_join_executors);
+    //             }
+    //             std::vector<Condition> join_conds{*it};
+    //             table_join_executors = std::make_shared<JoinPlan>(T_NestLoop, 
+    //                                                                 current_sql_id_, current_plan_id_++,
+    //                                                                 std::move(table_join_executors),
+    //                                                                 std::move(right_need_to_join_executors), 
+    //                                                                 join_conds);
+    //         } else {
+    //             push_conds(std::move(&(*it)), table_join_executors);
+    //         }
+    //         it = conds.erase(it);
+    //     }
+    // } else {
+    //     table_join_executors = table_scan_executors[0];
+    //     scantbl[0] = 1;
+    // }
+
+    // //连接剩余表
+    // for (size_t i = 0; i < tables.size(); i++) {
+    //     if(scantbl[i] == -1) {
+    //         table_join_executors = std::make_shared<JoinPlan>(T_NestLoop, 
+    //                                                 current_sql_id_, current_plan_id_++,
+    //                                                 std::move(table_scan_executors[i]), 
+    //                                                 std::move(table_join_executors), std::vector<Condition>());
+    //     }
+    // }
 
     return table_join_executors;
 }

@@ -80,13 +80,14 @@ namespace storage_service {
         /**
          * TODO: 优化：这里应该把最新的page放在storage节点的buffer_pool里面，从buffer里面读而不是从磁盘读
         */
+    //    std::cout << "page request: pageid={" << request->page_id()[0].table_id() << "," << request->page_id()[0].page_no() << "\n";
 
         for(int i = 0; i < request->page_id().size(); ++i) {
             int lsn = request->latest_lsn()[i];
             int table_id = request->page_id()[i].table_id();
             // int fd = disk_manager_->get_table_fd(table_id);
             int page_no = request->page_id()[i].page_no();
-            // std::cout << "table_id: " << table_id << ", page_id: " << request->page_id()[i].page_no() << ", lsn: " << lsn << "\n";
+            std::cout << "table_id: " << table_id << ", page_id: " << request->page_id()[i].page_no() << ", lsn: " << lsn << "\n";
             char data[PAGE_SIZE];
             // disk_manager_->read_page(fd, page_no, data, PAGE_SIZE);
             while(lsn > share_status_->current_replay_lsn_) {

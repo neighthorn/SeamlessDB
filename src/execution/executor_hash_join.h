@@ -58,22 +58,18 @@ public:
 
     void beginTuple() override {
         if(!initialized_) {
-            std::cout << "HashJoinExecutor:: begin left->beginTuple()\n";
+            std::unique_ptr<Record> left_rec;
+            char* left_key = new char[join_key_size_];
+            int offset;
+
             left_->beginTuple();
             if(left_->is_end()) {
                 is_end_ = true;
                 return;
             }
 
-            char* left_key = new char[join_key_size_];
-            int offset;
-            std::cout << "HashJoinExecutor:: finish left->beginTuple()\n";
-
-            while(!left_->is_end()) {
-                left_->nextTuple();
-                if(left_->is_end()) break;
-
-                auto rec = left_->Next();
+            for(;!left_->is_end(); left_->nextTuple()) {
+                left_rec = left_->Next();
                 memset(left_key, 0, join_key_size_);
                 offset = 0;
 
@@ -81,13 +77,13 @@ public:
                 for(const auto& cond: fed_conds_) {
                     auto left_cols = left_->cols();
                     auto left_col = *(left_->get_col(left_cols, cond.lhs_col));
-                    auto left_value = fetch_value(rec, left_col);
+                    auto left_value = fetch_value(left_rec, left_col);
                     memcpy(left_key + offset, left_value.raw->data, left_col.len);
                     offset += left_col.len;
                 }
                 assert(offset == join_key_size_);
 
-                hash_table_[std::string(left_key, join_key_size_)].push_back(std::move(rec));
+                hash_table_[std::string(left_key, join_key_size_)].push_back(std::move(left_rec));
             }
 
             initialized_ = true;

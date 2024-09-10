@@ -92,7 +92,7 @@ where
     and c_nationkey = s_nationkey
     and s_nationkey = n_nationkey
     and n_regionkey = r_regionkey
-    and r_name = ?
+    and r_name = 'AFRICA'
     and o_orderdate >= date '2024-01-01' 
     and o_orderdate < date '2024-06-06' + interval '1' year
 */
@@ -105,7 +105,7 @@ public:
         RandomGenerator::generate_random_str(lower_orderdate, Clock::DATETIME_SIZE + 1);
         RandomGenerator::generate_random_str(upper_orderdate, Clock::DATETIME_SIZE + 1);
 
-        std::string sql = "select n_name, l_extendedprice, l_discount from customer, orders, lineitem, supplier, nation, region where c_custkey = o_custkey and l_orderkey = o_orderkey and l_suppkey = s_suppkey and c_nationkey = s_nationkey and s_nationkey = n_nationkey and n_regionkey = r_regionkey and o_orderdate >= \'" + std::string(lower_orderdate, Clock::DATETIME_SIZE + 1) + "\' and o_orderdate < \'" + std::string(upper_orderdate, Clock::DATETIME_SIZE + 1) + "\';";
+        std::string sql = "select n_name, l_extendedprice, l_discount from customer, orders, lineitem, supplier, nation, region where c_custkey = o_custkey and l_orderkey = o_orderkey and l_suppkey = s_suppkey and c_nationkey = s_nationkey and s_nationkey = n_nationkey and n_regionkey = r_regionkey and r_name = \'" + std::string("AFRICA") +  "\' and o_orderdate >= \'" + std::string(lower_orderdate, Clock::DATETIME_SIZE + 1) + "\' and o_orderdate < \'" + std::string(upper_orderdate, Clock::DATETIME_SIZE + 1) + "\';";
         queries.push_back(sql);
     }
 };

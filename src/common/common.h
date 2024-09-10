@@ -315,6 +315,7 @@ typedef enum PlanTag{
     T_SeqScan,
     T_IndexScan,
     T_NestLoop,
+    T_HashJoin,
     T_Sort,
     T_Projection
 } PlanTag;

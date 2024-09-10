@@ -19,7 +19,7 @@
         "thread_num": 1,
         "workload": "tpch",
         "record_num": 1,
-        "state_open": 1,
+        "state_open": 0,
         "state_theta": 0.5,
         "buffer_pool_size": 1310720,
         "src_scale_factor": 1.0,

@@ -133,9 +133,13 @@ class IxManager {
     // 注意这里打开文件，创建并返回了index file handle的指针
     std::unique_ptr<IxIndexHandle> open_index(const std::string &filename, const std::vector<ColMeta>& index_cols, const TabMeta& table_meta) {
         std::string ix_name = get_index_name(filename, index_cols);
-        // std::cout << "ix_name: " << ix_name << "\n";
-        int fd = disk_manager_->open_file(ix_name);
+        
+        int fd;
+        
+        fd = disk_manager_->open_file(ix_name);
+        std::cout << "open index, ix_name: " << ix_name << ", fd: " << fd << "\n";
         disk_manager_->set_table_fd(table_meta.table_id_, fd);
+        
         // std::cout << "set table " << table_meta.table_id_ << "'s fd as " << fd << "\n";
         return std::make_unique<IxIndexHandle>(disk_manager_, buffer_pool_manager_, fd, table_meta);
     }
@@ -150,11 +154,30 @@ class IxManager {
 
     // no use
     void close_index(const IxIndexHandle *ih) {
-        char* data = new char[ih->file_hdr_->tot_len_];
-        ih->file_hdr_->serialize(data);
-        disk_manager_->write_page(ih->fd_, IX_FILE_HDR_PAGE, data, ih->file_hdr_->tot_len_);
+        // 由于在更新file_hdr的时候直接更新的数据结构，没有更新页面，所以要最后把数据结构写到页面中
+        Page* page = buffer_pool_manager_->fetch_page(PageId{.table_id = ih->table_meta_.table_id_, .page_no = IX_FILE_HDR_PAGE});
+        ih->file_hdr_->serialize(page->get_data());
+
         // 缓冲区的所有页刷到磁盘，注意这句话必须写在close_file前面
         buffer_pool_manager_->flush_all_pages(ih->table_meta_.table_id_);
+
+        
+        // char* data = new char[ih->file_hdr_->tot_len_];
+        // ih->file_hdr_->serialize(data);
+        // // std::cout << "ih->fd_: " << ih->fd_ << ", disk_manager.get_fd: " << disk_manager_->get_table_fd(ih->table_meta_.table_id_) << "\n";
+        // disk_manager_->write_page(ih->fd_, IX_FILE_HDR_PAGE, data, ih->file_hdr_->tot_len_);
+        
+        // char* read_data = new char[ih->file_hdr_->tot_len_];
+        // disk_manager_->read_page(ih->fd_, IX_FILE_HDR_PAGE, read_data, ih->file_hdr_->tot_len_);
+        // IxFileHdr* file_hdr = new IxFileHdr();
+        // std::cout << "****************************\n";
+        // std::cout << "read from disk:\n";
+        // file_hdr->deserialize(read_data);
+        // std::cout << "\nread from buffer:\n";
+        
+        // file_hdr->deserialize(page->get_data());
+        // std::cout << "****************************\n";
+        
         disk_manager_->close_file(ih->fd_);
     }
 };

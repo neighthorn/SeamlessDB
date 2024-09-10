@@ -50,10 +50,12 @@ public:
     }
 
     void serialize(char* dest) {
+        std::cout << "serialize ix_file_hdr\n";
         int offset = 0;
         memcpy(dest + offset, &tot_len_, sizeof(int));
         offset += sizeof(int);
         memcpy(dest + offset, &num_pages_, sizeof(int));
+        std::cout << "num_pages: " << num_pages_ << "\n";
         offset += sizeof(int);
         memcpy(dest + offset, &root_page_, sizeof(page_id_t));
         offset += sizeof(page_id_t);
@@ -78,10 +80,13 @@ public:
         memcpy(dest + offset, &max_number_of_records_, sizeof(int));
         offset += sizeof(int);
         memcpy(dest + offset, &first_leaf_, sizeof(page_id_t));
+        std::cout << "first leaf: " << first_leaf_ << "\n";
         offset += sizeof(page_id_t);
         memcpy(dest + offset, &last_leaf_, sizeof(page_id_t));
+        std::cout << "last_leaf: " << last_leaf_ << "\n";
         offset += sizeof(page_id_t);
         memcpy(dest + offset, &next_record_no_, sizeof(int32_t));
+        std::cout << "next_record_no: " << next_record_no_ << "\n";
         offset += sizeof(int32_t);
         assert(offset == tot_len_);
     }
@@ -92,8 +97,10 @@ public:
         std::cout << "tot_len: " << tot_len_ << "\n"; 
         offset += sizeof(int);
         num_pages_ = *reinterpret_cast<const int*>(src + offset);
+        std::cout << "num_pages: " << num_pages_ << "\n";
         offset += sizeof(int);
         root_page_ = *reinterpret_cast<const page_id_t*>(src + offset);
+        std::cout << "root_page: " << root_page_ << "\n";
         offset += sizeof(page_id_t);
         col_num_ = *reinterpret_cast<const int*>(src + offset);
         offset += sizeof(int);
@@ -121,10 +128,13 @@ public:
         max_number_of_records_ = *reinterpret_cast<const int*>(src + offset);
         offset += sizeof(int);
         first_leaf_ = *reinterpret_cast<const page_id_t*>(src+ offset);
+        std::cout << "first_leaf: " << first_leaf_ << "\n";
         offset += sizeof(page_id_t);
         last_leaf_ = *reinterpret_cast<const page_id_t*>(src + offset);
+        std::cout << "last_leaf: " << last_leaf_ << "\n";
         offset += sizeof(page_id_t);
         next_record_no_ = *reinterpret_cast<const int32_t*>(src + offset);
+        std::cout << "next_record_no: " << next_record_no_ << "\n";
         offset += sizeof(int32_t);
         assert(offset == tot_len_);
     }

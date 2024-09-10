@@ -9,11 +9,14 @@ void TPCHWK::create_table() {
     std::string db_name = "db_tpch";
     struct stat st;
     if(stat(db_name.c_str(), &st) == 0 && S_ISDIR(st.st_mode)) {
+        std::cout << "directory already exists, just load meta\n";
        chdir(db_name.c_str());
        load_meta();
        return;
     }
     else {
+        std::cout << "make new directory\n";
+
         std::string cmd = "mkdir " + db_name;
         system(cmd.c_str());
         chdir(db_name.c_str());
@@ -41,6 +44,7 @@ void TPCHWK::create_table() {
     part_supp->create_table(sm_mgr_);
     TPCH_TABLE::Lineitem    *lineitem = new TPCH_TABLE::Lineitem();
     lineitem->create_table(sm_mgr_);
+    std::cout << "finish create table\n";
 }
 
 /*
@@ -95,6 +99,7 @@ void TPCHWK::load_data() {
         flush index
     */
 
+   std::cout << "flush index:\n";
     tpch_flush_index(region);
     tpch_flush_index(nation);
     tpch_flush_index(part);
@@ -111,6 +116,7 @@ void TPCHWK::load_data() {
     tpch_reload_index(nation);
     tpch_reload_index(part);
     tpch_reload_index(customer);
+    std::cout << "tpch begin reload orders\n";
     tpch_reload_index(orders);
     tpch_reload_index(supplier);
     tpch_reload_index(partsupp);
@@ -141,6 +147,7 @@ void TPCHWK::load_meta() {
 
     std::ifstream ifs(DB_META_NAME);
     ifs >> sm_mgr_->db_;
+    std::cout << "load region index\n";
     load_index(region);
     load_index(nation);
     load_index(part);

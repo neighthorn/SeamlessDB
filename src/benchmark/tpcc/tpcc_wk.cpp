@@ -8,7 +8,8 @@ void TPCCWK::create_table() {
     std::string db_name = "db_tpcc";
     struct stat st;
     if(stat(db_name.c_str(), &st) == 0 && S_ISDIR(st.st_mode)) {
-       chdir(db_name.c_str());
+        std::cout << "exist dir, just load meta\n";
+    //    chdir(db_name.c_str());
        load_meta();
        return;
     }

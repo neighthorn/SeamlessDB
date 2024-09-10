@@ -106,9 +106,14 @@ Page* BufferPool::fetch_page(PageId page_id) {
     // std::cout << "This line is number: " << __FILE__  << ":" << __LINE__ << std::endl;
     std::scoped_lock lock{latch_};
 
+    if(page_id.page_no == 0)
+        std::cout << "try to fetch page, pageid={tabel_id=" << page_id.table_id << ",page_no=" << page_id.page_no << "}\n";
+
     auto iter = page_table_.find(page_id);
     // 1 该page在页表中存在（说明该page在缓冲池中）
     if (iter != page_table_.end()) {
+        if(page_id.page_no == 0)
+            std::cout << "page found in buffer\n";
         frame_id_t frame_id = iter->second;  // iter是pair类型，其second是page_id对应的frame_id
         Page *page = &pages_[frame_id];      // 由frame_id得到page
         replacer_->pin(frame_id);            // pin it
@@ -116,6 +121,8 @@ Page* BufferPool::fetch_page(PageId page_id) {
         // std::cout << "[PIN][PageNo: " << page_id.page_no << "]" << std::endl;
         return page;
     }
+    if(page_id.page_no == 0)
+        std::cout << "page not found in buffer\n";
     // 2 该page在页表中不存在（说明该page不在缓冲池中，而在磁盘中）
     frame_id_t frame_id = INVALID_FRAME_ID;
     // 2.1 没有找到victim page

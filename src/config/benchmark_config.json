@@ -1,0 +1,8 @@
+{
+    "comparative_exp": {
+        "join_num": 3,
+        "cost_model": "SeamlessDB",
+        "break_percentage": 50,
+        "normal_time": 100
+    }
+}

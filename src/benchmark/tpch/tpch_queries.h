@@ -72,7 +72,7 @@ public:
     void generate_new_txn() override {
 
         queries.push_back("begin;");
-        queries.push_back("select * from orders, customer, lineitem where o_orderkey < 20000 and c_custkey < 20000 and l_orderkey < 10000 and c_custkey = o_custkey and l_orderkey = o_orderkey;");
+        queries.push_back("select l_orderkey, o_orderkey, l_discount, l_extendedprice from orders, customer, lineitem where o_orderkey < 20000 and c_custkey < 20000 and l_orderkey < 10000 and c_custkey = o_custkey and l_orderkey = o_orderkey;");
         queries.push_back("commit;");
 
         return ;

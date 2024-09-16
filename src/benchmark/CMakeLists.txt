@@ -8,3 +8,10 @@ set(WORKLOAD_SRC
 
 add_library(workload ${WORKLOAD_SRC})
 target_link_libraries(workload index system)
+
+set(COMP_EXP_SRC
+    tpch/comparative_exp.cpp
+)
+
+add_library(comp_exp ${COMP_EXP_SRC})
+target_link_libraries(comp_exp execution)

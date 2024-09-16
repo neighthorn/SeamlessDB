@@ -42,6 +42,26 @@ public:
         pkeys.emplace_back("r_regionkey");
         sm_mgr->create_table(table_name, col_defs, pkeys, nullptr);
     }
+    
+    // 为了尽可能避免最后查询结果为空集，非join条件统一用小于符号，join条件统一用等于符号
+    // region比较特殊，r_name查询应该是等值查询，所以region只能出现一次filtercond
+    void get_random_condition(int SF, std::vector<Condition>& index_conds, std::vector<Condition> filter_conds, bool is_index_scan) {
+        if(is_index_scan) {
+            TabCol lhs_col = {.tab_name = "region", .col_name = "r_regionkey"};
+            Value val;
+            val.set_int(RandomGenerator::generate_random_int(1, REGION_NUM));
+            Condition cond = {.lhs_col = std::move(lhs_col), .op = OP_LT, .is_rhs_val = true, .rhs_col = TabCol{}, .rhs_val = val};
+            index_conds.push_back(std::move(cond));
+        }
+        else {
+            TabCol lhs_col = {.tab_name = "region", .col_name = "r_name"};
+            Value val;
+            RandomGenerator::generate_random_str(r_name, 25);
+            val.set_str(std::move(std::string(r_name, 25)));
+            Condition fil_cond = {.lhs_col = std::move(lhs_col), .op = OP_EQ, .is_rhs_val = true, .rhs_col = TabCol{}, .rhs_val = val};
+            filter_conds.push_back(std::move(fil_cond));
+        }
+    }
 
     Region() {}
 
@@ -59,7 +79,8 @@ public:
             /*
                 r_name, r_comment
             */
-            RandomGenerator::generate_random_str(r_name, 25);
+            // RandomGenerator::generate_random_str(r_name, 25);
+            RandomGenerator::get_region_from_region_key(r_name, 25, r_regionkey);
             RandomGenerator::generate_random_str(r_comment, 152);
 
             memset(record.record_, 0, record.data_length_ + sizeof(RecordHdr));
@@ -126,18 +147,62 @@ public:
         std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
     }
 
+    void get_random_condition(int SF, std::vector<Condition>& index_conds, std::vector<Condition> filter_conds, bool is_index_scan) {
+        int nation_key;
+        if(is_index_scan) {
+            TabCol lhs_col = {.tab_name = "nation", .col_name = "n_nationkey"};
+            Value val;
+            nation_key = RandomGenerator::generate_random_int(1, REGION_NUM * ONE_REGION_PER_NATION);
+            val.set_int(nation_key);
+            Condition cond = {.lhs_col = std::move(lhs_col), .op = OP_LT, .is_rhs_val = true, .rhs_col = TabCol{}, .rhs_val = val};
+            index_conds.push_back(std::move(cond));
+        }
+
+        int col_index = RandomGenerator::generate_random_int(1, 2);
+        switch(col_index) {
+            case 1: {
+                TabCol lhs_col = {.tab_name = "nation", .col_name = "n_name"};
+                Value val;
+                int rnd = RandomGenerator::generate_random_int(1, 5);
+                int rnd2 = RandomGenerator::generate_random_int(1, 5);
+                RandomGenerator::get_nation_from_region_nation_key(rnd, rnd2, n_name);
+                val.set_str(std::move(std::string(n_name, 25)));
+                Condition cond = {.lhs_col = std::move(lhs_col), .op = OP_EQ, .is_rhs_val = true, .rhs_col = TabCol{}, .rhs_val = val};
+                filter_conds.push_back(std::move(cond));
+            } break;
+            case 2: {
+                TabCol lhs_col = {.tab_name = "nation", .col_name = "n_regionkey"};
+                Value val;
+                if(is_index_scan) {
+                    val.set_int(nation_key / 5 + 1);
+                }
+                else {
+                    val.set_int(RandomGenerator::generate_random_int(1, 5));
+                }
+                Condition cond = {.lhs_col = std::move(lhs_col), .op = OP_LT, .is_rhs_val = true, .rhs_col = TabCol{}, .rhs_val = val};
+                filter_conds.push_back(std::move(cond));
+            } break;
+            default:
+            break;
+        }
+    }
+
     void generate_table_data(int sf, Transaction* txn, SmManager* sm_mgr, IxManager* ix_mgr) {
         auto tab_meta = sm_mgr->db_.get_table("nation");
         auto index_handle = sm_mgr->primary_index_.at("nation").get();
         Record record(tab_meta.record_length_);
 
-        int nationkey_max = REGION_NUM * ONE_REGION_PER_NATION;
+        // int nationkey_max = REGION_NUM * ONE_REGION_PER_NATION;
+        n_nationkey = 0;
         for(n_regionkey = 1; n_regionkey <= REGION_NUM; ++n_regionkey) {
-            for(n_nationkey = 1; n_nationkey <= nationkey_max; ++n_nationkey) {
+            for(int cnt = 1; cnt <= ONE_REGION_PER_NATION; ++cnt) {
+                n_nationkey ++;
+
                 /*
                     random generate: n_name, n_comment
                 */
-                RandomGenerator::generate_random_str(n_name, 25);
+               RandomGenerator::get_nation_from_region_nation_key(n_regionkey, cnt, n_name);
+                // RandomGenerator::generate_random_str(n_name, 25);
                 RandomGenerator::generate_random_str(n_comment, 152);
 
                 /*
@@ -227,6 +292,16 @@ public:
 
     void print_record() {
         std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
+    }
+
+    void get_random_condition(int SF, std::vector<Condition>& index_conds, std::vector<Condition> filter_conds, bool is_index_scan) {
+        assert(is_index_scan == true);
+        
+        TabCol lhs_col = {.tab_name = "part", .col_name = "p_partkey"};
+        Value val;
+        val.set_int(RandomGenerator::generate_random_int(1, SF * ONE_SF_PER_PART));
+        Condition cond = {.lhs_col = std::move(lhs_col), .op = OP_LT, .is_rhs_val = true, .rhs_col = TabCol{}, .rhs_val = val};
+        index_conds.push_back(std::move(cond));
     }
 
     void generate_table_data(int SF, Transaction* txn, SmManager* sm_mgr, IxManager* ix_mgr) {
@@ -347,6 +422,16 @@ public:
         std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
     }
 
+    void get_random_condition(int SF, std::vector<Condition>& index_conds, std::vector<Condition> filter_conds, bool is_index_scan) {
+        assert(is_index_scan == true);
+        
+        TabCol lhs_col = {.tab_name = "customer", .col_name = "c_custkey"};
+        Value val;
+        val.set_int(RandomGenerator::generate_random_int(1, SF * ONE_SF_PER_CUSTOMER));
+        Condition cond = {.lhs_col = std::move(lhs_col), .op = OP_LT, .is_rhs_val = true, .rhs_col = TabCol{}, .rhs_val = val};
+        index_conds.push_back(std::move(cond));
+    }
+
     void generate_table_data(int SF, Transaction* txn, SmManager* sm_mgr, IxManager* ix_mgr) {
         auto tab_meta = sm_mgr->db_.get_table("customer");
         auto index_handle = sm_mgr->primary_index_.at("customer").get();
@@ -450,7 +535,7 @@ public:
     int     o_custkey;              
     char    o_orderstatus[1]; 
     float   o_totalprice;
-    char    o_orderdate[Clock::DATETIME_SIZE + 1];
+    char    o_orderdate[RandomGenerator::DATE_SIZE + 1];
     char    o_orderpriority[15];
     char    o_clerk[15];
     int     o_shippriority;
@@ -461,10 +546,10 @@ public:
         std::string table_name = "orders";
         std::vector<ColDef> col_defs;
         col_defs.emplace_back(ColDef("o_orderkey", ColType::TYPE_INT, 4));
+        col_defs.emplace_back(ColDef("o_orderdate", ColType::TYPE_STRING, RandomGenerator::DATE_SIZE + 1));
         col_defs.emplace_back(ColDef("o_custkey", ColType::TYPE_INT, 4));
         col_defs.emplace_back(ColDef("o_orderstatus", ColType::TYPE_STRING, 1));
         col_defs.emplace_back(ColDef("o_totalprice", ColType::TYPE_FLOAT, 4));
-        col_defs.emplace_back(ColDef("o_orderdate", ColType::TYPE_STRING, Clock::DATETIME_SIZE + 1));
         col_defs.emplace_back(ColDef("o_orderpriority", ColType::TYPE_STRING, 15));
         col_defs.emplace_back(ColDef("o_clerk", ColType::TYPE_STRING, 15));
         col_defs.emplace_back(ColDef("o_shippriority", ColType::TYPE_INT, 4));
@@ -472,6 +557,8 @@ public:
         
         std::vector<std::string> pkeys;
         pkeys.emplace_back("o_orderkey");
+        pkeys.emplace_back("o_orderdate");
+        pkeys.emplace_back("o_custkey");
         sm_mgr->create_table(table_name, col_defs, pkeys, nullptr);
     }
 
@@ -479,6 +566,23 @@ public:
 
     void print_record() {
         std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
+    }
+
+    void get_random_condition(int SF, std::vector<Condition>& index_conds, std::vector<Condition> filter_conds, bool is_index_scan) {
+        assert(is_index_scan == true);
+        
+        TabCol lhs_col = {.tab_name = "orders", .col_name = "o_orderkey"};
+        Value val;
+        val.set_int(RandomGenerator::generate_random_int(1, SF * ONE_SF_PER_ORDER));
+        Condition cond = {.lhs_col = std::move(lhs_col), .op = OP_LT, .is_rhs_val = true, .rhs_col = TabCol{}, .rhs_val = val};
+        index_conds.push_back(std::move(cond));
+
+        TabCol lhs_col2 = {.tab_name = "orders", .col_name = "o_orderdate"};
+        Value val2;
+        RandomGenerator::generate_random_date(o_orderdate);
+        val2.set_str(std::string(o_orderdate, RandomGenerator::DATE_SIZE));
+        Condition cond2 = {.lhs_col = std::move(lhs_col2), .op = OP_LE, .is_rhs_val = true, .rhs_col = TabCol{}, .rhs_val = val2};
+        index_conds.push_back(std::move(cond2));
     }
 
     void generate_table_data(int SF, Transaction* txn, SmManager* sm_mgr, IxManager* ix_mgr) {
@@ -511,7 +615,8 @@ public:
             o_custkey = RandomGenerator::generate_random_int(1, c_custkey_max);
             RandomGenerator::generate_random_str(o_orderstatus, 1);
             o_totalprice = RandomGenerator::generate_random_float(1, 20000);
-            RandomGenerator::generate_random_str(o_orderdate, Clock::DATETIME_SIZE + 1);
+            // RandomGenerator::generate_random_str(o_orderdate, Clock::DATETIME_SIZE + 1);
+            RandomGenerator::generate_random_date(o_orderdate);
             RandomGenerator::generate_random_str(o_orderpriority, 15);
             RandomGenerator::generate_random_str(o_clerk, 15);
             o_shippriority = RandomGenerator::generate_random_int(1, 20000);
@@ -526,14 +631,14 @@ public:
             
             memcpy(record.raw_data_ + offset, (char *)&o_orderkey, sizeof(int));
             offset += sizeof(int);
+            memcpy(record.raw_data_ + offset, o_orderdate, RandomGenerator::DATE_SIZE + 1);
+            offset += (RandomGenerator::DATE_SIZE + 1);
             memcpy(record.raw_data_ + offset, (char *)&o_custkey, sizeof(int));
             offset += sizeof(int);
             memcpy(record.raw_data_ + offset, o_orderstatus, 1);
             offset += 1;
             memcpy(record.raw_data_ + offset, (char *)&o_totalprice, sizeof(float));
             offset += sizeof(float);
-            memcpy(record.raw_data_ + offset, o_orderdate, Clock::DATETIME_SIZE + 1);
-            offset += (Clock::DATETIME_SIZE + 1);
             memcpy(record.raw_data_ + offset, o_orderpriority, 15);
             offset += 15;
             memcpy(record.raw_data_ + offset, o_clerk, 15);
@@ -612,6 +717,16 @@ public:
 
     void print_record() {
         std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
+    }
+
+    void get_random_condition(int SF, std::vector<Condition>& index_conds, std::vector<Condition> filter_conds, bool is_index_scan) {
+        assert(is_index_scan == true);
+        
+        TabCol lhs_col = {.tab_name = "supplier", .col_name = "s_suppkey"};
+        Value val;
+        val.set_int(RandomGenerator::generate_random_int(1, SF * ONE_SF_PER_SUPPLIER));
+        Condition cond = {.lhs_col = std::move(lhs_col), .op = OP_LT, .is_rhs_val = true, .rhs_col = TabCol{}, .rhs_val = val};
+        index_conds.push_back(std::move(cond));
     }
 
     void generate_table_data(int SF, Transaction* txn, SmManager* sm_mgr, IxManager* ix_mgr) {
@@ -732,6 +847,22 @@ public:
 
     void print_record() {
         std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
+    }
+
+    void get_random_condition(int SF, std::vector<Condition>& index_conds, std::vector<Condition> filter_conds, bool is_index_scan) {
+        assert(is_index_scan == true);
+        
+        TabCol lhs_col = {.tab_name = "partsupp", .col_name = "ps_partkey"};
+        Value val;
+        val.set_int(RandomGenerator::generate_random_int(1, SF * ONE_SF_PER_PART));
+        Condition cond = {.lhs_col = std::move(lhs_col), .op = OP_LT, .is_rhs_val = true, .rhs_col = TabCol{}, .rhs_val = val};
+        index_conds.push_back(std::move(cond));
+
+        TabCol col2 = {.tab_name = "partsupp", .col_name = "ps_suppkey"};
+        Value val2;
+        val2.set_int(RandomGenerator::generate_random_int(1, SF * ONE_SF_PER_SUPPLIER));
+        Condition cond2 = {.lhs_col = std::move(col2), .op = OP_LT, .is_rhs_val = true, .rhs_col = TabCol{}, .rhs_val = val2};
+        index_conds.push_back(std::move(cond2));
     }
 
     void generate_table_data(int SF, Transaction* txn, SmManager* sm_mgr, IxManager* ix_mgr) {
@@ -881,6 +1012,22 @@ public:
 
     void print_record() {
         std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
+    }
+
+    void get_random_condition(int SF, std::vector<Condition>& index_conds, std::vector<Condition> filter_conds, bool is_index_scan) {
+        assert(is_index_scan == true);
+        
+        TabCol lhs_col = {.tab_name = "lineitem", .col_name = "l_orderkey"};
+        Value val;
+        val.set_int(RandomGenerator::generate_random_int(1, SF * ONE_SF_PER_ORDER));
+        Condition cond = {.lhs_col = std::move(lhs_col), .op = OP_LT, .is_rhs_val = true, .rhs_col = TabCol{}, .rhs_val = val};
+        index_conds.push_back(std::move(cond));
+
+        TabCol col2 = {.tab_name = "lineitem", .col_name = "l_linenumber"};
+        Value val2;
+        val2.set_int(RandomGenerator::generate_random_int(1, ONE_ORDER_PER_LINENUM));
+        Condition cond2 = {.lhs_col = std::move(col2), .op = OP_LT, .is_rhs_val = true, .rhs_col = TabCol{}, .rhs_val = val2};
+        index_conds.push_back(std::move(cond2));
     }
 
     void generate_table_data(int SF, Transaction* txn, SmManager* sm_mgr, IxManager* ix_mgr) {

@@ -1,5 +1,7 @@
 #include "random.h"
 #include <cstring>
+#include <string>
+#include <cassert>
 
 int RandomGenerator::generate_random_int(int min, int max) {
     int rand_int;
@@ -50,6 +52,62 @@ int RandomGenerator::get_region_key_from_nation(char* nation) {
         || strstr(nation, "JORDAN") != nullptr || strstr(nation, "SAUDI ARABIA") != nullptr) {
         return 4;
     }
+}
+
+void RandomGenerator::get_nation_from_region_nation_key(int region_key, int nation_key, char* nation) {
+    // 根据 region_key 选择国家
+    switch (region_key) {
+        case 0: // 非洲区域
+            switch (nation_key) {
+                case 1: strcpy(nation, "ALGERIA"); return;
+                case 2: strcpy(nation, "ETHIOPIA"); return;
+                case 3: strcpy(nation, "KENYA"); return;
+                case 4: strcpy(nation, "MOROCCO"); return;
+                case 5: strcpy(nation, "MOZAMBIQUE"); return;
+            }
+            break;
+        case 1: // 美洲区域
+            switch (nation_key) {
+                case 1: strcpy(nation, "ARGENTINA"); return;
+                case 2: strcpy(nation, "BRAZIL"); return;
+                case 3: strcpy(nation, "CANADA"); return;
+                case 4: strcpy(nation, "PERU"); return;
+                case 5: strcpy(nation, "UNITED STATES"); return;
+            }
+            break;
+        case 2: // 亚洲区域
+            switch (nation_key) {
+                case 1: strcpy(nation, "INDIA"); return;
+                case 2: strcpy(nation, "INDONESIA"); return;
+                case 3: strcpy(nation, "JAPAN"); return;
+                case 4: strcpy(nation, "CHINA"); return;
+                case 5: strcpy(nation, "VIETNAM"); return;
+            }
+            break;
+        case 3: // 欧洲区域
+            switch (nation_key) {
+                case 1: strcpy(nation, "FRANCE"); return;
+                case 2: strcpy(nation, "GERMANY"); return;
+                case 3: strcpy(nation, "ROMANIA"); return;
+                case 4: strcpy(nation, "RUSSIA"); return;
+                case 5: strcpy(nation, "UNITED KINGDOM"); return;
+            }
+            break;
+        case 4: // 中东区域
+            switch (nation_key) {
+                case 1: strcpy(nation, "EGYPT"); return;
+                case 2: strcpy(nation, "IRAN"); return;
+                case 3: strcpy(nation, "IRAQ"); return;
+                case 4: strcpy(nation, "JORDAN"); return;
+                case 5: strcpy(nation, "SAUDI ARABIA"); return;
+            }
+            break;
+        default:
+            strcpy(nation, "Invalid region key");
+            return;
+    }
+
+    strcpy(nation, "Invalid region key or nation key");
 }
 
 void RandomGenerator::generate_random_region(char* str, int len) {
@@ -132,4 +190,16 @@ void RandomGenerator::generate_random_lastname(int num, char* name) {
     strcpy(name,n[num/100]);
     strcat(name,n[(num/10)%10]);
     strcat(name,n[num%10]);
+}
+
+void RandomGenerator::generate_random_date(char* str) {
+    memset(str, 0, DATE_SIZE);
+    // 1992-xx-01 ~ 1998-xx-01
+    int year_end = generate_random_int(2, 8);
+    std::string date = "199";
+    date += std::to_string(year_end) + "-";
+    int month = generate_random_int(1, 12);
+    date += std::to_string(month) + "-01";
+    assert(date.length() == DATE_SIZE);
+    memcpy(str, date.c_str(), DATE_SIZE);
 }

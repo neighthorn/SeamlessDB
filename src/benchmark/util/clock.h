@@ -8,6 +8,7 @@ class Clock {
 public:
     virtual ~Clock() {}
 
+    // xxxx-xx-xx
     static const int DATETIME_SIZE = 19;
 
     // now must have at least DATETIME_SIZE+1 bytes.

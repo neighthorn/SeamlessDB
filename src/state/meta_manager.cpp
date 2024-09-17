@@ -19,8 +19,14 @@ MetaManager::MetaManager(const std::string& config_path) {
   if(node_type_ == 0) {
     local_node = cJSON_GetObjectItem(cjson, "rw_node");
   }
-  else {
+  else if(node_type_ == 1){
     local_node = cJSON_GetObjectItem(cjson, "ro_node");
+  }
+  else if(node_type_ == 2) {
+    local_node = cJSON_GetObjectItem(cjson, "comparative_exp");
+  }
+  else {
+    throw RMDBError("Invalid node type.\n");
   }
   
   local_machine_id = (node_id_t)cJSON_GetObjectItem(local_node, "machine_id")->valueint;

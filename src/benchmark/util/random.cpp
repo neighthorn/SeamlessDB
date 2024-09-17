@@ -199,7 +199,10 @@ void RandomGenerator::generate_random_date(char* str) {
     std::string date = "199";
     date += std::to_string(year_end) + "-";
     int month = generate_random_int(1, 12);
-    date += std::to_string(month) + "-01";
+    if(month < 10)
+        date += "0" + std::to_string(month) + "-01";
+    else
+        date += std::to_string(month) + "-01";
     assert(date.length() == DATE_SIZE);
     memcpy(str, date.c_str(), DATE_SIZE);
 }

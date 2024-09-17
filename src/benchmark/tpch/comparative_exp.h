@@ -50,7 +50,8 @@ public:
     TPCH_TABLE::PartSupp* partsupp_;
     TPCH_TABLE::Supplier* supplier_;
 
-    ComparativeExp(int join_num): join_node_num_(join_num) {
+    ComparativeExp(int join_num, int buffer_pool_size, int thread_num): join_node_num_(join_num), 
+        buffer_pool_size_(buffer_pool_size), thread_num_(thread_num) {
         init_db_meta();
         assert(max_table_num == sm_mgr_->db_.tabs_.size());
     }
@@ -101,7 +102,7 @@ public:
     std::shared_ptr<Plan> generate_proj_plan(int tab_id, std::shared_ptr<Plan> scan_plan);
     std::shared_ptr<Plan> generate_total_proj_plan(int table_num, std::shared_ptr<Plan> prev_plan);
 
-    std::shared_ptr<Plan> generate_query_tree();
+    std::shared_ptr<Plan> generate_query_tree(Context* context);
     void normal_exec();
     void re_exec();
 };

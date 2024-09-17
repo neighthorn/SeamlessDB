@@ -13,5 +13,5 @@ set(COMP_EXP_SRC
     tpch/comparative_exp.cpp
 )
 
-add_library(comp_exp ${COMP_EXP_SRC})
-target_link_libraries(comp_exp execution)
+add_executable(comp_exp ${COMP_EXP_SRC})
+target_link_libraries(comp_exp execution pthread planner cjson workload rdma_util multi_version_record -lfmt)

@@ -1,8 +1,21 @@
 {
     "comparative_exp": {
-        "join_num": 3,
+        "machine_id": 3,
+        "node_type": 2,
+        "join_num": 10,
         "cost_model": "SeamlessDB",
+        "local_rdma_port": 12201,
         "break_percentage": 50,
-        "normal_time": 100
+        "normal_time": 100,
+        "buffer_pool_size": 1310720,
+        "thread_num": 1
+    },
+    "remote_state_nodes": {
+        "remote_ips": [
+            "127.0.0.1", "127.0.0.1", "127.0.0.1"
+        ],
+        "remote_ports": [
+            12193, 12193, 12193
+        ]
     }
 }

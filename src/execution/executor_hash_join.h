@@ -114,7 +114,7 @@ public:
         std::unique_ptr<Record> right_rec;
         left_tuples_index_ ++;
         if(left_tuples_index_ < left_iter_->second.size()) {
-            std::cout << "HashJoinExecutor::nextTuple(), left_tuple_index < left_iter->second.size()\n";
+            // std::cout << "HashJoinExecutor::nextTuple(), left_tuple_index < left_iter->second.size()\n";
             return;
         }
 

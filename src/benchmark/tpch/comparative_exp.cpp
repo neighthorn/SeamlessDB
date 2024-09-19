@@ -12,22 +12,22 @@ void ComparativeExp::get_table_cond(int table_id, std::vector<Condition>& filter
             nation_->get_random_condition(1, index_conds, filter_conds, true);
         } break;
         case 2: {
-            part_->get_random_condition(1, index_conds, filter_conds, true);
+            customer_->get_random_condition(1, index_conds, filter_conds, true);
         } break;
         case 3: {
-            customer_->get_random_condition(1, index_conds, filter_conds, true);
+            supplier_->get_random_condition(1, index_conds, filter_conds, true);
         } break;
         case 4: {
             orders_->get_random_condition(1, index_conds, filter_conds, true);
         } break;
         case 5: {
-            supplier_->get_random_condition(1, index_conds, filter_conds, true);
+            lineitem_->get_random_condition(1, index_conds, filter_conds, true);
         } break;
         case 6: {
             partsupp_->get_random_condition(1, index_conds, filter_conds, true);
         } break;
         case 7: {
-            lineitem_->get_random_condition(1, index_conds, filter_conds, true);
+            part_->get_random_condition(1, index_conds, filter_conds, true);
         } break;
         default:
         break;
@@ -45,12 +45,14 @@ std::string ComparativeExp::get_table_join_col(int tab_id) {
             else return std::move("n_nationkey");
         } break;
         case 2: {
-            return std::move("p_partkey");
-        } break;
-        case 3: {
             int rnd = RandomGenerator::generate_random_int(1, 2);
             if(rnd == 1) return std::move("c_custkey");
             else return std::move("c_nationkey");
+        } break;
+        case 3: {
+            int rnd = RandomGenerator::generate_random_int(1, 2);
+            if(rnd == 1) return std::move("s_suppkey");
+            else return std::move("s_nationkey");
         } break;
         case 4: {
             int rnd = RandomGenerator::generate_random_int(1, 2);
@@ -59,8 +61,8 @@ std::string ComparativeExp::get_table_join_col(int tab_id) {
         } break;
         case 5: {
             int rnd = RandomGenerator::generate_random_int(1, 2);
-            if(rnd == 1) return std::move("s_suppkey");
-            else return std::move("s_nationkey");
+            if(rnd == 1) return std::move("l_suppkey");
+            else return std::move("l_orderkey");
         } break;
         case 6: {
             int rnd = RandomGenerator::generate_random_int(1, 2);
@@ -68,22 +70,170 @@ std::string ComparativeExp::get_table_join_col(int tab_id) {
             else return std::move("ps_partkey");
         } break;
         case 7: {
-            int rnd = RandomGenerator::generate_random_int(1, 2);
-            if(rnd == 1) return std::move("l_suppkey");
-            else return std::move("l_orderkey");
+            return std::move("p_partkey");
         } break;
         default:
         break;
     }
 }
 
-void ComparativeExp::get_join_cond(int left_tab_id, int right_tab_id, std::vector<Condition>& join_conds) {
+// void ComparativeExp::get_join_cond(int left_tab_id, int right_tab_id, std::vector<Condition>& join_conds) {
+//     Condition cond;
+//     cond.is_rhs_val = false;
+//     cond.lhs_col = TabCol{.tab_name = tables[left_tab_id], .col_name = std::move(get_table_join_col(left_tab_id))};
+//     cond.rhs_col = TabCol{.tab_name = tables[right_tab_id], .col_name = std::move(get_table_join_col(right_tab_id))};
+//     cond.op = OP_EQ;
+//     join_conds.push_back(std::move(cond));
+// }
+
+#define make_lhs_col(left_tab_id, left_col) cond.lhs_col = TabCol{.tab_name = tables[left_tab_id], .col_name = left_col};
+#define make_rhs_col(right_tab_id, right_col) cond.rhs_col = TabCol{.tab_name = tables[right_tab_id], .col_name = right_col};
+
+int ComparativeExp::get_join_cond(int left_table_range, int right_tab_id, std::vector<Condition>& join_conds) {
+    left_table_range = std::min(left_table_range, 7);
     Condition cond;
     cond.is_rhs_val = false;
-    cond.lhs_col = TabCol{.tab_name = tables[left_tab_id], .col_name = std::move(get_table_join_col(left_tab_id))};
-    cond.rhs_col = TabCol{.tab_name = tables[right_tab_id], .col_name = std::move(get_table_join_col(right_tab_id))};
     cond.op = OP_EQ;
-    join_conds.push_back(std::move(cond));
+    switch(right_tab_id) {
+        case 0: {   // region
+            assert(left_table_range == 7);
+            // r_regionkey = n_regionkey
+            make_lhs_col(1, "n_regionkey");
+            make_rhs_col(0, "r_regionkey");
+            join_conds.push_back(std::move(cond));
+            return 1;
+        } break;
+        case 1: {   // nation
+            int rnd;
+            if(left_table_range == 7) rnd = RandomGenerator::generate_random_int(1, 2);
+            else rnd = 1;
+
+            if(rnd == 1) {
+                make_lhs_col(0, "r_regionkey");
+                make_rhs_col(1, "n_regionkey");
+                join_conds.push_back(std::move(cond));
+                return 0;
+            }
+            else {
+                make_lhs_col(2, "c_nationkey");
+                make_rhs_col(1, "n_nationkey");
+                join_conds.push_back(std::move(cond));
+                return 2;
+            }
+        } break;
+        case 2: {   // customer
+            int rnd;
+            if(left_table_range == 7) rnd = RandomGenerator::generate_random_int(1, 3);
+            else rnd = 1;
+            if(rnd == 1) {
+                make_lhs_col(1, "n_nationkey");
+                make_rhs_col(2, "c_nationkey");
+                join_conds.push_back(std::move(cond));
+                return 1;
+            }
+            else if(rnd == 2) {
+                make_lhs_col(3, "s_nationkey");
+                make_rhs_col(2, "c_nationkey");
+                join_conds.push_back(std::move(cond));
+                return 3;
+            }
+            else {
+                make_lhs_col(4, "o_custkey");
+                make_rhs_col(2, "c_custkey");
+                join_conds.push_back(std::move(cond));
+                return 4;
+            }
+        } break;
+        case 3: {   // supplier
+            int rnd;
+            if(left_table_range == 7) rnd = RandomGenerator::generate_random_int(1, 4);
+            else rnd = RandomGenerator::generate_random_int(1, 2);
+            if(rnd == 1) {
+                make_lhs_col(1, "n_nationkey");
+                make_rhs_col(3, "s_nationkey");
+                join_conds.push_back(std::move(cond));
+                return 1;
+            }
+            else if(rnd == 2) {
+                make_lhs_col(2, "c_nationkey");
+                make_rhs_col(3, "s_nationkey");
+                join_conds.push_back(std::move(cond));
+                return 2;
+            }
+            else if(rnd == 3) {
+                make_lhs_col(5, "l_suppkey");
+                make_rhs_col(3, "s_suppkey");
+                join_conds.push_back(std::move(cond));
+                return 5;
+            }
+            else {
+                make_lhs_col(6, "ps_suppkey");
+                make_rhs_col(3, "s_suppkey");
+                join_conds.push_back(std::move(cond));
+                return 6;
+            }
+        } break;
+        case 4: {   // orders
+            int rnd;
+            if(left_table_range == 7) rnd = RandomGenerator::generate_random_int(1, 2);
+            else rnd = 1;
+            if(rnd == 1) {
+                make_lhs_col(2, "c_custkey");
+                make_rhs_col(4, "o_custkey");
+                join_conds.push_back(std::move(cond));
+                return 2;
+            }
+            else {
+                make_lhs_col(5, "l_orderkey");
+                make_rhs_col(4, "o_orderkey");
+                join_conds.push_back(std::move(cond));
+                return 5;
+            }
+        } break;
+        case 5: {   // lineitem
+            int rnd;
+            rnd = RandomGenerator::generate_random_int(1, 2);
+            if(rnd == 1) {
+                make_lhs_col(3, "s_suppkey");
+                make_rhs_col(5, "l_suppkey");
+                join_conds.push_back(std::move(cond));
+                return 3;
+            }
+            else {
+                make_lhs_col(4, "o_orderkey");
+                make_rhs_col(5, "l_orderkey");
+                join_conds.push_back(std::move(cond));
+                return 4;
+            }
+        } break;
+        case 6: {   // partsupp
+            int rnd;
+            if(left_table_range == 7) rnd = RandomGenerator::generate_random_int(1, 2);
+            else rnd = 1;
+            if(rnd == 1) {
+                make_lhs_col(3, "s_suppkey");
+                make_rhs_col(6, "ps_suppkey");
+                join_conds.push_back(std::move(cond));
+                return 3;
+            }
+            else {
+                make_lhs_col(7, "p_partkey");
+                make_rhs_col(6, "ps_partkey");
+                join_conds.push_back(std::move(cond));
+                return 7;
+            }
+        } break;
+        case 7: {   // part
+            make_lhs_col(6, "ps_partkey");
+            make_rhs_col(7, "p_partkey");
+            join_conds.push_back(std::move(cond));
+            return 6;
+        } break;
+        default:
+        break;
+    }
+    assert(0);
+    return -1;
 }
 
 std::shared_ptr<Plan> ComparativeExp::generate_proj_plan(int tab_id, std::shared_ptr<Plan> scan_plan) {
@@ -103,13 +253,14 @@ std::shared_ptr<Plan> ComparativeExp::generate_proj_plan(int tab_id, std::shared
         } break;
         case 2: {
             std::vector<TabCol> cols;
-            cols.push_back(std::move(TabCol{.tab_name = "part", .col_name = "p_partkey"}));
+            cols.push_back(std::move(TabCol{.tab_name = "customer", .col_name = "c_custkey"}));
+            cols.push_back(std::move(TabCol{.tab_name = "customer", .col_name = "c_nationkey"}));
             return std::make_shared<ProjectionPlan>(T_Projection, std::move(scan_plan), std::move(cols));
         } break;
         case 3: {
             std::vector<TabCol> cols;
-            cols.push_back(std::move(TabCol{.tab_name = "customer", .col_name = "c_custkey"}));
-            cols.push_back(std::move(TabCol{.tab_name = "customer", .col_name = "c_nationkey"}));
+            cols.push_back(std::move(TabCol{.tab_name = "supplier", .col_name = "s_suppkey"}));
+            cols.push_back(std::move(TabCol{.tab_name = "supplier", .col_name = "s_nationkey"}));
             return std::make_shared<ProjectionPlan>(T_Projection, std::move(scan_plan), std::move(cols));
         } break;
         case 4: {
@@ -121,8 +272,9 @@ std::shared_ptr<Plan> ComparativeExp::generate_proj_plan(int tab_id, std::shared
         } break;
         case 5: {
             std::vector<TabCol> cols;
-            cols.push_back(std::move(TabCol{.tab_name = "supplier", .col_name = "s_suppkey"}));
-            cols.push_back(std::move(TabCol{.tab_name = "supplier", .col_name = "s_nationkey"}));
+            cols.push_back(std::move(TabCol{.tab_name = "lineitem", .col_name = "l_suppkey"}));
+            cols.push_back(std::move(TabCol{.tab_name = "lineitem", .col_name = "l_linenumber"}));
+            cols.push_back(std::move(TabCol{.tab_name = "lineitem", .col_name = "l_orderkey"}));
             return std::make_shared<ProjectionPlan>(T_Projection, std::move(scan_plan), std::move(cols));
         } break;
         case 6: {
@@ -133,9 +285,7 @@ std::shared_ptr<Plan> ComparativeExp::generate_proj_plan(int tab_id, std::shared
         } break;
         case 7: {
             std::vector<TabCol> cols;
-            cols.push_back(std::move(TabCol{.tab_name = "lineitem", .col_name = "l_suppkey"}));
-            cols.push_back(std::move(TabCol{.tab_name = "lineitem", .col_name = "l_linenumber"}));
-            cols.push_back(std::move(TabCol{.tab_name = "lineitem", .col_name = "l_orderkey"}));
+            cols.push_back(std::move(TabCol{.tab_name = "part", .col_name = "p_partkey"}));
             return std::make_shared<ProjectionPlan>(T_Projection, std::move(scan_plan), std::move(cols));
         } break;
         default:
@@ -154,24 +304,24 @@ std::shared_ptr<Plan> ComparativeExp::generate_total_proj_plan(int table_num, st
     cols.push_back(std::move(TabCol{.tab_name = "nation", .col_name = "n_regionkey"}));
     cols.push_back(std::move(TabCol{.tab_name = "nation", .col_name = "n_name"}));
     if(table_num == 2) goto FINAL_PROJ_PLAN;
-    cols.push_back(std::move(TabCol{.tab_name = "part", .col_name = "p_partkey"}));
-    if(table_num == 3) goto FINAL_PROJ_PLAN;
     cols.push_back(std::move(TabCol{.tab_name = "customer", .col_name = "c_custkey"}));
     cols.push_back(std::move(TabCol{.tab_name = "customer", .col_name = "c_nationkey"}));
+    if(table_num == 3) goto FINAL_PROJ_PLAN;
+    cols.push_back(std::move(TabCol{.tab_name = "supplier", .col_name = "s_suppkey"}));
+    cols.push_back(std::move(TabCol{.tab_name = "supplier", .col_name = "s_nationkey"}));
     if(table_num == 4) goto FINAL_PROJ_PLAN;
     cols.push_back(std::move(TabCol{.tab_name = "orders", .col_name = "o_orderkey"}));
     cols.push_back(std::move(TabCol{.tab_name = "orders", .col_name = "o_orderdate"}));
     cols.push_back(std::move(TabCol{.tab_name = "orders", .col_name = "o_custkey"}));
     if(table_num == 5) goto FINAL_PROJ_PLAN;
-    cols.push_back(std::move(TabCol{.tab_name = "supplier", .col_name = "s_suppkey"}));
-    cols.push_back(std::move(TabCol{.tab_name = "supplier", .col_name = "s_nationkey"}));
+    cols.push_back(std::move(TabCol{.tab_name = "lineitem", .col_name = "l_suppkey"}));
+    cols.push_back(std::move(TabCol{.tab_name = "lineitem", .col_name = "l_linenumber"}));
+    cols.push_back(std::move(TabCol{.tab_name = "lineitem", .col_name = "l_orderkey"}));
     if(table_num == 6) goto FINAL_PROJ_PLAN;
     cols.push_back(std::move(TabCol{.tab_name = "partsupp", .col_name = "ps_partkey"}));
     cols.push_back(std::move(TabCol{.tab_name = "partsupp", .col_name = "ps_suppkey"}));
     if(table_num == 7) goto FINAL_PROJ_PLAN;
-    cols.push_back(std::move(TabCol{.tab_name = "lineitem", .col_name = "l_suppkey"}));
-    cols.push_back(std::move(TabCol{.tab_name = "lineitem", .col_name = "l_linenumber"}));
-    cols.push_back(std::move(TabCol{.tab_name = "lineitem", .col_name = "l_orderkey"}));
+    cols.push_back(std::move(TabCol{.tab_name = "part", .col_name = "p_partkey"}));
 
 FINAL_PROJ_PLAN:
     return std::make_shared<ProjectionPlan>(T_Projection, std::move(prev_plan), std::move(cols));
@@ -204,8 +354,9 @@ std::shared_ptr<Plan> ComparativeExp::generate_query_tree(Context* context) {
         else {
             // 后面的表直接放到join executor里
             //join_cond为当前表和随机选取前面已经join的表的固定join条件
-            int left_join_table_id = RandomGenerator::generate_random_int(0, i - 1);
-            get_join_cond(left_join_table_id, i, join_conds);
+            // int left_join_table_id = RandomGenerator::generate_random_int(0, i - 1);
+            // get_join_cond(left_join_table_id, i, join_conds);
+            int left_join_table_id = get_join_cond(i - 1, i, join_conds);
             
             auto scan_plan = std::make_shared<ScanPlan>(T_IndexScan, curr_sql_id_, curr_plan_id_ ++, sm_mgr_, tables[i], filter_conds, index_conds);
             auto proj_plan = generate_proj_plan(i, std::move(scan_plan));
@@ -226,13 +377,11 @@ std::shared_ptr<Plan> ComparativeExp::generate_query_tree(Context* context) {
         std::vector<Condition> join_conds;
 
         int right_tab_id = RandomGenerator::generate_random_int(0, max_table_num - 1);
-        int left_tab_id = RandomGenerator::generate_random_int(0, max_table_num - 1);
-        while(left_tab_id == right_tab_id) {
-            left_tab_id = RandomGenerator::generate_random_int(0, max_table_num - 1);
-        }
+        // int left_tab_id = RandomGenerator::generate_random_int(0, max_table_num - 1);
+        int left_tab_id = get_join_cond(i, right_tab_id, join_conds);
 
         get_table_cond(right_tab_id, filter_conds, index_conds);
-        get_join_cond(left_tab_id, right_tab_id, join_conds);
+        // get_join_cond(left_tab_id, right_tab_id, join_conds);
         
         auto scan_plan = std::make_shared<ScanPlan>(T_IndexScan, curr_sql_id_, curr_plan_id_ ++, sm_mgr_, tables[right_tab_id], filter_conds, index_conds);
         auto proj_plan = generate_proj_plan(right_tab_id, std::move(scan_plan));
@@ -242,6 +391,9 @@ std::shared_ptr<Plan> ComparativeExp::generate_query_tree(Context* context) {
 
     // 最后再进行一次projection
     plan = generate_total_proj_plan(join_node_num_ + 1, std::move(plan));
+    
+    plan->format_print();
+
     plan = std::make_shared<DMLPlan>(T_select, std::move(plan), std::string(), 0, std::vector<Value>(),
                                                     std::vector<Condition>(), std::vector<SetClause>());
     context->plan_tag_ = T_select;

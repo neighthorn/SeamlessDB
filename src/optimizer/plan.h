@@ -27,6 +27,7 @@ public:
     virtual int plan_tree_size() = 0;           // get the plan node count
     // virtual void deserialize(char* src);
     // virtual std::shared_ptr<Plan> deserialize(char* src) = 0;
+    virtual void format_print() = 0;
 };
 
 class ScanPlan : public Plan
@@ -45,6 +46,21 @@ class ScanPlan : public Plan
         
         }
         ~ScanPlan(){}
+
+        void format_print() override {
+            if(Plan::tag == T_IndexScan)
+                std::cout << "IndexScan: ";
+            else
+                std::cout << "SeqScan: ";
+            std::cout << tab_name_ << ", conds: ";
+            for(const auto& cond: index_conds_) {
+                std::cout << cond.lhs_col.col_name << CompOpString[cond.op] << cond.rhs_val.int_val << ", ";
+            }
+            for(const auto& cond: filter_conds_) {
+                std::cout << cond.lhs_col.col_name << CompOpString[cond.op] << cond.rhs_val.int_val << ", ";
+            }
+            std::cout << std::endl;
+        }
 
         int plan_tree_size() override {
             return 1;
@@ -166,6 +182,22 @@ class JoinPlan : public Plan
         }
         ~JoinPlan(){}
 
+        void format_print() override {
+            if(Plan::tag == T_NestLoop)
+                std::cout << "BlockNestedLoopJoin: ";
+            else if(Plan::tag == T_HashJoin)
+                std::cout << "HashJoin: ";
+            
+            std::cout << "join_condition: ";
+            for(const auto& cond: conds_) {
+                std::cout << cond.lhs_col.col_name << CompOpString[cond.op] << cond.rhs_col.col_name << ", ";
+            }
+            std::cout << "\n****************left operator*******************\n";
+            left_->format_print();
+            std::cout << "\n----------------right operator------------------\n";
+            right_->format_print();
+        }
+
         int plan_tree_size() override {
             return left_->plan_tree_size() + right_->plan_tree_size() + 1;
         }
@@ -285,6 +317,10 @@ class SortPlan : public Plan
         }
         ~SortPlan(){}
 
+        void format_print() override {
+
+        }
+
         int plan_tree_size() override {
             return 1 + subplan_->plan_tree_size();
         }
@@ -374,6 +410,15 @@ class ProjectionPlan : public Plan
             sel_cols_ = std::move(sel_cols);
         }
         ~ProjectionPlan(){}
+
+        void format_print() override {
+            std::cout << "Projection: ";
+            for(const auto& col: sel_cols_) {
+                std::cout << col.col_name << ", ";
+            }
+            std::cout << std::endl;
+            subplan_->format_print();
+        }
 
         int plan_tree_size() override {
             return 1 + subplan_->plan_tree_size();
@@ -476,6 +521,10 @@ class DMLPlan : public Plan
             values_ = std::move(values);
             conds_ = std::move(conds);
             set_clauses_ = std::move(set_clauses);
+        }
+
+        void format_print() override {
+            subplan_->format_print();
         }
 
         int plan_tree_size() override {
@@ -631,6 +680,10 @@ class DDLPlan : public Plan
         }
         ~DDLPlan(){}
 
+        void format_print() override {
+
+        }
+
         int plan_tree_size() override {
             return 1;
         }
@@ -761,6 +814,10 @@ class OtherPlan : public Plan
             tab_name_ = std::move(tab_name);            
         }
         ~OtherPlan(){}
+
+        void format_print() override {
+            
+        }
 
         int plan_tree_size() override {
             return 1;

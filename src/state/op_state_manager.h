@@ -208,4 +208,6 @@ private:
     */
     void write_op_checkpoint_meta();
 
+    void generate_suspend_plan_for_query_tree(int sql_id);
+
 };

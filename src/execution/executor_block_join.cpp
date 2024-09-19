@@ -10,6 +10,7 @@
 #include "debug_log.h"
 #include "errors.h"
 #include "common/config.h"
+#include "executor_hash_join.h"
 
 /* 
     Join Block
@@ -452,7 +453,11 @@ int64_t BlockNestedLoopJoinExecutor::getRCop(std::chrono::time_point<std::chrono
     */
     if(auto x =  dynamic_cast<BlockNestedLoopJoinExecutor *>(left_.get())) {
         return std::chrono::duration_cast<std::chrono::milliseconds>(current_time - latest_ck_info->ck_timestamp_).count() + x->getRCop(latest_ck_info->ck_timestamp_);
-    } else {
+    } 
+    else if(auto x = dynamic_cast<HashJoinExecutor*>(left_.get())) {
+        return std::chrono::duration_cast<std::chrono::milliseconds>(current_time - latest_ck_info->ck_timestamp_).count() + x->getRCop(latest_ck_info->ck_timestamp_);
+    }
+    else {
         return std::chrono::duration_cast<std::chrono::milliseconds>(current_time - latest_ck_info->ck_timestamp_).count();
     }
 } 

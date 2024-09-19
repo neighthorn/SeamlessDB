@@ -152,7 +152,7 @@ public:
 
     
 
-private:
+public:
 
     // 找到下一个符合fed_cond的tuple
     void find_next_valid_tuple() ;
@@ -174,7 +174,7 @@ private:
         type = 0: 默认情况
         type = 1: consume一个block就写状态，绕过代价估计
     */
-    void write_state_if_allow(int type = 0) ;
+    void write_state_if_allow(int type = 0);
 
 public:
     /*

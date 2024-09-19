@@ -2,7 +2,7 @@
     "comparative_exp": {
         "machine_id": 3,
         "node_type": 2,
-        "join_num": 10,
+        "join_num": 20,
         "cost_model": "SeamlessDB",
         "local_rdma_port": 12201,
         "break_percentage": 50,

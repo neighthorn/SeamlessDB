@@ -243,6 +243,7 @@ struct Value {
 };
 
 enum CompOp: int { OP_EQ, OP_NE, OP_LT, OP_GT, OP_LE, OP_GE };
+static std::string CompOpString[] = {"=", "!=", "<=", ">=", "<", ">"};
 
 struct Condition {
     TabCol lhs_col;   // left-hand side column

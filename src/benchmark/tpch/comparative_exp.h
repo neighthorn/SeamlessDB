@@ -18,7 +18,8 @@
 #include "tpch_table.h"
 
 static const int max_table_num = 8;
-static const std::string tables[8] = {"region", "nation", "part", "customer", "orders", "supplier", "partsupp", "lineitem"};
+// static const std::string tables[8] = {"region", "nation", "part", "customer", "orders", "supplier", "partsupp", "lineitem"};
+static const std::string tables[8] = {"region", "nation", "customer", "supplier", "orders", "lineitem", "partsupp", "part"};
 
 class ComparativeExp {
 public:
@@ -97,7 +98,8 @@ public:
     }
 
     void get_table_cond(int table_id, std::vector<Condition>& filter_conds, std::vector<Condition>& index_conds);
-    void get_join_cond(int left_tab_id, int right_tab_id, std::vector<Condition>& join_conds);
+    // return left_table id
+    int get_join_cond(int left_tab_range, int right_tab_id, std::vector<Condition>& join_conds);
     std::string get_table_join_col(int tab_id);
     std::shared_ptr<Plan> generate_proj_plan(int tab_id, std::shared_ptr<Plan> scan_plan);
     std::shared_ptr<Plan> generate_total_proj_plan(int table_num, std::shared_ptr<Plan> prev_plan);

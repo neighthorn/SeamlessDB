@@ -1,5 +1,7 @@
 set(SOURCES 
     execution_manager.cpp
+    executor_block_join.cpp
+    executor_hash_join.cpp
 )
 add_library(execution STATIC ${SOURCES})
 
@@ -7,6 +9,7 @@ target_link_libraries(execution system index transaction multi_version_record)
 
 set(OP_SOURCES
     executor_block_join.cpp
+    executor_hash_join.cpp
 )
 add_library(execution_op STATIC ${OP_SOURCES})
 target_link_libraries(execution_op system index transaction multi_version_record)

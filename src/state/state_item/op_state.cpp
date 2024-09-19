@@ -2,6 +2,7 @@
 
 #include "execution/executor_index_scan.h"
 #include "execution/executor_block_join.h"
+#include "execution/executor_hash_join.h"
 
 
 /*
@@ -397,4 +398,98 @@ bool BlockJoinOperatorState::deserialize(char *src, size_t size) {
     */
     assert(offset == op_state_size_);
     return true;
+}
+
+HashJoinOperatorState::HashJoinOperatorState() {
+
+}
+
+HashJoinOperatorState::HashJoinOperatorState(HashJoinExecutor* hash_join_op) {
+    hash_join_op_ = hash_join_op;
+    state_size = 0;
+    be_call_times_ = hash_join_op->be_call_times_;
+    left_child_call_times_ = hash_join_op->left_child_call_times_;
+    left_child_is_join_ = false;
+    left_index_scan_state_ = IndexScanOperatorState();
+    right_child_is_join_ = false;
+    right_index_scan_state_ = IndexScanOperatorState();
+    state_size += sizeof(int) * 2 + sizeof(bool) * 2 + left_index_scan_state_.getSize() + right_index_scan_state_.getSize();
+    op_state_size_ = getSize();
+}
+
+size_t HashJoinOperatorState::serialize(char *dest) {
+    size_t offset = OperatorState::serialize(dest);
+
+    // basic state
+    memcpy(dest + offset, (char *)&be_call_times_, sizeof(int));
+    offset += sizeof(int);
+    memcpy(dest + offset, (char *)&left_child_call_times_, sizeof(int));
+    offset += sizeof(int);
+    memcpy(dest + offset, (char *)&left_child_is_join_, sizeof(bool));
+    offset += sizeof(bool);
+    memcpy(dest + offset, (char *)&right_child_is_join_, sizeof(bool));
+    offset += sizeof(bool);
+
+    // if left hash table has not been checkpointed completely, then serialize incremental hash table and left operator
+    if(!hash_join_op_->is_hash_table_built()) {
+        for(const auto& iter: *left_hash_table_) {
+            const std::string& key = iter.first;
+            const std::vector<std::unique_ptr<Record>>& record_vector = iter.second;
+            size_t* last_checkpoint_index = &checkpointed_indexes_->find(key)->second;
+            for(size_t i = *last_checkpoint_index; i < record_vector.size(); i++) {
+                memcpy(dest + offset, record_vector[i]->raw_data_, left_record_len_);
+                offset += left_record_len_;
+            }
+            *last_checkpoint_index = record_vector.size();
+        }
+        size_t left_index_scan_size = left_index_scan_state_.serialize(dest + offset);
+        offset += left_index_scan_size;
+    }
+    // if left hash table has been checkpointed completely, just serialize the right operator
+    else {
+        // serialize right operator
+        size_t right_index_scan_size = right_index_scan_state_.serialize(dest + offset);
+        offset += right_index_scan_size;
+    }
+
+    assert(offset == op_state_size_);
+    return offset;
+}
+
+bool HashJoinOperatorState::deserialize(char* src, size_t size) {
+    if(size < OperatorState::getSize()) return false;
+
+    bool status = OperatorState::deserialize(src, OperatorState::getSize());
+    if(!status) return false;
+
+    size_t offset = OperatorState::getSize();
+    memcpy((char *)&be_call_times_, src + offset, sizeof(int));
+    offset += sizeof(int);
+    memcpy((char *)&left_child_call_times_, src + offset, sizeof(int));
+    offset += sizeof(int);
+    memcpy((char *)&left_child_is_join_, src + offset, sizeof(bool));
+    offset += sizeof(bool);
+    memcpy((char *)&right_child_is_join_, src + offset, sizeof(bool));
+    offset += sizeof(bool);
+
+    if(!hash_join_op_->is_hash_table_built()) {
+        for(auto& iter: *left_hash_table_) {
+            std::string key = iter.first;
+            std::vector<std::unique_ptr<Record>>& record_vector = iter.second;
+            size_t* last_checkpoint_index = &checkpointed_indexes_->find(key)->second;
+            for(size_t i = *last_checkpoint_index; i < record_vector.size(); i++) {
+                memcpy(record_vector[i]->raw_data_, src + offset, left_record_len_);
+                offset += left_record_len_;
+            }
+            *last_checkpoint_index = record_vector.size();
+        }
+        left_index_scan_state_.deserialize(src + offset, left_index_scan_state_.getSize());
+        offset += left_index_scan_state_.getSize();
+    } else {
+        right_index_scan_state_.deserialize(src + offset, right_index_scan_state_.getSize());
+        offset += right_index_scan_state_.getSize();
+    }
+
+    assert(offset == op_state_size_);
+    return offset;
 }

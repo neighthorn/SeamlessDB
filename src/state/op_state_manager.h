@@ -75,9 +75,17 @@ static const int SQL_STATE_MAX_SIZE = 1024;
     }
 };
 
+enum class CkptType: int16_t {
+    BlockJoinCkpt = 0,      // incremental ckpt
+    IndexScanCkpt,          // overlay ckpt
+    HashJoinHashTableCkpt,  // hash join hash table, incremental ckpt, the first "int" in buffer represents the offset
+    HashJoinOpCkpt,         // hash join left/right child state, fixed location, overlay ckpt
+};
+
 struct OpCheckpointBlock {
     char *buffer;
     size_t size;
+    CkptType ckpt_type_;
 };
 
 /*

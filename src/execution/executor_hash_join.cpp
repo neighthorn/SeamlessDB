@@ -28,7 +28,12 @@ void HashJoinExecutor::beginTuple() {
             }
             assert(offset == join_key_size_);
 
-            hash_table_[std::string(left_key, join_key_size_)].push_back(std::move(left_rec));
+            std::string key = std::string(left_key, join_key_size_);
+            if(hash_table_.find(key) == hash_table_.end()) {
+                hash_table_[key] = std::vector<std::unique_ptr<Record>>();
+                checkpointed_indexes_[key] = 0;
+            }
+            hash_table_[key].push_back(std::move(left_rec));
         }
 
         initialized_ = true;
@@ -120,7 +125,16 @@ std::pair<bool, double> HashJoinExecutor::judge_state_reward(HashJoinExecutor* c
     /*
         要记录的主要是左算子产生的哈希表的大小，哈希表的增量大小计算
     */
-   
+    HashJoinCheckpointInfo* latest_ck_info = nullptr;
+    if(ck_infos_.empty()) {
+        std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
+    }
+    latest_ck_info = &ck_infos_[ck_infos_.size() - 1];
+    
+    double src_op;
+    double rc_op = -1;
+    
+    
 }
 
 int64_t HashJoinExecutor::getRCop(std::chrono::time_point<std::chrono::system_clock> curr_time) {

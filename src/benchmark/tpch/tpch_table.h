@@ -13,7 +13,7 @@
 
 #include "debug_log.h"
 
-#define MAX_COND_RANGE 300
+#define MAX_COND_RANGE 100
 
 namespace TPCH_TABLE{
 

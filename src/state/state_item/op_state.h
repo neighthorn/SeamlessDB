@@ -4,6 +4,7 @@
 
 #include "record/record.h"
 #include "execution/execution_defs.h"
+#include <unordered_map>
 
 /*
     remote checkpoint 结构
@@ -18,6 +19,7 @@ constexpr int CheckPointMetaSize = 4096;
 constexpr int operator_size_min = sizeof(int) * 2 + sizeof(size_t) + sizeof(time_t) + sizeof(ExecutionType);
 constexpr int index_scan_state_size_min = operator_size_min + sizeof(Rid) * 3;
 constexpr int block_join_state_size_min = operator_size_min + sizeof(int) * 7 + sizeof(bool) * 2 + index_scan_state_size_min * 2;
+// constexpr int hash_join_state_size_min = operator_size_min;
 
 struct CheckPointMeta {
     int thread_id = -1;
@@ -160,4 +162,39 @@ public:
         use for recovery()
     */
     std::unique_ptr<JoinBlock> join_block_;
+};
+
+class HashJoinExecutor; 
+// HashJoin的状态需要分为两部分，一部分是哈希表的数据，也就是哈希表中每个record，这部分是增量存储的，单独开辟一块区域，
+// 一部分是left child和right child的状态，这部分可以覆盖写，不需要增量存储，因此需要分别维护着两块内存区域的元数据（也就是start和offset）
+class HashJoinOperatorState : OperatorState {
+public:
+    HashJoinOperatorState();
+
+    HashJoinOperatorState(HashJoinExecutor *hash_join_op);
+
+    size_t serialize(char *dest);
+
+    bool deserialize(char *src, size_t size);
+
+    inline size_t getSize() {
+        return OperatorState::getSize() + state_size;
+    }   
+
+    HashJoinExecutor *hash_join_op_;
+    size_t state_size = 0; 
+
+    int be_call_times_;
+    int left_child_call_times_;
+
+    bool left_child_is_join_;
+    IndexScanOperatorState left_index_scan_state_;
+    
+    bool right_child_is_join_;
+    IndexScanOperatorState right_index_scan_state_;
+
+    int left_hash_table_size_;  // 哈希表中的tuple条数
+    int left_record_len_;       // 哈希表中每个tuple的长度
+    std::unordered_map<std::string, std::vector<std::unique_ptr<Record>>>* left_hash_table_; 
+    std::unordered_map<std::string, size_t>* checkpointed_indexes_;
 };

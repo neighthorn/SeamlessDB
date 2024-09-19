@@ -5,6 +5,9 @@
 #include "index/ix.h"
 #include "system/sm.h"
 
+class HashJoinExecutor;
+class HashJoinOperatorState;
+
 struct HashJoinCheckpointInfo {
     std::chrono::time_point<std::chrono::system_clock> ck_timestamp_;
 };
@@ -22,6 +25,7 @@ private:
     std::unordered_map<std::string, std::vector<std::unique_ptr<Record>>> hash_table_;   // left_算子中间结果的hash表
     std::unordered_map<std::string, std::vector<std::unique_ptr<Record>>>::const_iterator left_iter_;   // 和右边tuple符合join条件的hash表中的iter
     int left_tuples_index_;                                                             // 符合条件的left_records的index（hash表中的vectorindex）
+    std::unordered_map<std::string, size_t> checkpointed_indexes_;                      // 上一次检查点最后一次记录的index
 
     bool is_end_;
 
@@ -51,6 +55,10 @@ public:
         fed_conds_ = std::move(conds);
         initialized_ = false;
         is_end_ = false;
+    }
+
+    bool is_hash_table_built() const {
+        return initialized_;
     }
 
     std::string getType() override { return "HashJoin"; }

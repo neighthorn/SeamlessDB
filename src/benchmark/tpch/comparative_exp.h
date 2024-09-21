@@ -51,50 +51,12 @@ public:
     TPCH_TABLE::PartSupp* partsupp_;
     TPCH_TABLE::Supplier* supplier_;
 
+    void init_db_meta();
+
     ComparativeExp(int join_num, int buffer_pool_size, int thread_num): join_node_num_(join_num), 
         buffer_pool_size_(buffer_pool_size), thread_num_(thread_num) {
         init_db_meta();
         assert(max_table_num == sm_mgr_->db_.tabs_.size());
-    }
-
-    void init_db_meta() {
-        page_channel_ = new brpc::Channel();
-        log_channel_ = new brpc::Channel();
-        brpc::ChannelOptions options;
-        options.protocol = FLAGS_protocol;
-        options.connection_type = FLAGS_connection_type;
-        options.timeout_ms = FLAGS_timeout_ms;
-        options.max_retry = FLAGS_max_retry;
-        if(page_channel_->Init(FLAGS_server.c_str(), &options) != 0) {
-            std::cout << "Failed to initialize page_channel.\n";
-            exit(1);
-        }
-        if(log_channel_->Init(FLAGS_server.c_str(), &options) != 0) {
-            std::cout << "Failed to initialize log_channel.\n";
-            exit(1);
-        }
-
-        disk_mgr_ = new DiskManager();
-        slice_mgr_ = new SliceMetaManager();
-        buffer_pool_mgr_ = new BufferPoolManager(NodeType::COMPUTE_NODE, buffer_pool_size_, page_channel_, disk_mgr_, slice_mgr_);
-        index_mgr_ = new IxManager(buffer_pool_mgr_, disk_mgr_);
-        mvcc_mgr_ = new MultiVersionManager(disk_mgr_, buffer_pool_mgr_);
-        sm_mgr_ = new SmManager(disk_mgr_, buffer_pool_mgr_, index_mgr_, mvcc_mgr_);
-        portal_ = new Portal(sm_mgr_);
-        lock_mgr_ = new LockManager();
-        txn_mgr_ = new TransactionManager(lock_mgr_, sm_mgr_, thread_num_);
-        ql_mgr_ = new QlManager(sm_mgr_, txn_mgr_);
-        log_mgr_ = new LogManager(log_channel_, ContextManager::get_instance()->log_rdma_buffer_);
-        TPCHWK* tpch_wk = new TPCHWK(sm_mgr_, index_mgr_, record_num_, mvcc_mgr_);
-        tpch_wk->create_table();
-        region_ = new TPCH_TABLE::Region();
-        customer_ = new TPCH_TABLE::Customer();
-        lineitem_ = new TPCH_TABLE::Lineitem();
-        nation_ = new TPCH_TABLE::Nation();
-        orders_ = new TPCH_TABLE::Orders();
-        part_ = new TPCH_TABLE::Part();
-        partsupp_ = new TPCH_TABLE::PartSupp();
-        supplier_ = new TPCH_TABLE::Supplier();
     }
 
     void get_table_cond(int table_id, std::vector<Condition>& filter_conds, std::vector<Condition>& index_conds);

@@ -362,10 +362,28 @@ std::pair<bool, size_t> OperatorStateManager::add_operator_state_to_buffer(Abstr
         */
         op_checkpoint_not_empty_.notify_all();
 
-    } else if(auto hash_join_op == dynamic_cast<HashJoinExecutor *>(abstract_executor)) {
+    } else if(auto hash_join_op = dynamic_cast<HashJoinExecutor *>(abstract_executor)) {
         HashJoinOperatorState hash_join_state(hash_join_op);
         size_t hash_join_checkpoint_size = hash_join_state.getSize();
 
+        char* alloc_buffer;
+        do {
+            auto [status, buffer] = op_checkpoint_buffer_allocator_->Alloc(hash_join_checkpoint_size);
+            if(status) {
+                alloc_buffer = buffer;
+                break;
+            } else {
+                std::cout << "waiting for free buffer.\n";
+                op_checkpoint_not_full_.wait(lock);
+            }
+        }while(true);
+
+        actual_size = hash_join_state.serialize(alloc_buffer);
+        assert(actual_size == hash_join_checkpoint_size);
+        write_status = true;
+
+        op_checkpoint_queue_.push(OpCheckpointBlock{.buffer = alloc_buffer, .size = actual_size});
+        op_checkpoint_not_empty_.notify_all();
     }
     else {
         std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
@@ -393,22 +411,27 @@ void OperatorStateManager::write_operator_state_to_state_node() {
     */
     size_t remote_offset = meta_manager_->GetJoinBlockAddrByThread(coro_sched_->t_id_);
     
-    switch(op_checkpoint_block.ckpt_type_) {
-        case CkptType::HashJoinHashTableCkpt: {
-            remote_offset += *reinterpret_cast<int *>(op_checkpoint_block.buffer);
-            if(!coro_sched_->RDMAWriteSync(0, op_checkpoint_qp_, op_checkpoint_block.buffer, remote_offset, op_checkpoint_block.size)) {
-                RDMA_LOG(ERROR) << "Failed to write operator state into state_node.";
-                assert(0);
-            }
-        } break;
-        case CkptType::BlockJoinCkpt:
-        case CkptType::IndexScanCkpt:
-        case CkptType::HashJoinOpCkpt: {
-            if(!coro_sched_->RDMAWriteSync(0, op_checkpoint_qp_, op_checkpoint_block.buffer, remote_offset + op_next_write_offset_, op_checkpoint_block.size)) {
-                RDMA_LOG(ERROR) << "Failed to write operator state into state_node.";
-                assert(0);
-            }
-        } break;
+    // switch(op_checkpoint_block.ckpt_type_) {
+    //     case CkptType::HashJoinHashTableCkpt: {
+    //         remote_offset += *reinterpret_cast<int *>(op_checkpoint_block.buffer);
+    //         if(!coro_sched_->RDMAWriteSync(0, op_checkpoint_qp_, op_checkpoint_block.buffer + sizeof(int), remote_offset, op_checkpoint_block.size)) {
+    //             RDMA_LOG(ERROR) << "Failed to write operator state into state_node.";
+    //             assert(0);
+    //         }
+    //     } break;
+    //     case CkptType::BlockJoinCkpt:
+    //     case CkptType::IndexScanCkpt:
+    //     case CkptType::HashJoinOpCkpt: {
+    //         if(!coro_sched_->RDMAWriteSync(0, op_checkpoint_qp_, op_checkpoint_block.buffer, remote_offset + op_next_write_offset_, op_checkpoint_block.size)) {
+    //             RDMA_LOG(ERROR) << "Failed to write operator state into state_node.";
+    //             assert(0);
+    //         }
+    //     } break;
+    // }
+
+    if(!coro_sched_->RDMAWriteSync(0, op_checkpoint_qp_, op_checkpoint_block.buffer, remote_offset + op_next_write_offset_, op_checkpoint_block.size)) {
+        RDMA_LOG(ERROR) << "Failed to write operator state into state_node.";
+        assert(0);
     }
 
     /*

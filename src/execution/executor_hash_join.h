@@ -13,7 +13,8 @@ struct HashJoinCheckpointInfo {
 };
 
 class HashJoinExecutor : public AbstractExecutor {
-private:
+    
+public:
     std::unique_ptr<AbstractExecutor> left_;
     std::unique_ptr<AbstractExecutor> right_;
     size_t len_;                                // join后获得的每条记录的长度
@@ -26,8 +27,12 @@ private:
     std::unordered_map<std::string, std::vector<std::unique_ptr<Record>>>::const_iterator left_iter_;   // 和右边tuple符合join条件的hash表中的iter
     int left_tuples_index_;                                                             // 符合条件的left_records的index（hash表中的vectorindex）
     std::unordered_map<std::string, size_t> checkpointed_indexes_;                      // 上一次检查点最后一次记录的index
+    int left_hash_table_checkpointed_tuple_count_;
+    int left_hash_table_curr_tuple_count_;
 
     bool is_end_;
+
+    
 
 public:
     std::vector<HashJoinCheckpointInfo> ck_infos_;      // 记录建立检查点时的信息
@@ -55,6 +60,8 @@ public:
         fed_conds_ = std::move(conds);
         initialized_ = false;
         is_end_ = false;
+        left_hash_table_checkpointed_tuple_count_ = 0;
+        left_hash_table_curr_tuple_count_ = 0;
     }
 
     bool is_hash_table_built() const {
@@ -85,8 +92,9 @@ public:
 
     int checkpoint(char* dest) override { return -1; };
 
-    std::pair<bool, double> judge_state_reward(HashJoinExecutor* curr_ck_info);
+    std::pair<bool, double> judge_state_reward(HashJoinCheckpointInfo* curr_ck_info);
     int64_t getRCop(std::chrono::time_point<std::chrono::system_clock> curr_time);
     void write_state_if_allow(int type = 0);
-    void load_state_info(HashJoinCheckpointInfo* hash_join_op);
+    void load_state_info(HashJoinOperatorState* hash_join_op);
+    void append_tuple_to_hash_table_from_state(char* src, int left_rec_len, char* join_key);
 };

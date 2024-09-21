@@ -4,6 +4,7 @@
 #include "common/common.h"
 #include "index/ix.h"
 #include "system/sm.h"
+#include "common/context.h"
 
 class AbstractExecutor {
    public:

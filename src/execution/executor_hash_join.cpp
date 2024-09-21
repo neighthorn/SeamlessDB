@@ -1,5 +1,10 @@
 #include "executor_hash_join.h"
 #include "executor_block_join.h"
+#include "executor_index_scan.h"
+#include "state/op_state_manager.h"
+#include "state/state_manager.h"
+#include "state/state_item/op_state.h"
+#include "debug_log.h"
 
 void HashJoinExecutor::beginTuple() {
     if(!initialized_) {
@@ -29,18 +34,20 @@ void HashJoinExecutor::beginTuple() {
             assert(offset == join_key_size_);
 
             std::string key = std::string(left_key, join_key_size_);
+
+            RwServerDebug::getInstance()->DEBUG_PRINT("[HashJoinExecutor::beginTuple, initiate left hash table][operator_id: " + std::to_string(operator_id_) + "][key: " + key + "]");
+
             if(hash_table_.find(key) == hash_table_.end()) {
                 hash_table_[key] = std::vector<std::unique_ptr<Record>>();
                 checkpointed_indexes_[key] = 0;
             }
             hash_table_[key].push_back(std::move(left_rec));
+            left_hash_table_curr_tuple_count_ ++;
         }
 
         initialized_ = true;
         delete[] left_key;
     }
-
-    std::cout << "HashJoinExecutor::finish build hash_table for left table\n";
 
     right_->beginTuple();
     if(right_->is_end()) {
@@ -57,6 +64,31 @@ void HashJoinExecutor::beginTuple() {
         }
         right_rec = right_->Next();
     }
+}
+
+void HashJoinExecutor::append_tuple_to_hash_table_from_state(char* src, int left_rec_len, char* join_key) {
+    std::unique_ptr<Record> left_rec = std::make_unique<Record>(left_rec_len);
+    memcpy(left_rec->raw_data_, src, left_rec_len);
+    memset(join_key, 0, join_key_size_);
+    int off = 0;
+    for(const auto& cond: fed_conds_) {
+        auto left_cols = left_->cols();
+        auto left_col = *(left_->get_col(left_cols, cond.lhs_col));
+        auto left_value = fetch_value(left_rec.get(), left_col);
+        memcpy(join_key + off, left_value.raw->data, left_col.len);
+        off += left_col.len;
+    }
+    assert(off == join_key_size_);
+    std::string key = std::string(join_key, join_key_size_);
+
+    RwServerDebug::getInstance()->DEBUG_PRINT("[HashJoinExecutor::append_tuple_to_hash_table_from_state][operator_id: " + std::to_string(operator_id_) + "][key: " + key + "]");
+    
+    if(hash_table_.find(key) == hash_table_.end()) {
+        hash_table_[key] = std::vector<std::unique_ptr<Record>>();
+        checkpointed_indexes_[key] = 0;
+    }
+    hash_table_[key].push_back(std::move(left_rec));
+    left_hash_table_curr_tuple_count_ ++;
 }
 
 void HashJoinExecutor::nextTuple(){
@@ -121,7 +153,7 @@ std::unordered_map<std::string, std::vector<std::unique_ptr<Record>>>::const_ite
     return left_iter_;
 }
 
-std::pair<bool, double> HashJoinExecutor::judge_state_reward(HashJoinExecutor* curr_ck_info) {
+std::pair<bool, double> HashJoinExecutor::judge_state_reward(HashJoinCheckpointInfo* curr_ck_info) {
     /*
         要记录的主要是左算子产生的哈希表的大小，哈希表的增量大小计算
     */
@@ -161,9 +193,38 @@ int64_t HashJoinExecutor::getRCop(std::chrono::time_point<std::chrono::system_cl
 }
 
 void HashJoinExecutor::write_state_if_allow(int type) {
-
+    HashJoinCheckpointInfo curr_ckpt_info = {.ck_timestamp_ = std::chrono::high_resolution_clock::now()};
+    if(state_open_) {
+        auto [able_to_write, src_op] = judge_state_reward(&curr_ckpt_info);
+        if(able_to_write) {
+            auto [status, actual_size] = context_->op_state_mgr_->add_operator_state_to_buffer(this, src_op);
+            if(status) {
+                ck_infos_.push_back(curr_ckpt_info);
+            }
+        }
+    }
 }
 
-void HashJoinExecutor::load_state_info(HashJoinCheckpointInfo* hash_join_op) {
+void HashJoinExecutor::load_state_info(HashJoinOperatorState* state) {
+    // load state except hash_table
+    assert(state != nullptr);
 
+    if(auto x = dynamic_cast<IndexScanExecutor *>(right_.get())) {
+        x->load_state_info(&(state->right_index_scan_state_));
+    }
+
+    right_->nextTuple();
+
+    left_tuples_index_ = state->left_tuples_index_;
+    left_child_call_times_ = state->left_child_call_times_;
+    be_call_times_ = state->be_call_times_;
+    is_end_ = false;
+
+    // 先build了哈希表，才能调用当前函数
+    if(!initialized_) {
+        // 如果哈希表没有构建完全，需要首先恢复左算子状态，哈希表在后面begintuple的时候再构建
+        if(auto x = dynamic_cast<IndexScanExecutor *>(left_.get())) {
+            x->load_state_info(&(state->left_index_scan_state_));
+        }
+    }
 }

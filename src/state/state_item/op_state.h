@@ -60,7 +60,7 @@ public:
     /*
         get size of Op
     */
-    inline size_t getSize() {
+    static size_t getSize() {
         return sizeof(int) * 2 + sizeof(size_t) + sizeof(time_t) + sizeof(exec_type_);
     }
 
@@ -177,6 +177,8 @@ public:
 
     bool deserialize(char *src, size_t size);
 
+    void rebuild_hash_table(HashJoinExecutor *hash_join_op, char* src, size_t size);
+
     inline size_t getSize() {
         return OperatorState::getSize() + state_size;
     }   
@@ -184,8 +186,10 @@ public:
     HashJoinExecutor *hash_join_op_;
     size_t state_size = 0; 
 
-    int be_call_times_;
+    bool hash_table_contained_;     // whether the incremental hash table is contained in the state
+    int be_call_times_;             // the number of times the operator has been called
     int left_child_call_times_;
+    bool is_hash_table_built_;       // whether the hash table has been built, the same as initialized_ in HashJoinExecutor
 
     bool left_child_is_join_;
     IndexScanOperatorState left_index_scan_state_;
@@ -197,4 +201,7 @@ public:
     int left_record_len_;       // 哈希表中每个tuple的长度
     std::unordered_map<std::string, std::vector<std::unique_ptr<Record>>>* left_hash_table_; 
     std::unordered_map<std::string, size_t>* checkpointed_indexes_;
+
+    // 算子当前的cursor
+    int left_tuples_index_;            // 哈希表中的vector的index, 同HashJoinExecutor中的left_tuples_index_
 };

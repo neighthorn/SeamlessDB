@@ -267,7 +267,7 @@ class RdmaCtrl::RdmaCtrlImpl {
         goto QUERY_END;
       }
 
-      for (uint dev_id = 0; dev_id < temp_devices; ++dev_id) {
+      for (int dev_id = 0; dev_id < temp_devices; ++dev_id) {
         struct ibv_context* ib_ctx = ibv_open_device(dev_list[dev_id]);
         if (ib_ctx == nullptr) {
           RDMA_LOG(ERROR) << "open dev " << dev_id << " error: " << strerror(errno) << " ignored";

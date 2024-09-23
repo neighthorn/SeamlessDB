@@ -5,13 +5,22 @@
 #include "index/ix.h"
 #include "system/sm.h"
 
+class ProjectionExecutor;
+class ProjectionOperatorState;
+
+struct ProjectionCheckpointInfo {
+    std::chrono::time_point<std::chrono::system_clock> ck_timestamp_;
+};
+
 class ProjectionExecutor : public AbstractExecutor {
 public:
     std::unique_ptr<AbstractExecutor> prev_;
-private:
     std::vector<ColMeta> cols_;
     size_t len_;
     std::vector<size_t> sel_idxs_;
+
+    std::vector<ProjectionCheckpointInfo> ck_infos_;
+    int be_call_times_; // 只需要记录be_call_times，left_child_call_times_应该和当前节点的be_call_times一致
 
    public:
     ProjectionExecutor(std::unique_ptr<AbstractExecutor> prev, const std::vector<TabCol> &sel_cols) {
@@ -28,6 +37,10 @@ private:
             cols_.push_back(col);
         }
         len_ = curr_offset;
+
+        exec_type_ = ExecutionType::PROJECTION;
+
+        be_call_times_ = 0;
     }
 
     std::string getType() override { return "Projection"; }
@@ -57,6 +70,8 @@ private:
             auto &proj_col = proj_cols[proj_idx];
             memcpy(proj_rec->raw_data_ + proj_col.offset, prev_rec->raw_data_ + prev_col.offset, proj_col.len);
         }
+
+        be_call_times_ ++;
         return proj_rec;
     }
 
@@ -69,4 +84,6 @@ private:
     int checkpoint(char* dest) override {
         return 0;
     }
+
+    void load_state_info(ProjectionOperatorState *proj_op_state);
 };

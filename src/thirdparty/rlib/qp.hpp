@@ -398,7 +398,7 @@ class RUDQP : public QP {
         attrs_[reply.payload.qp.node_id] = reply.payload.qp;
       }
     }
-    CONN_END:
+    [[maybe_unused]]CONN_END:
     return ret;
   }
 

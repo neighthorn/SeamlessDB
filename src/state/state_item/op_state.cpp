@@ -3,6 +3,7 @@
 #include "execution/executor_index_scan.h"
 #include "execution/executor_block_join.h"
 #include "execution/executor_hash_join.h"
+#include "execution/executor_projection.h"
 
 
 /*
@@ -10,8 +11,6 @@
     +--- checkpoint meta ---+--- checkpoints ---+
     +---       4096      ---+---   reserve   ---+ 
 */
-
-
 
 size_t CheckPointMeta::serialize(char *dest) {
     size_t offset = 0;
@@ -39,7 +38,6 @@ bool CheckPointMeta::deserialize(char *src, size_t size) {
     offset += sizeof(double);
     return true;
 }
-
 
 OperatorState::OperatorState() {};
 
@@ -99,8 +97,6 @@ IndexScanOperatorState::IndexScanOperatorState(IndexScanExecutor *index_scan_op)
 
     op_state_size_ = getSize();
 }
-
-
     
 size_t  IndexScanOperatorState::serialize(char *dest) {
     size_t offset = OperatorState::serialize(dest);
@@ -134,6 +130,75 @@ bool IndexScanOperatorState::deserialize(char *src, size_t size) {
     // RwServerDebug::getInstance()->DEBUG_PRINT("This line is number: " + std::string(__FILE__)  + ":" + std::to_string(__LINE__));
 }
 
+ProjectionOperatorState::ProjectionOperatorState() : OperatorState(-1, -1, time(nullptr), ExecutionType::PROJECTION) {
+    projection_op_ = nullptr;
+    is_left_child_join_ = false;
+    op_state_size_ = OperatorState::getSize() + sizeof(bool);
+}
+
+ProjectionOperatorState::ProjectionOperatorState(ProjectionExecutor* projection_op) : 
+    OperatorState(projection_op->sql_id_, projection_op->operator_id_, time(nullptr), projection_op->exec_type_), 
+    projection_op_(projection_op) {
+    op_state_size_ = OperatorState::getSize();
+    left_child_call_times_ = projection_op_->be_call_times_;
+    op_state_size_ += sizeof(int);
+
+    if(auto x = dynamic_cast<IndexScanExecutor *>(projection_op_->prev_.get())) {
+        is_left_child_join_ = false;
+        left_index_scan_state_ = new IndexScanOperatorState(x);
+        op_state_size_ += left_index_scan_state_->getSize();
+        op_state_size_ += sizeof(bool);
+    } else if(auto x = dynamic_cast<BlockNestedLoopJoinExecutor *>(projection_op_->prev_.get())) {
+        is_left_child_join_ = true;
+        op_state_size_ += sizeof(bool);
+    } else if(auto x = dynamic_cast<HashJoinExecutor *>(projection_op_->prev_.get())) {
+        is_left_child_join_ = true;
+        op_state_size_ += sizeof(bool);
+    } else {
+        std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
+    }
+    std::cout << "final op_state_size: " << "\n";
+}
+
+size_t ProjectionOperatorState::serialize(char *dest) {
+    size_t offset = OperatorState::serialize(dest);
+    memcpy(dest + offset, (char *)&left_child_call_times_, sizeof(int));
+    offset += sizeof(int);
+    memcpy(dest + offset, (char *)&is_left_child_join_, sizeof(bool));
+    offset += sizeof(bool);
+    if(is_left_child_join_) {
+        assert(offset == op_state_size_);
+        return offset;
+    } else {
+        size_t left_index_scan_size = left_index_scan_state_->serialize(dest + offset);
+        offset += left_index_scan_size;
+        assert(offset == op_state_size_);
+        return offset;
+    }
+    
+}
+
+bool ProjectionOperatorState::deserialize(char *src, size_t size) {
+    if(size < getSize()) return false;
+
+    bool status = OperatorState::deserialize(src, OperatorState::getSize());
+    if(!status) return false;
+
+    size_t offset = OperatorState::getSize();
+
+    memcpy((char *)&left_child_call_times_, src + offset, sizeof(int));
+    offset += sizeof(int);
+    memcpy((char *)&is_left_child_join_, src + offset, sizeof(bool));
+    offset += sizeof(bool);
+    if(is_left_child_join_) {
+        return true;
+    } else {
+        left_index_scan_state_ = new IndexScanOperatorState();
+        left_index_scan_state_->deserialize(src + offset, size - offset);
+        return true;
+    }
+}
+
 // inline bool index_scan_op_load_state(IndexScanExecutor *index_scan_op, IndexScanOperatorState *index_scan_state) {
 //     index_scan_op->
 // }
@@ -152,10 +217,10 @@ BlockJoinOperatorState::BlockJoinOperatorState() : OperatorState(-1, -1, time(nu
     be_call_times_ = -1;
 
     left_child_is_join_ = false;
-    left_index_scan_state_ = IndexScanOperatorState();
+    // left_index_scan_state_ = IndexScanOperatorState();
 
     right_child_is_join_ = false;
-    right_index_scan_state_ = IndexScanOperatorState();
+    // right_index_scan_state_ = IndexScanOperatorState();
 
     /*
         left block info
@@ -192,36 +257,62 @@ BlockJoinOperatorState::BlockJoinOperatorState(BlockNestedLoopJoinExecutor *bloc
     /*
         left exec is join
     */
-    if(auto x = dynamic_cast<BlockNestedLoopJoinExecutor *>(block_join_op_->left_.get())) {
+    if(dynamic_cast<BlockNestedLoopJoinExecutor *>(block_join_op_->left_.get())) {
         left_child_is_join_ = true;
-        left_index_scan_state_ = IndexScanOperatorState();
+        // left_index_scan_state_ = IndexScanOperatorState();
+        state_size += sizeof(bool);
     } else if(auto x = dynamic_cast<IndexScanExecutor *>(block_join_op_->left_.get())){
         left_child_is_join_ = false;
-        left_index_scan_state_ = IndexScanOperatorState(x);
-    } else if(auto x = dynamic_cast<HashJoinExecutor *>(block_join_op_->left_.get())) {
+        // left_index_scan_state_ = IndexScanOperatorState(x);
+        left_child_state_ = new IndexScanOperatorState(x);
+        state_size += sizeof(bool) + left_child_state_->getSize();
+    } else if(dynamic_cast<HashJoinExecutor *>(block_join_op_->left_.get())) {
         left_child_is_join_ = true;
-        left_index_scan_state_ = IndexScanOperatorState();
+        // left_index_scan_state_ = IndexScanOperatorState();
+        state_size += sizeof(bool);
+    } else if(auto x = dynamic_cast<ProjectionExecutor *>(block_join_op_->left_.get())) {
+        left_child_is_join_ = false;
+        // left_index_scan_state_ = IndexScanOperatorState();
+        left_child_state_ = new ProjectionOperatorState(x);
+        state_size += sizeof(bool) + left_child_state_->getSize();
     }
     else {
         std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
     }
 
-    state_size += (sizeof(bool) + left_index_scan_state_.getSize());
+    // state_size += (sizeof(bool) + left_index_scan_state_.getSize());
+    // state_size += left_child_state_->getSize() + sizeof(bool);
+
 
     /*
         right exec is join
     */
-    right_index_scan_state_ = IndexScanOperatorState();
+    // right_index_scan_state_ = IndexScanOperatorState();
     if(auto x = dynamic_cast<BlockNestedLoopJoinExecutor *>(block_join_op_->right_.get())) {
         right_child_is_join_ = true;
+        state_size += sizeof(bool);
     } else if(auto x = dynamic_cast<IndexScanExecutor *>(block_join_op_->right_.get())) {
         right_child_is_join_ = false;
-        right_index_scan_state_ = IndexScanOperatorState(x);
-    } else {
+        // right_index_scan_state_ = IndexScanOperatorState(x);
+        right_child_state_ = new IndexScanOperatorState(x);
+        state_size += sizeof(bool) + right_child_state_->getSize();
+    } 
+    else if(auto x = dynamic_cast<HashJoinExecutor *>(block_join_op_->right_.get())) {
+        right_child_is_join_ = true;
+        state_size += sizeof(bool);
+    }
+    else if(auto x = dynamic_cast<ProjectionExecutor *>(block_join_op_->right_.get())) {
+        right_child_is_join_ = false;
+        right_child_state_ = new ProjectionOperatorState(x);
+        state_size += sizeof(bool) + right_child_state_->getSize();
+        std::cout << "right child projection state size: " << right_child_state_->getSize() << std::endl;
+    }
+    else {
         std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
     }
 
-    state_size += (sizeof(bool) + right_index_scan_state_.getSize());
+    // state_size += (sizeof(bool) + right_index_scan_state_.getSize());
+    // state_size += right_child_state_->getSize() + sizeof(bool);
 
     /*
         left block info
@@ -271,16 +362,22 @@ size_t BlockJoinOperatorState::serialize(char *dest) {
     */
     memcpy(dest + offset, (char *)&left_child_is_join_, sizeof(bool));
     offset += sizeof(bool);
-    size_t left_index_scan_size = left_index_scan_state_.serialize(dest + offset);
-    offset += left_index_scan_size;
+    // size_t left_index_scan_size = left_index_scan_state_.serialize(dest + offset);
+    if(left_child_is_join_ == false) {
+        size_t left_index_scan_size = left_child_state_->serialize(dest + offset);
+        offset += left_index_scan_size;
+    }
 
     /*
         right child is join
     */
     memcpy(dest + offset, (char *)&right_child_is_join_, sizeof(bool));
     offset += sizeof(bool);
-    size_t right_index_scan_size = right_index_scan_state_.serialize(dest + offset);
-    offset += right_index_scan_size;
+    if(right_child_is_join_ == false) {
+        size_t right_index_scan_size = right_child_state_->serialize(dest + offset);
+        offset += right_index_scan_size;
+        std::cout << "right index scan size: " << right_index_scan_size << std::endl;
+    }
 
 
     /*
@@ -347,30 +444,53 @@ bool BlockJoinOperatorState::deserialize(char *src, size_t size) {
 
     
     /*
-        left child is join
+        deserialize left child
     */
     std::cout << "This line is number: " << __FILE__  << ":" << __LINE__ << std::endl;
     RwServerDebug::getInstance()->DEBUG_PRINT("offset= " + std::to_string(offset));
     memcpy((char *)&left_child_is_join_, src + offset, sizeof(bool));
     offset += sizeof(bool);
-    if(!left_child_is_join_) {
-        left_index_scan_state_.deserialize(src + offset, left_index_scan_state_.getSize());
+    if(left_child_is_join_ == false) {
+        // left_index_scan_state_.deserialize(src + offset, left_index_scan_state_.getSize());
+        ExecutionType child_exec_type = *reinterpret_cast<ExecutionType*>(src + offset + EXECTYPE_OFFSET);
+        if(child_exec_type == ExecutionType::INDEX_SCAN) {
+            left_child_state_ = new IndexScanOperatorState();
+            left_child_state_->deserialize(src + offset, size - offset);
+            offset += left_child_state_->getSize();
+        } else if(child_exec_type == ExecutionType::PROJECTION) {
+            left_child_state_ = new ProjectionOperatorState();
+            left_child_state_->deserialize(src + offset, size - offset);
+            offset += left_child_state_->getSize();
+        } else {
+            std::cerr << "[Error]: Unexpected left child node type for BlockJoinExecutor! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
+        }
     }
-    offset += left_index_scan_state_.getSize();
-
-    std::cout << "This line is number: " << __FILE__  << ":" << __LINE__ << std::endl;
-    RwServerDebug::getInstance()->DEBUG_PRINT("This line is number: " + std::string(__FILE__)  + ":" + std::to_string(__LINE__));
+    // offset += left_index_scan_state_.getSize();
+    RwServerDebug::getInstance()->DEBUG_PRINT("BlockJoinState Deserialize: Success to deserialize left child. This line is number: " + std::string(__FILE__)  + ":" + std::to_string(__LINE__));
+    
     /*
-        right child is join
+        deserialize right child
     */
     std::cout << "This line is number: " << __FILE__  << ":" << __LINE__ << std::endl;
     memcpy((char *)&right_child_is_join_, src + offset, sizeof(bool));
     offset += sizeof(bool);
     std::cout << "This line is number: " << __FILE__  << ":" << __LINE__ << std::endl;
-    right_index_scan_state_.deserialize(src + offset, right_index_scan_state_.getSize());
-    offset += right_index_scan_state_.getSize();
-    std::cout << "This line is number: " << __FILE__  << ":" << __LINE__ << std::endl;
-    RwServerDebug::getInstance()->DEBUG_PRINT("This line is number: " + std::string(__FILE__)  + ":" + std::to_string(__LINE__));
+    if(right_child_is_join_ == false) {
+        ExecutionType child_exec_type = *reinterpret_cast<ExecutionType*>(src + offset + EXECTYPE_OFFSET);
+        if(child_exec_type == ExecutionType::INDEX_SCAN) {
+            right_child_state_ = new IndexScanOperatorState();
+            right_child_state_->deserialize(src + offset, size - offset);
+            offset += right_child_state_->getSize();
+        } else if(child_exec_type == ExecutionType::PROJECTION) {
+            right_child_state_ = new ProjectionOperatorState();
+            right_child_state_->deserialize(src + offset, size - offset);
+            offset += right_child_state_->getSize();
+        } else {
+            std::cerr << "[Error]: Unexpected right child node type for BlockJoinExecutor! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
+        }
+    }
+    RwServerDebug::getInstance()->DEBUG_PRINT("BlockJoinState Deserialize: Success to deserialize left child. This line is number: " + std::string(__FILE__)  + ":" + std::to_string(__LINE__));
+    
     /*
         left block info
     */
@@ -414,10 +534,12 @@ HashJoinOperatorState::HashJoinOperatorState(): OperatorState(-1, -1, time(nullp
     left_child_call_times_ = -1;
 
     left_child_is_join_ = false;
-    left_index_scan_state_ = IndexScanOperatorState();
+    // left_index_scan_state_ = IndexScanOperatorState();
+    left_child_state_ = nullptr;
 
     right_child_is_join_ = false;
-    right_index_scan_state_ = IndexScanOperatorState();
+    // right_index_scan_state_ = IndexScanOperatorState();
+    right_child_state_ = nullptr;
 
     left_hash_table_size_ = -1;
     left_record_len_ = -1;
@@ -444,25 +566,46 @@ HashJoinOperatorState::HashJoinOperatorState(HashJoinExecutor* hash_join_op):
     state_size += sizeof(bool) * 2 + sizeof(int) * 5;
 
     // left exec info
+    state_size += sizeof(bool);
     if(auto x = dynamic_cast<IndexScanExecutor *>(hash_join_op_->left_.get())) {
         left_child_is_join_ = false;
-        left_index_scan_state_ = IndexScanOperatorState(x);
+        // left_index_scan_state_ = IndexScanOperatorState(x);
+        left_child_state_ = new IndexScanOperatorState(x);
+        state_size += left_child_state_->getSize();
     } else if(auto x = dynamic_cast<BlockNestedLoopJoinExecutor *>(hash_join_op_->left_.get())) {
         left_child_is_join_ = true;
-        left_index_scan_state_ = IndexScanOperatorState();
+        // left_index_scan_state_ = IndexScanOperatorState();
     } else if(auto x = dynamic_cast<HashJoinExecutor *>(hash_join_op_->left_.get())) {
         left_child_is_join_ = true;
-        left_index_scan_state_ = IndexScanOperatorState();
+        // left_index_scan_state_ = IndexScanOperatorState();
+    } else if (auto x = dynamic_cast<ProjectionExecutor *>(hash_join_op_->left_.get())) {
+        left_child_is_join_ = false;
+        left_child_state_ = new ProjectionOperatorState(x);
+        state_size += left_child_state_->getSize();
     } else {
         std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
     }
 
-    state_size += sizeof(bool) + left_index_scan_state_.getSize();
-
-    // right exec info, right exec is always IndexScanExecutor
-    right_child_is_join_ = false;
-    right_index_scan_state_ = IndexScanOperatorState(dynamic_cast<IndexScanExecutor*>(hash_join_op_->right_.get()));
-    state_size += sizeof(bool) + right_index_scan_state_.getSize();
+    // right exec info
+    state_size += sizeof(bool);
+    if(auto x = dynamic_cast<IndexScanExecutor *>(hash_join_op_->right_.get())) {
+        right_child_is_join_ = false;
+        // right_index_scan_state_ = IndexScanOperatorState(x);
+        right_child_state_ = new IndexScanOperatorState(x);
+        state_size += right_child_state_->getSize();
+    } else if(dynamic_cast<BlockNestedLoopJoinExecutor *>(hash_join_op_->right_.get())) {
+        right_child_is_join_ = true;
+        // right_index_scan_state_ = IndexScanOperatorState();
+    } else if(dynamic_cast<HashJoinExecutor *>(hash_join_op_->right_.get())) {
+        right_child_is_join_ = true;
+        // right_index_scan_state_ = IndexScanOperatorState();
+    } else if (auto x = dynamic_cast<ProjectionExecutor *>(hash_join_op_->right_.get())) {
+        right_child_is_join_ = false;
+        right_child_state_ = new ProjectionOperatorState(x);
+        state_size += right_child_state_->getSize();
+    } else {
+        std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
+    }
 
     left_hash_table_ = &hash_join_op_->hash_table_;
     checkpointed_indexes_ = &hash_join_op_->checkpointed_indexes_;
@@ -512,15 +655,22 @@ size_t HashJoinOperatorState::serialize(char *dest) {
         }
         assert(incremental_tuples_count == left_hash_table_size_);
 
-        size_t left_index_scan_size = left_index_scan_state_.serialize(dest + offset);
-        offset += left_index_scan_size;
+        if(left_child_is_join_ == false) {
+            // serialize left operator
+            size_t left_index_scan_size = left_child_state_->serialize(dest + offset);
+            offset += left_index_scan_size;
+        }
+        // size_t left_index_scan_size = left_index_scan_state_.serialize(dest + offset);
+        // offset += left_index_scan_size;
     }
 
     memcpy(dest + incremental_tuples_count_off, (char*)&left_hash_table_size_, sizeof(int));
 
     // serialize right operator
-    size_t right_index_scan_size = right_index_scan_state_.serialize(dest + offset);
-    offset += right_index_scan_size;
+    if(right_child_is_join_ == false) {
+        size_t right_index_scan_size = right_child_state_->serialize(dest + offset);
+        offset += right_index_scan_size;
+    }
 
     assert(offset == op_state_size_);
     return offset;
@@ -559,13 +709,35 @@ bool HashJoinOperatorState::deserialize(char* src, size_t size) {
 
         if(!left_child_is_join_) {
             //  如果左儿子不是join算子，那么需要反序列化左儿子的状态
-            left_index_scan_state_.deserialize(src + offset, left_index_scan_state_.getSize());
-            offset += left_index_scan_state_.getSize();
+            ExecutionType child_exec_type = *reinterpret_cast<ExecutionType*>(src + offset + EXECTYPE_OFFSET);
+            if(child_exec_type == ExecutionType::INDEX_SCAN) {
+                left_child_state_ = new IndexScanOperatorState();
+                left_child_state_->deserialize(src + offset, size - offset);
+                offset += left_child_state_->getSize();
+            } else if(child_exec_type == ExecutionType::PROJECTION) {
+                left_child_state_ = new ProjectionOperatorState();
+                left_child_state_->deserialize(src + offset, size - offset);
+                offset += left_child_state_->getSize();
+            } else {
+                std::cerr << "[Error]: Unexpected left child node type for HashJoinExecutor! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
+            }
         }
     }
 
-    right_index_scan_state_.deserialize(src + offset, right_index_scan_state_.getSize());
-    offset += right_index_scan_state_.getSize();
+    if(right_child_is_join_ == false) {
+        ExecutionType child_exec_type = *reinterpret_cast<ExecutionType*>(src + offset + EXECTYPE_OFFSET);
+        if(child_exec_type == ExecutionType::INDEX_SCAN) {
+            right_child_state_ = new IndexScanOperatorState();
+            right_child_state_->deserialize(src + offset, size - offset);
+            offset += right_child_state_->getSize();
+        } else if(child_exec_type == ExecutionType::PROJECTION) {
+            right_child_state_ = new ProjectionOperatorState();
+            right_child_state_->deserialize(src + offset, size - offset);
+            offset += right_child_state_->getSize();
+        } else {
+            std::cerr << "[Error]: Unexpected right child node type for HashJoinExecutor! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
+        }
+    }
 
     assert(offset == op_state_size_);
     return offset;

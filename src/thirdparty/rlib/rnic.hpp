@@ -88,7 +88,7 @@ struct RNicInfo {
       return;
     }
 
-    for (uint i = 0; i < port_attr.gid_tbl_len; ++i) {
+    for (int i = 0; i < port_attr.gid_tbl_len; ++i) {
       ibv_gid gid = {};
       auto rc = ibv_query_gid(ctx, port_id, i, &gid);
       if (gid.global.interface_id) {

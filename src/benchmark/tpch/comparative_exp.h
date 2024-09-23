@@ -27,7 +27,7 @@ public:
     int node_num_;      // query tree中节点个数, node_num_ = 3 * (join_node_num_ + 1)
     int join_node_num_;  // query tree中join节点个数
     int record_num_;
-    DiskManager* disk_mgr_;                 // disk_manager is used to store intermediate results
+    DiskManager* disk_mgr_;                 
     BufferPoolManager* buffer_pool_mgr_;
     IxManager* index_mgr_;
     MultiVersionManager *mvcc_mgr_;

@@ -1,6 +1,7 @@
 #include "executor_hash_join.h"
 #include "executor_block_join.h"
 #include "executor_index_scan.h"
+#include "executor_projection.h"
 #include "state/op_state_manager.h"
 #include "state/state_manager.h"
 #include "state/state_item/op_state.h"
@@ -209,8 +210,16 @@ void HashJoinExecutor::load_state_info(HashJoinOperatorState* state) {
     // load state except hash_table
     assert(state != nullptr);
 
-    if(auto x = dynamic_cast<IndexScanExecutor *>(right_.get())) {
-        x->load_state_info(&(state->right_index_scan_state_));
+    // if(auto x = dynamic_cast<IndexScanExecutor *>(right_.get())) {
+    //     x->load_state_info(&(state->right_index_scan_state_));
+    // }
+    if(state->right_child_is_join_ == false) {
+        if(auto x = dynamic_cast<IndexScanExecutor *>(right_.get())) {
+            x->load_state_info(dynamic_cast<IndexScanOperatorState *>(state->right_child_state_));
+        }
+        else if (auto x = dynamic_cast<ProjectionExecutor *>(right_.get())) {
+            x->load_state_info(dynamic_cast<ProjectionOperatorState *>(state->right_child_state_));
+        }
     }
 
     right_->nextTuple();
@@ -223,8 +232,13 @@ void HashJoinExecutor::load_state_info(HashJoinOperatorState* state) {
     // 先build了哈希表，才能调用当前函数
     if(!initialized_) {
         // 如果哈希表没有构建完全，需要首先恢复左算子状态，哈希表在后面begintuple的时候再构建
-        if(auto x = dynamic_cast<IndexScanExecutor *>(left_.get())) {
-            x->load_state_info(&(state->left_index_scan_state_));
+        if(state->left_child_is_join_ == false) {
+            if(auto x = dynamic_cast<IndexScanExecutor *>(left_.get())) {
+                x->load_state_info(dynamic_cast<IndexScanOperatorState *>(state->left_child_state_));
+            }
+            else if (auto x = dynamic_cast<ProjectionExecutor *>(left_.get())) {
+                x->load_state_info(dynamic_cast<ProjectionOperatorState *>(state->left_child_state_));
+            }
         }
     }
 }

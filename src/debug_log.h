@@ -8,6 +8,7 @@
 
 #include "spdlog/sinks/basic_file_sink.h"
 
+#define PRINT_LOG 1
 
 class RwServerDebug {
 private:

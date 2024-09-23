@@ -11,6 +11,7 @@
 #include "errors.h"
 #include "common/config.h"
 #include "executor_hash_join.h"
+#include "executor_projection.h"
 
 /* 
     Join Block
@@ -281,8 +282,6 @@ std::unique_ptr<Record> BlockNestedLoopJoinExecutor::Next() {
     return ret;
 }
 
-
-
 // 找到下一个符合fed_cond的tuple
 void BlockNestedLoopJoinExecutor::find_next_valid_tuple() {
     /*
@@ -517,11 +516,27 @@ void BlockNestedLoopJoinExecutor::load_state_info(BlockJoinOperatorState *block_
         /*
             先恢复儿子节点
         */
-        if(auto x = dynamic_cast<IndexScanExecutor *>(left_.get())) {
-            x->load_state_info(&(block_join_op->left_index_scan_state_));
+        if(block_join_op->left_child_is_join_ == false) {
+            if(auto x = dynamic_cast<IndexScanExecutor *>(left_.get())) {
+                x->load_state_info(dynamic_cast<IndexScanOperatorState *>(block_join_op->left_child_state_));
+            }
+            else if(auto x = dynamic_cast<ProjectionExecutor *>(left_.get())) {
+                x->load_state_info(dynamic_cast<ProjectionOperatorState *>(block_join_op->left_child_state_));
+            }
+            else {
+                std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
+            }
         }
-        if(auto x = dynamic_cast<IndexScanExecutor *>(right_.get())) {
-            x->load_state_info(&(block_join_op->right_index_scan_state_));
+        if(block_join_op->right_child_is_join_ == false) {
+            if(auto x = dynamic_cast<IndexScanExecutor *>(right_.get())) {
+                x->load_state_info(dynamic_cast<IndexScanOperatorState *>(block_join_op->right_child_state_));
+            }
+            else if(auto x = dynamic_cast<ProjectionExecutor *>(right_.get())) {
+                x->load_state_info(dynamic_cast<ProjectionOperatorState *>(block_join_op->right_child_state_));
+            }
+            else {
+                std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
+            }
         }
         
         /*

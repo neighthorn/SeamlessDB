@@ -1,7 +1,10 @@
+#include <chrono>
+
 #include "comparative_exp.h"
 
 #include "optimizer/planner.h"
 #include "util/json_util.h"
+#include "state/resume_util.h"
 
 DEFINE_string(protocol, "baidu_std", "Protocol type");
 DEFINE_string(connection_type, "", "Connection type. Available values: single, pooled, short");
@@ -137,13 +140,13 @@ std::string ComparativeExp::get_table_join_col(int tab_id) {
 #define make_rhs_col(right_tab_id, right_col) cond.rhs_col = TabCol{.tab_name = tables[right_tab_id], .col_name = right_col};
 
 int ComparativeExp::get_join_cond(int left_table_range, int right_tab_id, std::vector<Condition>& join_conds) {
-    left_table_range = std::min(left_table_range, 7);
+    // left_table_range = std::min(left_table_range, 7);
     Condition cond;
     cond.is_rhs_val = false;
     cond.op = OP_EQ;
     switch(right_tab_id) {
         case 0: {   // region
-            assert(left_table_range == 7);
+            assert(left_table_range >= 7);
             // r_regionkey = n_regionkey
             make_lhs_col(1, "n_regionkey");
             make_rhs_col(0, "r_regionkey");
@@ -152,7 +155,7 @@ int ComparativeExp::get_join_cond(int left_table_range, int right_tab_id, std::v
         } break;
         case 1: {   // nation
             int rnd;
-            if(left_table_range == 7) rnd = RandomGenerator::generate_random_int(1, 2);
+            if(left_table_range >= 7) rnd = (left_table_range % 2) + 1;
             else rnd = 1;
 
             if(rnd == 1) {
@@ -170,8 +173,9 @@ int ComparativeExp::get_join_cond(int left_table_range, int right_tab_id, std::v
         } break;
         case 2: {   // customer
             int rnd;
-            if(left_table_range == 7) rnd = RandomGenerator::generate_random_int(1, 3);
+            if(left_table_range >= 7) rnd = (left_table_range % 3) + 1;
             else rnd = 1;
+
             if(rnd == 1) {
                 make_lhs_col(1, "n_nationkey");
                 make_rhs_col(2, "c_nationkey");
@@ -193,8 +197,9 @@ int ComparativeExp::get_join_cond(int left_table_range, int right_tab_id, std::v
         } break;
         case 3: {   // supplier
             int rnd;
-            if(left_table_range == 7) rnd = RandomGenerator::generate_random_int(1, 4);
-            else rnd = RandomGenerator::generate_random_int(1, 2);
+            if(left_table_range >= 7) rnd = (left_table_range % 4) + 1;
+            else rnd = (left_table_range % 2) + 1;  
+
             if(rnd == 1) {
                 make_lhs_col(1, "n_nationkey");
                 make_rhs_col(3, "s_nationkey");
@@ -222,8 +227,9 @@ int ComparativeExp::get_join_cond(int left_table_range, int right_tab_id, std::v
         } break;
         case 4: {   // orders
             int rnd;
-            if(left_table_range == 7) rnd = RandomGenerator::generate_random_int(1, 2);
+            if(left_table_range >= 7) rnd = (left_table_range % 2) + 1;
             else rnd = 1;
+
             if(rnd == 1) {
                 make_lhs_col(2, "c_custkey");
                 make_rhs_col(4, "o_custkey");
@@ -239,7 +245,8 @@ int ComparativeExp::get_join_cond(int left_table_range, int right_tab_id, std::v
         } break;
         case 5: {   // lineitem
             int rnd;
-            rnd = RandomGenerator::generate_random_int(1, 2);
+            rnd = (left_table_range % 2) + 1;
+
             if(rnd == 1) {
                 make_lhs_col(3, "s_suppkey");
                 make_rhs_col(5, "l_suppkey");
@@ -255,8 +262,9 @@ int ComparativeExp::get_join_cond(int left_table_range, int right_tab_id, std::v
         } break;
         case 6: {   // partsupp
             int rnd;
-            if(left_table_range == 7) rnd = RandomGenerator::generate_random_int(1, 2);
+            if(left_table_range >= 7) rnd = (left_table_range % 2) + 1;
             else rnd = 1;
+
             if(rnd == 1) {
                 make_lhs_col(3, "s_suppkey");
                 make_rhs_col(6, "ps_suppkey");
@@ -408,8 +416,8 @@ std::shared_ptr<Plan> ComparativeExp::generate_query_tree(Context* context) {
             auto scan_plan = std::make_shared<ScanPlan>(T_IndexScan, curr_sql_id_, curr_plan_id_ ++, sm_mgr_, tables[i], filter_conds, index_conds);
             auto proj_plan = generate_proj_plan(i, std::move(scan_plan));
             // 随机生成 hash join or nestedloop join
-            int rnd = RandomGenerator::generate_random_int(1, 2);
-            plan = std::make_shared<JoinPlan>(rnd == 1 ? T_HashJoin : T_NestLoop, curr_sql_id_, curr_plan_id_ ++, std::move(plan), std::move(proj_plan), join_conds);
+            // int rnd = RandomGenerator::generate_random_int(1, 2);
+            plan = std::make_shared<JoinPlan>(T_NestLoop, curr_sql_id_, curr_plan_id_ ++, std::move(plan), std::move(proj_plan), join_conds);
         }
     }
 
@@ -423,7 +431,8 @@ std::shared_ptr<Plan> ComparativeExp::generate_query_tree(Context* context) {
         std::vector<Condition> filter_conds;
         std::vector<Condition> join_conds;
 
-        int right_tab_id = RandomGenerator::generate_random_int(0, max_table_num - 1);
+        // int right_tab_id = RandomGenerator::generate_random_int(0, max_table_num - 1);
+        int right_tab_id = i % 8;
         // int left_tab_id = RandomGenerator::generate_random_int(0, max_table_num - 1);
         int left_tab_id = get_join_cond(i, right_tab_id, join_conds);
 
@@ -432,14 +441,14 @@ std::shared_ptr<Plan> ComparativeExp::generate_query_tree(Context* context) {
         
         auto scan_plan = std::make_shared<ScanPlan>(T_IndexScan, curr_sql_id_, curr_plan_id_ ++, sm_mgr_, tables[right_tab_id], filter_conds, index_conds);
         auto proj_plan = generate_proj_plan(right_tab_id, std::move(scan_plan));
-        int rnd = RandomGenerator::generate_random_int(1, 2);
-        plan = std::make_shared<JoinPlan>(rnd == 1 ? T_HashJoin : T_NestLoop, curr_sql_id_, curr_plan_id_ ++, std::move(plan), std::move(proj_plan), join_conds);
+        // int rnd = RandomGenerator::generate_random_int(1, 2);
+        plan = std::make_shared<JoinPlan>(T_NestLoop, curr_sql_id_, curr_plan_id_ ++, std::move(plan), std::move(proj_plan), join_conds);
     }
 
     // 最后再进行一次projection
     plan = generate_total_proj_plan(join_node_num_ + 1, std::move(plan));
     
-    plan->format_print();
+    // plan->format_print();
 
     plan = std::make_shared<DMLPlan>(T_select, std::move(plan), std::string(), 0, std::vector<Value>(),
                                                     std::vector<Condition>(), std::vector<SetClause>());
@@ -454,7 +463,75 @@ double src_scale_factor_ = 1000.0;
 int block_size_ = 500;
 int node_type_ = 0; // rw_server default
 
+void ComparativeExp::normal_exec() {
+    std::cout << "************************ normal_exec ************************" << std::endl;
+    int connection_id = 0;
+    CoroutineScheduler* coro_sched = new CoroutineScheduler(connection_id, CORO_NUM);
+    auto local_rdma_region_range = RDMARegionAllocator::get_instance()->GetThreadLocalRegion(connection_id);
+    RDMABufferAllocator* rdma_buffer_allocator = new RDMABufferAllocator(local_rdma_region_range.first, local_rdma_region_range.second);
+    QPManager* qp_mgr = QPManager::get_instance();
+    bool rdma_allocated = true;
+    Transaction* txn = txn_mgr_->get_transaction(connection_id);
+    MetaManager* meta_mgr = MetaManager::get_instance();
+    OperatorStateManager* op_state_manager = new OperatorStateManager(connection_id, coro_sched, meta_mgr, qp_mgr);
+    char* result_str = new char[BUFFER_LENGTH];
+    int offset = 0;
+    Context* context = new Context(lock_mgr_, log_mgr_, txn, coro_sched, op_state_manager, qp_mgr, result_str, &offset, rdma_allocated);
+
+    std::shared_ptr<Plan> plan = generate_query_tree(context);
+    std::shared_ptr<PortalStmt> portal_stmt = portal_->start(plan, context);
+    portal_->run(portal_stmt, ql_mgr_, context);
+
+    print_char_array(result_str, offset);
+    delete rdma_buffer_allocator;
+    delete[] result_str;
+    delete context;
+    std::cout << "--------------------------- finish ---------------------------" << std::endl;
+}
+
+void ComparativeExp::re_exec() {
+    std::cout << "************************ re_exec ************************" << std::endl;
+    int connection_id = 0;
+    CoroutineScheduler* coro_sched = new CoroutineScheduler(connection_id, CORO_NUM);
+    auto local_rdma_region_range = RDMARegionAllocator::get_instance()->GetThreadLocalRegion(connection_id);
+    RDMABufferAllocator* rdma_buffer_allocator = new RDMABufferAllocator(local_rdma_region_range.first, local_rdma_region_range.second);
+    QPManager* qp_mgr = QPManager::get_instance();
+    bool rdma_allocated = true;
+    Transaction* txn = txn_mgr_->get_transaction(connection_id);
+    MetaManager* meta_mgr = MetaManager::get_instance();
+    OperatorStateManager* op_state_manager = new OperatorStateManager(connection_id, coro_sched, meta_mgr, qp_mgr);
+    char* result_str = new char[BUFFER_LENGTH];
+    int offset = 0;
+    Context* context = new Context(lock_mgr_, log_mgr_, txn, coro_sched, op_state_manager, qp_mgr, result_str, &offset, rdma_allocated);
+
+    std::shared_ptr<Plan> plan = generate_query_tree(context);
+    std::shared_ptr<PortalStmt> portal_stmt = portal_->start(plan, context);
+    
+    // begin to 
+    auto op_ck_meta = context->op_state_mgr_->read_op_checkpoint_meta();
+
+    if(op_ck_meta->checkpoint_num != 0) {
+        RwServerDebug::getInstance()->DEBUG_PRINT("Recover from checkpoint\n");
+        auto op_checkpoints = context->op_state_mgr_->read_op_checkpoints(op_ck_meta.get());
+        rebuild_exec_plan_with_query_tree(context, portal_stmt, op_ck_meta.get(), op_checkpoints);
+        portal_->re_run(portal_stmt, ql_mgr_, context);
+    }
+    else {
+        RwServerDebug::getInstance()->DEBUG_PRINT("Execute SQL from the beginning\n");
+        portal_->run(portal_stmt, ql_mgr_, context);
+    }
+
+    print_char_array(result_str, offset);
+    delete rdma_buffer_allocator;
+    delete[] result_str;
+    delete context;
+}
+
 int main(int argc, char** argv) {
+    /*
+    整体执行流程：执行normal_time * break_percentage秒之后，kill掉正常执行的进程，进行恢复
+    */
+
     std::string config_path = "../src/config/benchmark_config.json";
     cJSON* cjson = parse_json_file(config_path);
     cJSON* comp_exp_config = cJSON_GetObjectItem(cjson, "comparative_exp");
@@ -463,11 +540,13 @@ int main(int argc, char** argv) {
     node_type_ = cJSON_GetObjectItem(comp_exp_config, "node_type")->valueint;
     int buffer_pool_size = cJSON_GetObjectItem(comp_exp_config, "buffer_pool_size")->valueint;
     int thread_num = cJSON_GetObjectItem(comp_exp_config, "thread_num")->valueint;
+    double normal_time = cJSON_GetObjectItem(comp_exp_config, "normal_time")->valuedouble;
+    double break_percentage = cJSON_GetObjectItem(comp_exp_config, "break_percentage")->valuedouble;
 
-    state_open_ = 0;
-    state_theta_ = -1.0;
-    src_scale_factor_ = 1000.0;
-    block_size_ = 500;
+    state_open_ = cJSON_GetObjectItem(comp_exp_config, "state_open")->valueint;
+    state_theta_ = cJSON_GetObjectItem(comp_exp_config, "state_theta")->valuedouble;
+    src_scale_factor_ = cJSON_GetObjectItem(comp_exp_config, "src_scale_factor")->valuedouble;
+    block_size_ = cJSON_GetObjectItem(comp_exp_config, "block_size")->valueint;
 
     MetaManager::create_instance(config_path);
     RDMARegionAllocator::create_instance(MetaManager::get_instance(), 1);
@@ -476,24 +555,15 @@ int main(int argc, char** argv) {
     ContextManager::create_instance(1);
     ComparativeExp* comparative_exp = new ComparativeExp(join_num, buffer_pool_size, thread_num);
 
-    int connection_id = 0;
-    CoroutineScheduler* coro_sched = new CoroutineScheduler(connection_id, CORO_NUM);
-    auto local_rdma_region_range = RDMARegionAllocator::get_instance()->GetThreadLocalRegion(connection_id);
-    RDMABufferAllocator* rdma_buffer_allocator = new RDMABufferAllocator(local_rdma_region_range.first, local_rdma_region_range.second);
-    QPManager* qp_mgr = QPManager::get_instance();
-    bool rdma_allocated = true;
-    Transaction* txn = comparative_exp->txn_mgr_->get_transaction(connection_id);
-    MetaManager* meta_mgr = MetaManager::get_instance();
-    OperatorStateManager* op_state_manager = new OperatorStateManager(connection_id, coro_sched, meta_mgr, qp_mgr);
-    char* result_str = new char[BUFFER_LENGTH];
-    int offset = 0;
-    Context* context = new Context(comparative_exp->lock_mgr_, comparative_exp->log_mgr_, txn, coro_sched, op_state_manager, qp_mgr, result_str, &offset, rdma_allocated);
+    std::thread normal_thread(&ComparativeExp::normal_exec, comparative_exp);
 
-    std::shared_ptr<Plan> plan = comparative_exp->generate_query_tree(context);
-    std::shared_ptr<PortalStmt> portal_stmt = comparative_exp->portal_->start(plan, context);
-    comparative_exp->portal_->run(portal_stmt, comparative_exp->ql_mgr_, context);
+    std::this_thread::sleep_for(std::chrono::duration<double>(normal_time * break_percentage));
+    std::cout << "kill normal thread" << std::endl;
+    pthread_cancel(normal_thread.native_handle());
+    
+    std::cout << "start re_exec" << std::endl;
+    comparative_exp->re_exec();
 
-    print_char_array(result_str, offset);
-
+    if(normal_thread.joinable()) normal_thread.join();
     return 0;
 }

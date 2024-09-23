@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <iostream>
 
 #include "record/record.h"
 #include "execution/execution_defs.h"
@@ -48,20 +49,25 @@ struct CheckPointMeta {
 
     其中op_state_size需要根据具体的operator进行计算
 */
+
+#define EXECTYPE_OFFSET sizeof(int) * 2 + sizeof(size_t) + sizeof(time_t)
+#define OPERATOR_STATE_HEADER_SIZE sizeof(int) * 2 + sizeof(size_t) + sizeof(time_t) + sizeof(ExecutionType)
+
 class OperatorState {
 public:
     OperatorState();
     OperatorState(int sql_id, int operator_id, time_t op_state_time, ExecutionType exec_type);
 
-    size_t  serialize(char *dest) ;
+    virtual size_t  serialize(char *dest) ;
 
-    bool    deserialize(char *src, size_t size) ;
+    virtual bool    deserialize(char *src, size_t size) ;
 
     /*
         get size of Op
     */
-    static size_t getSize() {
-        return sizeof(int) * 2 + sizeof(size_t) + sizeof(time_t) + sizeof(exec_type_);
+    virtual size_t getSize() {
+        std::cout << "Base OperatorState size: " << OPERATOR_STATE_HEADER_SIZE << std::endl;
+        return OPERATOR_STATE_HEADER_SIZE;
     }
 
 public:
@@ -85,14 +91,12 @@ public:
     IndexScanOperatorState();
 
     IndexScanOperatorState(IndexScanExecutor *index_scan_op);
-
-
     
-    size_t  serialize(char *dest) ;
+    size_t  serialize(char *dest) override;
 
-    bool    deserialize(char *src, size_t size) ;
+    bool    deserialize(char *src, size_t size) override;
 
-    inline size_t getSize() {
+    size_t getSize() override {
         return OperatorState::getSize() + sizeof(Rid) * 3;
     }
 
@@ -107,6 +111,40 @@ private:
     IndexScanExecutor *index_scan_op_;
 };
 
+class ProjectionExecutor;
+class ProjectionOperatorState : public OperatorState {
+public:
+    ProjectionOperatorState();
+
+    ProjectionOperatorState(ProjectionExecutor* projection_op);
+
+    ~ProjectionOperatorState() {
+        if(left_index_scan_state_ != nullptr) {
+            delete left_index_scan_state_;
+        }
+    }
+
+    size_t  serialize(char *dest) override;
+
+    bool    deserialize(char *src, size_t size) override;
+
+    size_t getSize() override {
+        std::cout << "ProjectionOperatorState size: " << op_state_size_ << std::endl;
+        return op_state_size_;
+    }
+
+    /*
+    如果儿子节点为join算子，只需要记录当前算子的be_call_time，儿子节点的be_call_time应该和当前节点的be_call_time一致
+    如果儿子节点为scan算子，需要一起记录scan算子的状态
+    */
+    bool is_left_child_join_;       
+    int left_child_call_times_;    // left child的be_call_times, 和当前算子的be_call_times一致
+
+    ProjectionExecutor *projection_op_;
+
+    IndexScanOperatorState* left_index_scan_state_;
+};
+
 // inline bool index_scan_op_load_state(IndexScanExecutor *index_scan_op, IndexScanOperatorState *index_scan_state) {
 //     index_scan_op->
 // }
@@ -119,21 +157,20 @@ public:
 
     BlockJoinOperatorState(BlockNestedLoopJoinExecutor *block_join_op) ;
 
-    size_t  serialize(char *dest) ;
+    size_t  serialize(char *dest) override;
 
-    bool deserialize(char *src, size_t size) ;
+    bool deserialize(char *src, size_t size) override;
 
     /*
         TODO
     */
-    inline size_t getSize() {
+    size_t getSize() override {
         return OperatorState::getSize() + state_size;
     }
 
 public:
     BlockNestedLoopJoinExecutor *block_join_op_;
     size_t state_size = 0;
-
 
     /*
         basic state
@@ -145,10 +182,12 @@ public:
     int     be_call_times_;
 
     bool    left_child_is_join_;
-    IndexScanOperatorState  left_index_scan_state_;
+    // IndexScanOperatorState  left_index_scan_state_;
+    OperatorState* left_child_state_;
 
     bool    right_child_is_join_;
-    IndexScanOperatorState  right_index_scan_state_;
+    // IndexScanOperatorState  right_index_scan_state_;
+    OperatorState* right_child_state_;
 
     /*
         left block info
@@ -173,13 +212,13 @@ public:
 
     HashJoinOperatorState(HashJoinExecutor *hash_join_op);
 
-    size_t serialize(char *dest);
+    size_t serialize(char *dest) override;
 
-    bool deserialize(char *src, size_t size);
+    bool deserialize(char *src, size_t size) override;
 
     void rebuild_hash_table(HashJoinExecutor *hash_join_op, char* src, size_t size);
 
-    inline size_t getSize() {
+    size_t getSize() override {
         return OperatorState::getSize() + state_size;
     }   
 
@@ -192,10 +231,12 @@ public:
     bool is_hash_table_built_;       // whether the hash table has been built, the same as initialized_ in HashJoinExecutor
 
     bool left_child_is_join_;
-    IndexScanOperatorState left_index_scan_state_;
+    // IndexScanOperatorState left_index_scan_state_;
+    OperatorState* left_child_state_;
     
     bool right_child_is_join_;
-    IndexScanOperatorState right_index_scan_state_;
+    // IndexScanOperatorState right_index_scan_state_;
+    OperatorState* right_child_state_;
 
     int left_hash_table_size_;  // 哈希表中的tuple条数
     int left_record_len_;       // 哈希表中每个tuple的长度

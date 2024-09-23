@@ -7,5 +7,6 @@ enum class ExecutionType {
     INDEX_SCAN,
     BLOCK_JOIN,
     HASH_JOIN,
+    PROJECTION,
     NOT_DEFINED
 };

@@ -11,7 +11,7 @@ set(RDMA_SRC
 )
 
 add_library(rdma_util STATIC ${RDMA_SRC})
-target_link_libraries(rdma_util rlib execution execution_op)
+target_link_libraries(rdma_util rlib execution execution_op parser planner analyze)
 
 # test buffer allocator
 # add_executable(test_rdma_region_allocator allocator/buffer_allocator_test.cpp)

@@ -63,7 +63,7 @@ public:
         }
 
         if(size > max_size_) {
-            std::cerr << "[Error]: exceed max size! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
+            std::cerr << "[Error]: exceed max size! size: " << size << ", max_size: " << max_size_ << "\n";
             return {false, nullptr};
         }
 

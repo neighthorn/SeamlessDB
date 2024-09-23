@@ -42,42 +42,10 @@ std::shared_ptr<PortalStmt> rebuild_exec_plan_without_state(RWNode *node, Contex
     return portal_stmt;
 }
 
-/*
-    恢复操作符状态
-*/
-std::shared_ptr<PortalStmt> rebuild_exec_plan_from_state(RWNode *node, Context *context, SQLState *sql_state, CheckPointMeta *op_ck_meta, std::vector<std::unique_ptr<OperatorState>> &op_checkpoints) {
-   
-    std::shared_ptr<PortalStmt> portal_stmt;
-    /*
-        从sql重构exec plan
-    */ 
-
-    #ifdef TIME_OPEN
-        auto recover_state_start = std::chrono::high_resolution_clock::now();
-    #endif
-
-    yyscan_t scanner;
-    if(yylex_init(&scanner)) {
-        std::cout << "failed to init scanner\n";
-        exit(0);
-    }
-    YY_BUFFER_STATE buf = yy_scan_string(sql_state->sql.c_str(), scanner);
-    if (yyparse(scanner) == 0) {
-        if (ast::parse_tree != nullptr) {
-            // analyze and rewrite
-            std::shared_ptr<Query> query = node->analyze_->do_analyze(ast::parse_tree);
-            yy_delete_buffer(buf, scanner);
-            // 优化器
-            node->optimizer_->set_planner_sql_id(sql_state->sql_id);
-            std::shared_ptr<Plan> plan = node->optimizer_->plan_query(query, context);
-            // portal
-            portal_stmt = node->portal_->start(plan, context);
-        }
-    }
+void rebuild_exec_plan_with_query_tree(Context* context, std::shared_ptr<PortalStmt> portal_stmt, CheckPointMeta *op_ck_meta, std::vector<std::unique_ptr<OperatorState>> &op_checkpoints) {
     /*
         load checkpoint state
     */
-
     AbstractExecutor *need_to_begin_tuple = nullptr;
     {
         // up down load checkpoint state
@@ -104,6 +72,7 @@ std::shared_ptr<PortalStmt> rebuild_exec_plan_from_state(RWNode *node, Context *
                 if(checkpoint_index == -1) {
                     std::cout << "[Warning]: Checkpoints Not Found! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
                     RwServerDebug::getInstance()->DEBUG_PRINT("[Warning]: Checkpoints Not Found! [Location]: " + std::string(__FILE__) + ":" + std::to_string(__LINE__));
+                    std::cout << "operator_id: " << x->operator_id_ << std::endl;
                     break ;
                     /*
                         没有找到checkpoint，即需要从改exec_plan开始，需要手动执行beginTuple
@@ -163,7 +132,7 @@ std::shared_ptr<PortalStmt> rebuild_exec_plan_from_state(RWNode *node, Context *
                 // 首先找到所有包含hash_table的检查点，然后重构hash_table
                 for(int i = 0; i <= last_checkpoint_index; ++i) {
                     // 通过hash_table_contained_变量来判断是否包含hash_table的数据
-                    if(op_checkpoints[i]->operator_id_ == x->operator_id_ && *reinterpret_cast<bool*>(op_checkpoints[i]->op_state_addr_ + OperatorState::getSize()) == true) {
+                    if(op_checkpoints[i]->operator_id_ == x->operator_id_ && *reinterpret_cast<bool*>(op_checkpoints[i]->op_state_addr_ + OPERATOR_STATE_HEADER_SIZE) == true) {
                         // op_checkpoints[i]->rebuild_hash_table(x);
                         std::unique_ptr<HashJoinOperatorState> hash_join_op_state = std::make_unique<HashJoinOperatorState>();
                         hash_join_op_state->deserialize(op_checkpoints[i]->op_state_addr_, op_checkpoints[i]->op_state_size_);
@@ -282,6 +251,41 @@ std::shared_ptr<PortalStmt> rebuild_exec_plan_from_state(RWNode *node, Context *
             }
         }
     }    
+}
 
+/*
+    恢复操作符状态
+*/
+std::shared_ptr<PortalStmt> rebuild_exec_plan_from_state(RWNode *node, Context *context, SQLState *sql_state, CheckPointMeta *op_ck_meta, std::vector<std::unique_ptr<OperatorState>> &op_checkpoints) {
+   
+    std::shared_ptr<PortalStmt> portal_stmt;
+    /*
+        从sql重构exec plan
+    */ 
+
+    #ifdef TIME_OPEN
+        auto recover_state_start = std::chrono::high_resolution_clock::now();
+    #endif
+
+    yyscan_t scanner;
+    if(yylex_init(&scanner)) {
+        std::cout << "failed to init scanner\n";
+        exit(0);
+    }
+    YY_BUFFER_STATE buf = yy_scan_string(sql_state->sql.c_str(), scanner);
+    if (yyparse(scanner) == 0) {
+        if (ast::parse_tree != nullptr) {
+            // analyze and rewrite
+            std::shared_ptr<Query> query = node->analyze_->do_analyze(ast::parse_tree);
+            yy_delete_buffer(buf, scanner);
+            // 优化器
+            node->optimizer_->set_planner_sql_id(sql_state->sql_id);
+            std::shared_ptr<Plan> plan = node->optimizer_->plan_query(query, context);
+            // portal
+            portal_stmt = node->portal_->start(plan, context);
+        }
+    }
+
+    rebuild_exec_plan_with_query_tree(context, portal_stmt, op_ck_meta, op_checkpoints);
     return portal_stmt;
 }

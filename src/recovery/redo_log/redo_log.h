@@ -38,6 +38,8 @@ public:
     lsn_t prev_lsn_;                /* 事务创建的前一条日志记录的lsn，用于undo */
     bool is_persisit_;              /* 是否是一个原子操作的结尾 */
 
+    ~RedoLogRecord() {}
+
     // 把日志记录序列化到dest中
     virtual void serialize (char* dest) const {
         memcpy(dest + REDO_LOG_TYPE_OFFSET, &log_type_, sizeof(RedoLogType));
@@ -84,6 +86,8 @@ public:
         log_tid_ = txn_id;
     }
 
+    ~CommitLogRecord() {}
+
     void serialize(char* dest) {
         RedoLogRecord::serialize(dest);
     }
@@ -108,6 +112,8 @@ public:
     AbortLogRecord(txn_id_t txn_id) :AbortLogRecord() {
         log_tid_ = txn_id;
     }
+
+    ~AbortLogRecord() {}
 
     void serialize(char* dest) {
         RedoLogRecord::serialize(dest);
@@ -148,6 +154,12 @@ public:
         table_name_ = new char[table_name_size_];
         memcpy(table_name_, table_name.c_str(), table_name_size_);
         log_tot_len_ += table_name_size_;
+    }
+
+    ~UpdateRedoLogRecord() {
+        if(table_name_ != nullptr) {
+            delete[] table_name_;
+        }
     }
 
     void serialize(char* dest) const override {
@@ -229,6 +241,12 @@ public:
         log_tot_len_ += table_name_size_;
     }
 
+    ~DeleteRedoLogRecord() {
+        if(table_name_ != nullptr) {
+            delete[] table_name_;
+        }
+    }
+
     void serialize(char* dest) const override {
         RedoLogRecord::serialize(dest);
         int offset = REDO_LOG_DATA_OFFSET;
@@ -305,6 +323,15 @@ public:
         memcpy(table_name_, table_name.c_str(), table_name_size_);
         log_tot_len_ += sizeof(size_t);
         log_tot_len_ += table_name_size_;
+    }
+
+    ~InsertRedoLogRecord() {
+        if(key_ != nullptr) {
+            delete[] key_;
+        }
+        if(table_name_ != nullptr) {
+            delete[] table_name_;
+        }
     }
 
     // 把insert日志记录序列化到dest中

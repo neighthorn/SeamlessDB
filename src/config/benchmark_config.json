@@ -5,10 +5,14 @@
         "join_num": 20,
         "cost_model": "SeamlessDB",
         "local_rdma_port": 12201,
-        "break_percentage": 50,
-        "normal_time": 100,
+        "break_percentage": 0.5,
+        "normal_time": 10.5,
         "buffer_pool_size": 1310720,
-        "thread_num": 1
+        "thread_num": 1,
+        "state_open": 1,
+        "state_theta": 0.9,
+        "src_scale_factor": 1.0,
+        "block_size": 500
     },
     "remote_state_nodes": {
         "remote_ips": [

@@ -187,6 +187,9 @@ void OperatorStateManager::write_plan_to_state(int sql_id, SmManager* sm_mgr, st
                 }
 
             } break;
+            default:
+                std::cout << "Not impleted!\n";
+            break;
             
         }
     } else {

@@ -442,13 +442,14 @@ std::shared_ptr<Plan> ComparativeExp::generate_query_tree(Context* context) {
         auto scan_plan = std::make_shared<ScanPlan>(T_IndexScan, curr_sql_id_, curr_plan_id_ ++, sm_mgr_, tables[right_tab_id], filter_conds, index_conds);
         auto proj_plan = generate_proj_plan(right_tab_id, std::move(scan_plan));
         // int rnd = RandomGenerator::generate_random_int(1, 2);
-        plan = std::make_shared<JoinPlan>(T_NestLoop, curr_sql_id_, curr_plan_id_ ++, std::move(plan), std::move(proj_plan), join_conds);
+        // plan = std::make_shared<JoinPlan>(T_NestLoop, curr_sql_id_, curr_plan_id_ ++, std::move(plan), std::move(proj_plan), join_conds);
+        plan = std::make_shared<JoinPlan>(T_HashJoin, curr_sql_id_, curr_plan_id_ ++, std::move(plan), std::move(proj_plan), join_conds);
     }
 
     // 最后再进行一次projection
     plan = generate_total_proj_plan(join_node_num_ + 1, std::move(plan));
     
-    // plan->format_print();
+    plan->format_print();
 
     plan = std::make_shared<DMLPlan>(T_select, std::move(plan), std::string(), 0, std::vector<Value>(),
                                                     std::vector<Condition>(), std::vector<SetClause>());
@@ -465,6 +466,8 @@ int node_type_ = 0; // rw_server default
 
 void ComparativeExp::normal_exec() {
     std::cout << "************************ normal_exec ************************" << std::endl;
+    auto normal_start = std::chrono::high_resolution_clock::now();
+
     int connection_id = 0;
     CoroutineScheduler* coro_sched = new CoroutineScheduler(connection_id, CORO_NUM);
     auto local_rdma_region_range = RDMARegionAllocator::get_instance()->GetThreadLocalRegion(connection_id);
@@ -481,6 +484,10 @@ void ComparativeExp::normal_exec() {
     std::shared_ptr<Plan> plan = generate_query_tree(context);
     std::shared_ptr<PortalStmt> portal_stmt = portal_->start(plan, context);
     portal_->run(portal_stmt, ql_mgr_, context);
+
+    auto normal_end = std::chrono::high_resolution_clock::now();
+    auto normal_duration = std::chrono::duration_cast<std::chrono::duration<double>>(normal_end - normal_start);
+    std::cout << "time for normal exec: " << normal_duration.count() << "s" << std::endl;
 
     print_char_array(result_str, offset);
     delete rdma_buffer_allocator;

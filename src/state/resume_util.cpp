@@ -85,6 +85,7 @@ void rebuild_exec_plan_with_query_tree(Context* context, std::shared_ptr<PortalS
                 /*
                     恢复算子状态
                 */
+               std::cout << "recover operator " << x->operator_id_ << std::endl;
                 std::unique_ptr<BlockJoinOperatorState> block_join_op_state = std::make_unique<BlockJoinOperatorState>();
                 block_join_op_state->deserialize(op_checkpoints[checkpoint_index]->op_state_addr_, op_checkpoints[checkpoint_index]->op_state_size_);
                 x->load_state_info(block_join_op_state.get());

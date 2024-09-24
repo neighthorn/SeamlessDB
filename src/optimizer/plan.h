@@ -48,6 +48,7 @@ class ScanPlan : public Plan
         ~ScanPlan(){}
 
         void format_print() override {
+            std::cout << "op_id: " << plan_id_ << ", ";
             if(Plan::tag == T_IndexScan)
                 std::cout << "IndexScan: ";
             else
@@ -183,6 +184,7 @@ class JoinPlan : public Plan
         ~JoinPlan(){}
 
         void format_print() override {
+            std::cout << "op_id: " << plan_id_ << ", ";
             if(Plan::tag == T_NestLoop)
                 std::cout << "BlockNestedLoopJoin: ";
             else if(Plan::tag == T_HashJoin)
@@ -412,6 +414,7 @@ class ProjectionPlan : public Plan
         ~ProjectionPlan(){}
 
         void format_print() override {
+            std::cout << "op_id: " << plan_id_ << ", ";
             std::cout << "Projection: ";
             for(const auto& col: sel_cols_) {
                 std::cout << col.col_name << ", ";

@@ -56,6 +56,8 @@ size_t OperatorState::serialize(char *dest) {
     offset += sizeof(time_t);
     memcpy(dest + offset, (char *)&exec_type_, sizeof(exec_type_));
     offset += sizeof(exec_type_);
+    
+    assert(offset == OPERATOR_STATE_HEADER_SIZE);
     return offset;
 }
 
@@ -82,6 +84,9 @@ bool OperatorState::deserialize(char *src, size_t size) {
     memcpy((char *)&exec_type_, src + offset, sizeof(exec_type_));
     offset += sizeof(exec_type_);
 
+    std::cout << "OperatorState::deserialize: sql_id_: " << sql_id_ << ", operator_id_: " << operator_id_ << ", op_state_size_: " << op_state_size_ << ", op_state_time_: " << op_state_time_ << ", exec_type_: " << exec_type_ << std::endl;
+    
+    assert(offset == OPERATOR_STATE_HEADER_SIZE);
     return true;
 }
 
@@ -251,6 +256,12 @@ BlockJoinOperatorState::BlockJoinOperatorState(BlockNestedLoopJoinExecutor *bloc
     left_child_call_times_  = block_join_op_->left_child_call_times_;
     be_call_times_          = block_join_op_->be_call_times_;
 
+    RwServerDebug::getInstance()->DEBUG_PRINT("left_block_id_: " + std::to_string(left_block_id_));
+    RwServerDebug::getInstance()->DEBUG_PRINT("left block max size: " + std::to_string(left_block_max_size_));
+    RwServerDebug::getInstance()->DEBUG_PRINT("left_block_cursor_: " + std::to_string(left_block_cursor_));
+    RwServerDebug::getInstance()->DEBUG_PRINT("left_child_call_times_: " + std::to_string(left_child_call_times_));
+    RwServerDebug::getInstance()->DEBUG_PRINT("be_call_times_: " + std::to_string(be_call_times_));
+
 
     state_size += sizeof(int) * 4 + sizeof(size_t);
 
@@ -405,6 +416,8 @@ size_t BlockJoinOperatorState::serialize(char *dest) {
     /*
         检查是否序列化完全
     */
+
+   RwServerDebug::getInstance()->DEBUG_PRINT("[BlockJoinOperatorState::serialize] state_size: " + std::to_string(op_state_size_));
     assert(offset == op_state_size_);
     return offset;
 }
@@ -416,7 +429,10 @@ bool BlockJoinOperatorState::deserialize(char *src, size_t size) {
     RwServerDebug::getInstance()->DEBUG_PRINT("[BlockJoinOperatorState::deserialize] size: " +  std::to_string(size));
     if (size < OperatorState::getSize()) return false;
 
+    std::cout << "BlockJoinOperatorState::deserialize:" << std::endl;
     bool status = OperatorState::deserialize(src, OperatorState::getSize());
+    // assert(exec_type_ == ExecutionType::BLOCK_JOIN);
+    std::cout << "operator_id: " << operator_id_ << ", operator_state_size: " << op_state_size_ << ", exec_type: " << exec_type_ << std::endl;
     if (!status) return false;
 
     /*

@@ -449,6 +449,7 @@ void OperatorStateManager::write_operator_state_to_state_node() {
     /*
         update next_write_offset_
     */
+    int prev_offset = op_next_write_offset_;
     op_next_write_offset_ += op_checkpoint_block.size;
 
     /*
@@ -456,7 +457,7 @@ void OperatorStateManager::write_operator_state_to_state_node() {
     */
     op_checkpoint_buffer_allocator_->Free(op_checkpoint_block.size);
 
-    RwServerDebug::getInstance()->DEBUG_PRINT("[WRITE OP STATE INFO][T_ID: " + std::to_string(coro_sched_->t_id_) + " buffer: " + std::to_string(reinterpret_cast<uintptr_t>(op_checkpoint_block.buffer)) + ", remote offset: " + std::to_string(remote_offset + op_next_write_offset_) + ", size: " + std::to_string(op_checkpoint_block.size));
+    RwServerDebug::getInstance()->DEBUG_PRINT("[WRITE OP STATE INFO][T_ID: " + std::to_string(coro_sched_->t_id_) + " buffer: " + std::to_string(reinterpret_cast<uintptr_t>(op_checkpoint_block.buffer)) + ", remote offset: " + std::to_string(prev_offset) + ", size: " + std::to_string(op_checkpoint_block.size));
     /*
         notify
     */
@@ -596,9 +597,12 @@ std::vector<std::unique_ptr<OperatorState>> OperatorStateManager::read_op_checkp
         解析
     */
     for(int i = 0; i < ck_meta->checkpoint_num; ++i) {
+        std::cout << "Deserialize checkpoint " << i << " state header\n";
         auto op_stat = std::make_unique<OperatorState>();
         op_stat->deserialize(buffer + offset, op_stat->getSize());
         op_stat->op_state_addr_ = buffer + offset;
+
+        std::cout << "op_state_addr: " << op_stat->op_state_addr_ << "\n";
 
         offset += op_stat->op_state_size_;
 

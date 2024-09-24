@@ -2,15 +2,15 @@
     "comparative_exp": {
         "machine_id": 3,
         "node_type": 2,
-        "join_num": 20,
+        "join_num": 6,
         "cost_model": "SeamlessDB",
         "local_rdma_port": 12201,
         "break_percentage": 0.5,
-        "normal_time": 10.5,
+        "normal_time": 7.5,
         "buffer_pool_size": 1310720,
         "thread_num": 1,
         "state_open": 1,
-        "state_theta": 0.9,
+        "state_theta": 0.1,
         "src_scale_factor": 1.0,
         "block_size": 500
     },

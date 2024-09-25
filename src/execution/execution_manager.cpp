@@ -203,6 +203,7 @@ void QlManager::re_run_select_from(std::unique_ptr<AbstractExecutor> executorTre
     /*
         之前已经beginTuple初始化过了，这里直接nextTuple
     */
+   executorTreeRoot->nextTuple();
     for (; !executorTreeRoot->is_end(); executorTreeRoot->nextTuple()) {
         auto Tuple = executorTreeRoot->Next();
         std::vector<std::string> columns;

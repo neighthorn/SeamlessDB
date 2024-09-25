@@ -36,7 +36,7 @@ public:
 
 public:
     std::vector<HashJoinCheckpointInfo> ck_infos_;      // 记录建立检查点时的信息
-    int left_child_call_times_;     // 左儿子调用次数
+    // int left_child_call_times_;     // 左儿子调用次数
     int be_call_times_;             // 被调用次数
 
     HashJoinExecutor(std::unique_ptr<AbstractExecutor> left, std::unique_ptr<AbstractExecutor> right, std::vector<Condition> conds, Context* context, int sql_id, int operator_id) 

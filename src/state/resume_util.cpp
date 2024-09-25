@@ -192,15 +192,26 @@ void rebuild_exec_plan_with_query_tree(Context* context, std::shared_ptr<PortalS
     #endif
     
     {
-        std::stack<BlockNestedLoopJoinExecutor *> block_ops_;
+        // std::stack<BlockNestedLoopJoinExecutor *> block_ops_;
+        std::stack<AbstractExecutor *> left_ops_;
         auto exec_plan = portal_stmt->root.get();
         while(exec_plan != nullptr) {
+            std::cout << "operator_id: " << exec_plan->operator_id_ << "left_child_call_time: " << exec_plan->left_child_call_times_ << std::endl;
             if(auto x = dynamic_cast<ProjectionExecutor *>(exec_plan)) {
                 exec_plan = (x->prev_).get();
-                continue;
+                left_ops_.push(x);
             } else if(auto x = dynamic_cast<BlockNestedLoopJoinExecutor *>(exec_plan)) {
-                block_ops_.push(x);
+                // block_ops_.push(x);
+                left_ops_.push(x);
 
+                if(auto left_child = dynamic_cast<BlockNestedLoopJoinExecutor *>(x->left_.get())) {
+                    exec_plan = left_child;
+                } else {
+                    exec_plan = nullptr;
+                }
+            } else if(auto x = dynamic_cast<HashJoinExecutor *>(exec_plan)) {
+                // block_ops_.push(x);
+                left_ops_.push(x);
                 if(auto left_child = dynamic_cast<BlockNestedLoopJoinExecutor *>(x->left_.get())) {
                     exec_plan = left_child;
                 } else {
@@ -211,15 +222,32 @@ void rebuild_exec_plan_with_query_tree(Context* context, std::shared_ptr<PortalS
             }
         }
 
-        while(block_ops_.size() > 1) {
-            auto child = block_ops_.top();
-            block_ops_.pop();
-            auto father = block_ops_.top();
-            /*
-                重做
-            */
-            while(child->be_call_times_ < father->left_child_call_times_) {
-                child->nextTuple();
+        // while(block_ops_.size() > 1) {
+        // while(left_ops_.size() > 1) {
+        //     auto child = block_ops_.top();
+        //     block_ops_.pop();
+        //     auto father = block_ops_.top();
+        //     /*
+        //         重做
+        //     */
+        //     while(child->be_call_times_ < father->left_child_call_times_) {
+        //         child->nextTuple();
+        //     }
+        // }
+        while(left_ops_.size() > 2) {
+            auto child = left_ops_.top();
+            left_ops_.pop();
+            auto father = left_ops_.top();
+            
+            if(auto x = dynamic_cast<BlockNestedLoopJoinExecutor *>(child)) {
+                while(x->be_call_times_ < father->left_child_call_times_) {
+                    x->nextTuple();
+                }
+            }
+            else if(auto x = dynamic_cast<HashJoinExecutor *>(child)) {
+                while(x->be_call_times_ < father->left_child_call_times_) {
+                    x->nextTuple();
+                }
             }
         }
     }

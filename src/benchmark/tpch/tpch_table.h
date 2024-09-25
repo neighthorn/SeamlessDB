@@ -14,8 +14,8 @@
 #include "debug_log.h"
 
 #define REGION_COND_RANGE 5     // 不超过5
-#define NATION_COND_RANGE 20     // 不超过25
-#define NORMAL_INT_COND_RANGE 50
+#define NATION_COND_RANGE 25     // 不超过25
+#define NORMAL_INT_COND_RANGE 5000
 #define DATE_COND_RANGE "1994-01-01"
 
 namespace TPCH_TABLE{

@@ -417,7 +417,8 @@ std::shared_ptr<Plan> ComparativeExp::generate_query_tree(Context* context) {
             auto proj_plan = generate_proj_plan(i, std::move(scan_plan));
             // 随机生成 hash join or nestedloop join
             // int rnd = RandomGenerator::generate_random_int(1, 2);
-            plan = std::make_shared<JoinPlan>(T_NestLoop, curr_sql_id_, curr_plan_id_ ++, std::move(plan), std::move(proj_plan), join_conds);
+            // plan = std::make_shared<JoinPlan>(T_NestLoop, curr_sql_id_, curr_plan_id_ ++, std::move(plan), std::move(proj_plan), join_conds);
+            plan = std::make_shared<JoinPlan>(T_HashJoin, curr_sql_id_, curr_plan_id_ ++, std::move(plan), std::move(proj_plan), join_conds);
         }
     }
 

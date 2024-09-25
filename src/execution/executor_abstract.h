@@ -18,6 +18,8 @@ class AbstractExecutor {
 
     int     operator_id_;
 
+    int left_child_call_times_;
+
     inline AbstractExecutor(int sql_id = -1, int op_id = -1) : sql_id_(sql_id), operator_id_(op_id) , exec_type_(ExecutionType::NOT_DEFINED){}
 
     virtual ~AbstractExecutor() = default;

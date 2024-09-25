@@ -165,7 +165,13 @@ void JoinBlockExecutor::load_block_info(BlockJoinOperatorState *block_op_state) 
     if(block_op_state == nullptr) {
         return ;
     }
-    join_block_ = std::move(block_op_state->join_block_);
+    if(block_op_state->join_block_ != nullptr) {
+        join_block_ = std::move(block_op_state->join_block_);
+    }
+    else {
+        // 代表join block已经消耗完了
+        
+    }
     current_block_id_ = block_op_state->left_block_id_;
 }
 

@@ -116,7 +116,7 @@ public:
 
     std::vector<BlockCheckpointInfo>    ck_infos_;  // 记录建立检查点时的信息
 
-    int     left_child_call_times_;     // 左儿子调用次数
+    // int     left_child_call_times_;     // 左儿子调用次数
     int     be_call_times_;             // 被调用次数
 
 

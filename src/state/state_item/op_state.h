@@ -97,6 +97,7 @@ public:
     bool    deserialize(char *src, size_t size) override;
 
     size_t getSize() override {
+        std::cout << "IndexScanOperatorState getSize(): " << op_state_size_ << std::endl;
         return OperatorState::getSize() + sizeof(Rid) * 3;
     }
 
@@ -165,6 +166,7 @@ public:
         TODO
     */
     size_t getSize() override {
+        std::cout << "BlockJoinOperatorState getSize(): " << op_state_size_ << std::endl;
         return OperatorState::getSize() + state_size;
     }
 
@@ -219,6 +221,7 @@ public:
     void rebuild_hash_table(HashJoinExecutor *hash_join_op, char* src, size_t size);
 
     size_t getSize() override {
+        std::cout << "HashJoinExecutorState getSize(): " << op_state_size_ << std::endl;
         return OperatorState::getSize() + state_size;
     }   
 

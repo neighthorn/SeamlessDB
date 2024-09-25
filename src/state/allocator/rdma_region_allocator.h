@@ -46,6 +46,7 @@ public:
 
   ALWAYS_INLINE
   std::pair<char*, char*> GetThreadLocalRegion(t_id_t tid) {
+    std::cout << "tid: " << tid << ", thread_num: " << thread_num << std::endl;
     assert(tid < thread_num);
     return std::make_pair(thread_local_mr + tid * PER_THREAD_SQL_SIZE, thread_local_mr + (tid + 1) * PER_THREAD_SQL_SIZE);
   }

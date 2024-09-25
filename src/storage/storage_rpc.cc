@@ -61,8 +61,12 @@ namespace storage_service {
             int page_no = request->page_id()[i].page_no();
             // std::cout << "table_id: " << table_id << ", page_id: " << request->page_id()[i].page_no();
             char data[PAGE_SIZE];
-            disk_manager_->read_page(fd, page_no, data, PAGE_SIZE);
-            response->add_data(std::move(std::string(data, PAGE_SIZE)));
+            try{
+                disk_manager_->read_page(fd, page_no, data, PAGE_SIZE);
+                response->add_data(std::move(std::string(data, PAGE_SIZE)));
+            } catch(RMDBError& e) {
+                std::cerr << "Error: " << e.what() << "\n";
+            }
         }
 
         // response->set_data(return_pages);

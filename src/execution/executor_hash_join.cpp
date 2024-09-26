@@ -36,7 +36,7 @@ void HashJoinExecutor::beginTuple() {
 
             std::string key = std::string(left_key, join_key_size_);
 
-            RwServerDebug::getInstance()->DEBUG_PRINT("[HashJoinExecutor::beginTuple, initiate left hash table][operator_id: " + std::to_string(operator_id_) + "][key: " + key + "]");
+            // RwServerDebug::getInstance()->DEBUG_PRINT("[HashJoinExecutor::beginTuple, initiate left hash table][operator_id: " + std::to_string(operator_id_) + "][key: " + key + "]");
 
             if(hash_table_.find(key) == hash_table_.end()) {
                 hash_table_[key] = std::vector<std::unique_ptr<Record>>();
@@ -44,6 +44,9 @@ void HashJoinExecutor::beginTuple() {
             }
             hash_table_[key].push_back(std::move(left_rec));
             left_hash_table_curr_tuple_count_ ++;
+
+            if(node_type_ == 1) write_state_if_allow(1);
+            else write_state_if_allow();
         }
 
         initialized_ = true;
@@ -82,7 +85,7 @@ void HashJoinExecutor::append_tuple_to_hash_table_from_state(char* src, int left
     assert(off == join_key_size_);
     std::string key = std::string(join_key, join_key_size_);
 
-    RwServerDebug::getInstance()->DEBUG_PRINT("[HashJoinExecutor::append_tuple_to_hash_table_from_state][operator_id: " + std::to_string(operator_id_) + "][key: " + key + "]");
+    // RwServerDebug::getInstance()->DEBUG_PRINT("[HashJoinExecutor::append_tuple_to_hash_table_from_state][operator_id: " + std::to_string(operator_id_) + "][key: " + key + "]");
     
     if(hash_table_.find(key) == hash_table_.end()) {
         hash_table_[key] = std::vector<std::unique_ptr<Record>>();
@@ -129,6 +132,10 @@ std::unique_ptr<Record> HashJoinExecutor::Next() {
     auto res = std::make_unique<Record>(len_);
     memcpy(res->raw_data_, left_rec->raw_data_, left_rec->data_length_);
     memcpy(res->raw_data_ + left_rec->data_length_, right_rec->raw_data_, right_rec->data_length_);
+
+    be_call_times_ ++;
+
+    write_state_if_allow();
     
     return res;
 }
@@ -164,10 +171,26 @@ std::pair<bool, double> HashJoinExecutor::judge_state_reward(HashJoinCheckpointI
     }
     latest_ck_info = &ck_infos_[ck_infos_.size() - 1];
     
-    double src_op;
+    double src_op = hash_join_state_size_min;
     double rc_op = -1;
     
-    
+    src_op = (double)left_->tupleLen() * (left_hash_table_curr_tuple_count_ - latest_ck_info->left_hash_table_curr_tuple_count_);
+
+    rc_op = getRCop(curr_ck_info->ck_timestamp_);
+
+    if(rc_op == 0) {
+        return {false, -1};
+    }
+
+    double new_src_op = src_op / src_scale_factor_;
+    double rew_op = rc_op / new_src_op - state_theta_;
+    RwServerDebug::getInstance()->DEBUG_PRINT("[HashJoinExecutor][op_id: " + std::to_string(operator_id_) + "]: [delta_hash_table_tuple_count]: " + std::to_string(left_hash_table_curr_tuple_count_ - latest_ck_info->left_hash_table_curr_tuple_count_) + " [Rew_op]: " + std::to_string(rew_op) + " [Src_op]: " + std::to_string(new_src_op) + " [Rc_op]: " + std::to_string(rc_op) + " [State Theta]: " + std::to_string(state_theta_));
+
+    if(rew_op > 0) {
+        return {true, src_op};
+    }
+
+    return {false, -1};
 }
 
 int64_t HashJoinExecutor::getRCop(std::chrono::time_point<std::chrono::system_clock> curr_time) {
@@ -194,13 +217,16 @@ int64_t HashJoinExecutor::getRCop(std::chrono::time_point<std::chrono::system_cl
 }
 
 void HashJoinExecutor::write_state_if_allow(int type) {
-    HashJoinCheckpointInfo curr_ckpt_info = {.ck_timestamp_ = std::chrono::high_resolution_clock::now()};
+    if(type == 1) return;
+    HashJoinCheckpointInfo curr_ckpt_info = {.ck_timestamp_ = std::chrono::high_resolution_clock::now(), .left_hash_table_curr_tuple_count_ = left_hash_table_curr_tuple_count_};
     if(state_open_) {
         auto [able_to_write, src_op] = judge_state_reward(&curr_ckpt_info);
         if(able_to_write) {
             auto [status, actual_size] = context_->op_state_mgr_->add_operator_state_to_buffer(this, src_op);
+            RwServerDebug::getInstance()->DEBUG_PRINT("[HashJoinExecutor][op_id: " + std::to_string(operator_id_) + "]: [Write State]: " + std::to_string(status) + " [Actual Size]: " + std::to_string(actual_size));
             if(status) {
                 ck_infos_.push_back(curr_ckpt_info);
+                left_hash_table_checkpointed_tuple_count_ = left_hash_table_curr_tuple_count_;
             }
         }
     }

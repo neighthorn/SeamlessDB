@@ -10,6 +10,7 @@ class HashJoinOperatorState;
 
 struct HashJoinCheckpointInfo {
     std::chrono::time_point<std::chrono::system_clock> ck_timestamp_;
+    int left_hash_table_curr_tuple_count_;
 };
 
 class HashJoinExecutor : public AbstractExecutor {
@@ -62,6 +63,11 @@ public:
         is_end_ = false;
         left_hash_table_checkpointed_tuple_count_ = 0;
         left_hash_table_curr_tuple_count_ = 0;
+
+        ck_infos_.push_back(HashJoinCheckpointInfo{.ck_timestamp_ = std::chrono::high_resolution_clock::now()});
+        exec_type_ = ExecutionType::HASH_JOIN;
+
+        context_ = context;
     }
 
     bool is_hash_table_built() const {

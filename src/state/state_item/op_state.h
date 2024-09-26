@@ -19,7 +19,9 @@ constexpr int CheckPointMetaSize = 4096;
 */
 constexpr int operator_size_min = sizeof(int) * 2 + sizeof(size_t) + sizeof(time_t) + sizeof(ExecutionType);
 constexpr int index_scan_state_size_min = operator_size_min + sizeof(Rid) * 3;
-constexpr int block_join_state_size_min = operator_size_min + sizeof(int) * 7 + sizeof(bool) * 2 + index_scan_state_size_min * 2;
+constexpr int projection_state_size_min = operator_size_min + sizeof(bool) + sizeof(int);
+constexpr int block_join_state_size_min = operator_size_min + projection_state_size_min + sizeof(int) * 7 + sizeof(bool) * 2 + sizeof(size_t) + index_scan_state_size_min;
+constexpr int hash_join_state_size_min = operator_size_min + projection_state_size_min + sizeof(int) * 5 + sizeof(bool) * 4 + index_scan_state_size_min;
 // constexpr int hash_join_state_size_min = operator_size_min;
 
 struct CheckPointMeta {
@@ -222,11 +224,11 @@ public:
 
     size_t getSize() override {
         std::cout << "HashJoinExecutorState getSize(): " << op_state_size_ << std::endl;
-        return OperatorState::getSize() + state_size;
+        // return OperatorState::getSize() + state_size;
+        return op_state_size_;
     }   
 
     HashJoinExecutor *hash_join_op_;
-    size_t state_size = 0; 
 
     bool hash_table_contained_;     // whether the incremental hash table is contained in the state
     int be_call_times_;             // the number of times the operator has been called

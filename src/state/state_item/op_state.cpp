@@ -586,7 +586,7 @@ bool BlockJoinOperatorState::deserialize(char *src, size_t size) {
 
 HashJoinOperatorState::HashJoinOperatorState(): OperatorState(-1, -1, time(nullptr), ExecutionType::HASH_JOIN) {
     hash_join_op_ = nullptr;
-    state_size = sizeof(int) * 2 + sizeof(bool) * 3 + sizeof(int) * 2;
+    op_state_size_ = hash_join_state_size_min;
     
     // basic state
     hash_table_contained_ = false;
@@ -606,14 +606,12 @@ HashJoinOperatorState::HashJoinOperatorState(): OperatorState(-1, -1, time(nullp
     left_hash_table_ = nullptr;
     checkpointed_indexes_ = nullptr;
     left_tuples_index_ = -1;
-
-    op_state_size_ = getSize();
 }
 
 HashJoinOperatorState::HashJoinOperatorState(HashJoinExecutor* hash_join_op):
     OperatorState(hash_join_op->sql_id_, hash_join_op->operator_id_, time(nullptr), hash_join_op->exec_type_), hash_join_op_(hash_join_op) {
 
-    state_size = 0;
+    op_state_size_ = OperatorState::getSize();
 
     hash_table_contained_ = false;  // default false
     be_call_times_ = hash_join_op->be_call_times_;
@@ -623,15 +621,16 @@ HashJoinOperatorState::HashJoinOperatorState(HashJoinExecutor* hash_join_op):
     left_tuples_index_ = hash_join_op_->left_tuples_index_;
     is_hash_table_built_ = hash_join_op_->initialized_;
 
-    state_size += sizeof(bool) * 2 + sizeof(int) * 5;
+    op_state_size_ += sizeof(bool) * 2 + sizeof(int) * 5;
 
     // left exec info
-    state_size += sizeof(bool);
+    // state_size += sizeof(bool);
+    op_state_size_ += sizeof(bool);
     if(auto x = dynamic_cast<IndexScanExecutor *>(hash_join_op_->left_.get())) {
         left_child_is_join_ = false;
         // left_index_scan_state_ = IndexScanOperatorState(x);
         left_child_state_ = new IndexScanOperatorState(x);
-        state_size += left_child_state_->getSize();
+        op_state_size_ += left_child_state_->getSize();
     } else if(auto x = dynamic_cast<BlockNestedLoopJoinExecutor *>(hash_join_op_->left_.get())) {
         left_child_is_join_ = true;
         // left_index_scan_state_ = IndexScanOperatorState();
@@ -641,18 +640,18 @@ HashJoinOperatorState::HashJoinOperatorState(HashJoinExecutor* hash_join_op):
     } else if (auto x = dynamic_cast<ProjectionExecutor *>(hash_join_op_->left_.get())) {
         left_child_is_join_ = false;
         left_child_state_ = new ProjectionOperatorState(x);
-        state_size += left_child_state_->getSize();
+        op_state_size_ += left_child_state_->getSize();
     } else {
         std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
     }
 
     // right exec info
-    state_size += sizeof(bool);
+    op_state_size_ += sizeof(bool);
     if(auto x = dynamic_cast<IndexScanExecutor *>(hash_join_op_->right_.get())) {
         right_child_is_join_ = false;
         // right_index_scan_state_ = IndexScanOperatorState(x);
         right_child_state_ = new IndexScanOperatorState(x);
-        state_size += right_child_state_->getSize();
+        op_state_size_ += right_child_state_->getSize();
     } else if(dynamic_cast<BlockNestedLoopJoinExecutor *>(hash_join_op_->right_.get())) {
         right_child_is_join_ = true;
         // right_index_scan_state_ = IndexScanOperatorState();
@@ -662,14 +661,14 @@ HashJoinOperatorState::HashJoinOperatorState(HashJoinExecutor* hash_join_op):
     } else if (auto x = dynamic_cast<ProjectionExecutor *>(hash_join_op_->right_.get())) {
         right_child_is_join_ = false;
         right_child_state_ = new ProjectionOperatorState(x);
-        state_size += right_child_state_->getSize();
+        op_state_size_ += right_child_state_->getSize();
     } else {
         std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
     }
 
     left_hash_table_ = &hash_join_op_->hash_table_;
     checkpointed_indexes_ = &hash_join_op_->checkpointed_indexes_;
-    state_size += left_hash_table_size_ * left_record_len_; // 不需要记录recordhdr  
+    op_state_size_ += left_hash_table_size_ * left_record_len_; // 不需要记录recordhdr  
 
     op_state_size_ = getSize();
 }
@@ -701,11 +700,12 @@ size_t HashJoinOperatorState::serialize(char *dest) {
     int incremental_tuples_count = 0;
 
     // if left hash table has not been checkpointed completely, then serialize incremental hash table and left operator
-    if(!hash_join_op_->is_hash_table_built()) {
+    if(hash_join_op_->left_hash_table_checkpointed_tuple_count_ < hash_join_op_->left_hash_table_curr_tuple_count_) {
         for(const auto& iter: *left_hash_table_) {
             const std::string& key = iter.first;
             const std::vector<std::unique_ptr<Record>>& record_vector = iter.second;
             size_t* last_checkpoint_index = &checkpointed_indexes_->find(key)->second;
+            std::cout << "checkpointed_index: " << *last_checkpoint_index << ", record_vector size: " << record_vector.size() << std::endl;
             for(size_t i = *last_checkpoint_index; i < record_vector.size(); i++) {
                 memcpy(dest + offset, record_vector[i]->raw_data_, left_record_len_);
                 offset += left_record_len_;

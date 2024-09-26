@@ -148,6 +148,8 @@ void QlManager::select_from(std::unique_ptr<AbstractExecutor> executorTreeRoot, 
 
     // Print records
     size_t num_rec = 0;
+    int result_tuple_len = executorTreeRoot->tupleLen();
+    int checkpointed_result_num = 0;
     // 执行query_plan
     std::cout << "before select\n";
     for (executorTreeRoot->beginTuple(); !executorTreeRoot->is_end(); executorTreeRoot->nextTuple()) {

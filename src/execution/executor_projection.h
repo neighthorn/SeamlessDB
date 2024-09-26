@@ -22,8 +22,12 @@ public:
     std::vector<ProjectionCheckpointInfo> ck_infos_;
     int be_call_times_; // 只需要记录be_call_times，left_child_call_times_应该和当前节点的be_call_times一致
 
+    bool is_root_;
+    int curr_result_num_;
+    int checkpointed_result_num_;
+
    public:
-    ProjectionExecutor(std::unique_ptr<AbstractExecutor> prev, const std::vector<TabCol> &sel_cols) {
+    ProjectionExecutor(std::unique_ptr<AbstractExecutor> prev, const std::vector<TabCol> &sel_cols, Context* context) {
         prev_ = std::move(prev);
 
         size_t curr_offset = 0;
@@ -41,6 +45,12 @@ public:
         exec_type_ = ExecutionType::PROJECTION;
 
         be_call_times_ = 0;
+        context_ = context;
+    }
+
+    void set_root() { 
+        is_root_ = true; 
+        ck_infos_.push_back(ProjectionCheckpointInfo{.ck_timestamp_ = std::chrono::high_resolution_clock::now()});
     }
 
     std::string getType() override { return "Projection"; }
@@ -72,6 +82,10 @@ public:
         }
 
         be_call_times_ ++;
+
+        if(is_root_) {
+            curr_result_num_ ++;
+        }
         return proj_rec;
     }
 
@@ -86,4 +100,8 @@ public:
     }
 
     void load_state_info(ProjectionOperatorState *proj_op_state);
+
+    std::pair<bool, double> judge_state_reward(ProjectionCheckpointInfo *curr_ck_info);
+    int64_t getRCop(std::chrono::time_point<std::chrono::system_clock> curr_time);
+    void write_state_if_allow(int type = 0);
 };

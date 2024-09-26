@@ -22,6 +22,7 @@ constexpr int index_scan_state_size_min = operator_size_min + sizeof(Rid) * 3;
 constexpr int projection_state_size_min = operator_size_min + sizeof(bool) + sizeof(int);
 constexpr int block_join_state_size_min = operator_size_min + projection_state_size_min + sizeof(int) * 7 + sizeof(bool) * 2 + sizeof(size_t) + index_scan_state_size_min;
 constexpr int hash_join_state_size_min = operator_size_min + projection_state_size_min + sizeof(int) * 5 + sizeof(bool) * 4 + index_scan_state_size_min;
+constexpr int sort_state_size_min = operator_size_min + sizeof(int) * 2 + sizeof(size_t) + sizeof(int) * 2 + sizeof(double);
 // constexpr int hash_join_state_size_min = operator_size_min;
 
 struct CheckPointMeta {
@@ -250,4 +251,29 @@ public:
 
     // 算子当前的cursor
     int left_tuples_index_;            // 哈希表中的vector的index, 同HashJoinExecutor中的left_tuples_index_
+};
+
+class SortExecutor;
+class SortOperatorState: OperatorState {
+public:
+    SortOperatorState();
+    SortOperatorState(SortExecutor *sort_op);
+    size_t serialize(char *dest) override;
+    bool deserialize(char *src, size_t size) override;
+    size_t getSize() override {
+        std::cout << "SortOperatorState getSize(): " << op_state_size_ << std::endl;
+        return op_state_size_;
+    }
+
+    bool is_sorted_;
+    int be_call_times_;
+    int left_child_call_times_;
+    int checkpointed_tuple_count_;
+    int curr_tuple_count_;
+
+    bool left_child_is_join_;
+    OperatorState* left_child_state_;
+
+    std::vector<Record*>* unsorted_records_;
+    int* sorted_index_;
 };

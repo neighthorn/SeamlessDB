@@ -5,6 +5,13 @@
 #include "index/ix.h"
 #include "system/sm.h"
 
+class SortExecutor;
+class SortOperatorState;
+
+struct SortCheckpointInfo {
+    std::chrono::time_point<std::chrono::system_clock> ck_timestamp_;
+};
+
 class SortExecutor : public AbstractExecutor {
    private:
     std::unique_ptr<AbstractExecutor> prev_;
@@ -14,6 +21,10 @@ class SortExecutor : public AbstractExecutor {
     bool is_desc_;
     std::vector<size_t> used_tuple;
     std::unique_ptr<Record> current_tuple;
+
+    std::vector<SortCheckpointInfo> ck_infos_;
+    int be_call_times_;
+    int left_child_call_times_;
 
    public:
     SortExecutor(std::unique_ptr<AbstractExecutor> prev, TabCol sel_cols, bool is_desc) {
@@ -103,6 +114,11 @@ class SortExecutor : public AbstractExecutor {
     Rid &rid() override { return _abstract_rid; }
 
     int checkpoint(char* dest) {
-        
+        return 0;
     }
+
+    std::pair<bool, double> judge_state_reward(SortCheckpointInfo* curr_ck_info);
+    int64_t getRCop(std::chrono::time_point<std::chrono::system_clock> curr_time);
+    void write_state_if_allow(int type = 0);
+    void load_state_info(SortOperatorState *sort_op);
 };

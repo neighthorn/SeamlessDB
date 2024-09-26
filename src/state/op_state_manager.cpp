@@ -35,8 +35,6 @@ OperatorStateManager::OperatorStateManager(int connection_id, CoroutineScheduler
     plan_qp_          = qp_manager_->GetRemoteJoinPlanBufQPWithNodeID(primary_node_id_);
     op_checkpoint_qp_ = qp_manager_->GetRemoteJoinBlockBufQPWithNodeID(primary_node_id_);
 
-
-
     ck_meta_ = std::make_unique<CheckPointMeta>();
     ck_meta_->thread_id = coro_sched_->t_id_;
     ck_meta_->checkpoint_num = 0;

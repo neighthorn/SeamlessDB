@@ -804,6 +804,7 @@ bool HashJoinOperatorState::deserialize(char* src, size_t size) {
     return offset;
 }
 
+// 先调用rebuild_hash_table，然后调用load_state_info
 void HashJoinOperatorState::rebuild_hash_table(HashJoinExecutor* hash_join_op, char* src, size_t size) {
     if(hash_join_op_ == nullptr) {
         hash_join_op_ = hash_join_op;
@@ -818,6 +819,7 @@ void HashJoinOperatorState::rebuild_hash_table(HashJoinExecutor* hash_join_op, c
         hash_join_op_->append_tuple_to_hash_table_from_state(src + offset, left_record_len_, join_key);
         offset += left_record_len_;
     }
+    delete[] join_key;
 }
 
 SortOperatorState::SortOperatorState(): OperatorState(-1, -1, time(nullptr), ExecutionType::SORT) {
@@ -959,14 +961,23 @@ void SortOperatorState::rebuild_sort_records(SortExecutor* sort_op, char* src, s
     }
 
     int offset = OperatorState::getSize() + sizeof(int) * 3 + sizeof(bool) + sizeof(int);
-    char* record = new char[tuple_len_];
+
     for(int i = sort_op_->checkpointed_tuple_num_; i < sort_op_->num_records_; i++) {
-        memcpy(record, src + offset, tuple_len_);
-        sort_op_->unsorted_records_.push_back(std::make_unique<Record>(record, tuple_len_));
+        auto record = std::make_unique<Record>(tuple_len_);
+        memcpy(record->raw_data_, src + offset, tuple_len_);
+        sort_op_->unsorted_records_.push_back(std::move(record));
         offset += tuple_len_;
+        sort_op->num_records_++;
     }
 
-    if(is_sort_index_checkpointed_ == true) {
-        memcpy(sort_op_->sorted_index_, src + offset, sizeof(int) * sort_op_->num_records_);
+}
+
+void SortOperatorState::rebuild_sort_index(SortExecutor* sort_op, char* src, size_t size) {
+    if(sort_op_ == nullptr) {
+        sort_op_ = sort_op;
     }
+
+    int offset = OperatorState::getSize() + sizeof(int) * 3 + sizeof(bool) + sizeof(int) + unsorted_records_count_ * tuple_len_;
+    sort_op->sorted_index_ = new int[sort_op->num_records_];
+    memcpy(sort_op_->sorted_index_, src + offset, sizeof(int) * sort_op_->num_records_);
 }

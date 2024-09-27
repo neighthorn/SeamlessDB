@@ -58,6 +58,14 @@ int64_t SortExecutor::getRCop(std::chrono::time_point<std::chrono::system_clock>
     
 }
 
+void SortExecutor::write_state_if_allow(int type) {
+    SortCheckpointInfo curr_ck_info = {.ck_timestamp_ = std::chrono::high_resolution_clock::now()};
+    if(type == 1) {
+        curr_ck_info.is_sorted_ = true;
+    }
+    ck_infos_.push_back(curr_ck_info);
+}
+
 void SortExecutor::load_state_info(SortOperatorState *sort_op_state) {
     
 }

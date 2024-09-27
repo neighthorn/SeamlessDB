@@ -417,8 +417,8 @@ std::shared_ptr<Plan> ComparativeExp::generate_query_tree(Context* context) {
             auto proj_plan = generate_proj_plan(i, std::move(scan_plan), context, curr_sql_id_, curr_plan_id_);
             // 随机生成 hash join or nestedloop join
             // int rnd = RandomGenerator::generate_random_int(1, 2);
-            // plan = std::make_shared<JoinPlan>(T_NestLoop, curr_sql_id_, curr_plan_id_ ++, std::move(plan), std::move(proj_plan), join_conds);
-            plan = std::make_shared<JoinPlan>(T_HashJoin, curr_sql_id_, curr_plan_id_ ++, std::move(plan), std::move(proj_plan), join_conds);
+            plan = std::make_shared<JoinPlan>(T_NestLoop, curr_sql_id_, curr_plan_id_ ++, std::move(plan), std::move(proj_plan), join_conds);
+            // plan = std::make_shared<JoinPlan>(T_HashJoin, curr_sql_id_, curr_plan_id_ ++, std::move(plan), std::move(proj_plan), join_conds);
         }
     }
 
@@ -447,6 +447,11 @@ std::shared_ptr<Plan> ComparativeExp::generate_query_tree(Context* context) {
         plan = std::make_shared<JoinPlan>(T_HashJoin, curr_sql_id_, curr_plan_id_ ++, std::move(plan), std::move(proj_plan), join_conds);
     }
 
+    TabCol order_col;
+    order_col.tab_name = "region";
+    order_col.col_name = "r_regionkey";
+    plan = std::make_shared<SortPlan>(T_Sort, curr_sql_id_, curr_plan_id_ ++, std::move(plan), std::move(order_col), false);
+    
     // 最后再进行一次projection
     plan = generate_total_proj_plan(join_node_num_ + 1, std::move(plan), context, curr_plan_id_, curr_sql_id_);
     

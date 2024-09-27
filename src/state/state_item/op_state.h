@@ -253,6 +253,9 @@ public:
     int left_tuples_index_;            // 哈希表中的vector的index, 同HashJoinExecutor中的left_tuples_index_
 };
 
+
+#define OFF_SORT_UNSORTED_TUPLE_CNT sizeof(int) * 3 + sizeof(bool)
+#define OFF_SORT_IS_SORTED_INDEX_CKPT sizeof(int) * 3
 class SortExecutor;
 class SortOperatorState: OperatorState {
 public:
@@ -261,6 +264,7 @@ public:
     size_t serialize(char *dest) override;
     bool deserialize(char *src, size_t size) override;
     void rebuild_sort_records(SortExecutor *sort_op, char* src, size_t size);
+    void rebuild_sort_index(SortExecutor *sort_op, char* src, size_t size);
     size_t getSize() override {
         std::cout << "SortOperatorState getSize(): " << op_state_size_ << std::endl;
         return op_state_size_;

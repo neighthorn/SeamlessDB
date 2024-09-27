@@ -6,6 +6,8 @@
 #include "execution/executor_index_scan.h"
 #include "execution/executor_block_join.h"
 #include "execution/executor_hash_join.h"
+#include "execution/executor_projection.h"
+#include "execution/execution_sort.h"
 
 #include "debug_log.h"
 
@@ -381,6 +383,29 @@ std::pair<bool, size_t> OperatorStateManager::add_operator_state_to_buffer(Abstr
 
         actual_size = hash_join_state.serialize(alloc_buffer);
         assert(actual_size == hash_join_checkpoint_size);
+        write_status = true;
+
+        op_checkpoint_queue_.push(OpCheckpointBlock{.buffer = alloc_buffer, .size = actual_size});
+        op_checkpoint_not_empty_.notify_all();
+    }
+    else if(auto sort_op = dynamic_cast<SortExecutor *>(abstract_executor)) {
+        SortOperatorState sort_join_state(sort_op);
+        size_t sort_join_checkpoint_size = sort_join_state.getSize();
+
+        char* alloc_buffer;
+        do {
+            auto [status, buffer] = op_checkpoint_buffer_allocator_->Alloc(sort_join_checkpoint_size);
+            if(status) {
+                alloc_buffer = buffer;
+                break;
+            } else {
+                std::cout << "waiting for free buffer.\n";
+                op_checkpoint_not_full_.wait(lock);
+            }
+        }while(true);
+
+        actual_size = sort_join_state.serialize(alloc_buffer);
+        assert(actual_size == sort_join_checkpoint_size);
         write_status = true;
 
         op_checkpoint_queue_.push(OpCheckpointBlock{.buffer = alloc_buffer, .size = actual_size});

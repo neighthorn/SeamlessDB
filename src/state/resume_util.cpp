@@ -161,6 +161,50 @@ void rebuild_exec_plan_with_query_tree(Context* context, std::shared_ptr<PortalS
                     exec_plan = nullptr;
                 }
             }
+            else if(auto x = dynamic_cast<SortExecutor *>(exec_plan)) {
+                RwServerDebug::getInstance()->DEBUG_PRINT("[REBUILD EXEC PLAN][SortExecutor][operator_id: " + std::to_string(x->operator_id_) + "][be_call_time: " + std::to_string(x->be_call_times_) + "][left child call times: " + std::to_string(x->left_child_call_times_) + "]");
+                bool find_match_checkpoint = false;
+                int checkpoint_index = -1;
+                for(int i = last_checkpoint_index; i >= 0; i--) {
+                    if(op_checkpoints[i]->operator_id_ == x->operator_id_ && op_checkpoints[i]->op_state_time_ <= latest_time) {
+                        find_match_checkpoint = true;
+                        checkpoint_index = i;
+                        break;
+                    }
+                }
+                if(checkpoint_index == -1) {
+                    std::cout << "[Warning]: Checkpoints Not Found! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
+                    RwServerDebug::getInstance()->DEBUG_PRINT("[Warning]: Checkpoints Not Found! [Location]: " + std::string(__FILE__) + ":" + std::to_string(__LINE__));
+                    break ;
+                    /*
+                        没有找到checkpoint，即需要从改exec_plan开始，需要手动执行beginTuple
+                    */
+                }
+                last_checkpoint_index = checkpoint_index;
+
+                RwServerDebug::getInstance()->DEBUG_PRINT("[REBUILD EXEC PLAN][SortExecutor][checkpoint_index: " + std::to_string(checkpoint_index) + "][operator_id: " + std::to_string(op_checkpoints[checkpoint_index]->operator_id_) + "][op_state_time: " + std::to_string(op_checkpoints[checkpoint_index]->op_state_time_) + "][op_state_size: " + std::to_string(op_checkpoints[checkpoint_index]->op_state_size_) + "]");
+                latest_time = op_checkpoints[checkpoint_index]->op_state_time_;
+
+                // 找到所有包含unsorted_tuple的检查点，重构unsorted_tuple
+                for(int i = 0; i <= last_checkpoint_index; ++i) {
+                    if(op_checkpoints[i]->operator_id_ == x->operator_id_ && *reinterpret_cast<int*>(op_checkpoints[i]->op_state_addr_ + OPERATOR_STATE_HEADER_SIZE + OFF_SORT_UNSORTED_TUPLE_CNT) > 0) {
+                        std::unique_ptr<SortOperatorState> sort_op_state = std::make_unique<SortOperatorState>();
+                        sort_op_state->deserialize(op_checkpoints[i]->op_state_addr_, op_checkpoints[i]->op_state_size_);
+                        sort_op_state->rebuild_sort_records(x, op_checkpoints[i]->op_state_addr_, op_checkpoints[i]->op_state_size_);
+                    }
+                    // 如果存在sort_index，则反序列化sorted_index
+                    if(op_checkpoints[i]->operator_id_ == x->operator_id_ && *reinterpret_cast<bool*>(op_checkpoints[i]->op_state_addr_ + OPERATOR_STATE_HEADER_SIZE + OFF_SORT_IS_SORTED_INDEX_CKPT) == true) {
+                        x->sorted_index_ = reinterpret_cast<int*>(op_checkpoints[i]->op_state_addr_ + OPERATOR_STATE_HEADER_SIZE + OFF_SORT_IS_SORTED_INDEX_CKPT);
+                    }
+                }
+
+                // 使用最后一个检查点恢复除unsorted_tuples和sorted_index之外的其他状态信息
+                std::unique_ptr<SortOperatorState> sort_op_state = std::make_unique<SortOperatorState>();
+                sort_op_state->deserialize(op_checkpoints[checkpoint_index]->op_state_addr_, op_checkpoints[checkpoint_index]->op_state_size_);
+                x->load_state_info(sort_op_state.get());
+
+                RwServerDebug::getInstance()->DEBUG_PRINT("[RECOVER EXEC PLAN][SortExecutor][operator_id: " + std::to_string(x->operator_id_) + "][be_call_time: " + std::to_string(x->be_call_times_) + "][left child call times: " + std::to_string(x->left_child_call_times_));
+            }
             else {
                 exec_plan = nullptr;
             }

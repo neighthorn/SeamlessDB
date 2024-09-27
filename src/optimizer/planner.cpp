@@ -354,7 +354,7 @@ std::shared_ptr<Plan> Planner::generate_sort_plan(std::shared_ptr<Query> query, 
         if(col.name.compare(x->order->cols->col_name) == 0 )
         sel_col = {.tab_name = col.tab_name, .col_name = col.name};
     }
-    return std::make_shared<SortPlan>(T_Sort, std::move(plan), sel_col, 
+    return std::make_shared<SortPlan>(T_Sort, current_sql_id_, current_plan_id_ ++, std::move(plan), sel_col, 
                                     x->order->orderby_dir == ast::OrderBy_DESC);
 }
 
@@ -373,7 +373,7 @@ std::shared_ptr<Plan> Planner::generate_select_plan(std::shared_ptr<Query> query
     //物理优化
     auto sel_cols = query->cols;
     std::shared_ptr<Plan> plannerRoot = physical_optimization(query, context);
-    plannerRoot = std::make_shared<ProjectionPlan>(T_Projection, std::move(plannerRoot), 
+    plannerRoot = std::make_shared<ProjectionPlan>(T_Projection, current_sql_id_, current_plan_id_ ++, std::move(plannerRoot), 
                                                         std::move(sel_cols));
 
     return plannerRoot;

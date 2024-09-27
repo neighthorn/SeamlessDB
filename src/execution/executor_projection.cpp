@@ -7,9 +7,15 @@
 #include "state/state_item/op_state.h"
 #include "state/op_state_manager.h"
 #include "state/state_item/op_state.h"
+#include "execution_sort.h"
 
 void ProjectionExecutor::load_state_info(ProjectionOperatorState *proj_op_state) {
     be_call_times_ = proj_op_state->left_child_call_times_;
+
+    if(is_root_) {
+        curr_result_num_ = be_call_times_;
+        checkpointed_result_num_ = be_call_times_;
+    }
 
     if(proj_op_state->is_left_child_join_ == false) {
         if(auto x = dynamic_cast<IndexScanExecutor *>(prev_.get())) {
@@ -57,11 +63,16 @@ int64_t ProjectionExecutor::getRCop(std::chrono::time_point<std::chrono::system_
         assert(0);
     }
 
-    if(auto x = dynamic_cast<IndexScanExecutor *>(prev_.get())) {
+    if(auto x = dynamic_cast<HashJoinExecutor *>(prev_.get())) {
         return std::chrono::duration_cast<std::chrono::milliseconds>(curr_time - latest_ck_info->ck_timestamp_).count() + x->getRCop(latest_ck_info->ck_timestamp_);
-    } else if(auto x = dynamic_cast<ProjectionExecutor *>(prev_.get())) {
+    }
+    else if(auto x = dynamic_cast<BlockNestedLoopJoinExecutor *>(prev_.get())) {
         return std::chrono::duration_cast<std::chrono::milliseconds>(curr_time - latest_ck_info->ck_timestamp_).count() + x->getRCop(latest_ck_info->ck_timestamp_);
-    } else {
+    }
+    else if(auto x = dynamic_cast<SortExecutor *>(prev_.get())) {
+        return std::chrono::duration_cast<std::chrono::milliseconds>(curr_time - latest_ck_info->ck_timestamp_).count() + x->getRCop(latest_ck_info->ck_timestamp_);
+    }
+    else {
         return std::chrono::duration_cast<std::chrono::milliseconds>(curr_time - latest_ck_info->ck_timestamp_).count();
     }
 }

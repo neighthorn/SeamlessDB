@@ -4,6 +4,7 @@
 #include "execution/executor_block_join.h"
 #include "execution/executor_hash_join.h"
 #include "execution/executor_projection.h"
+#include "execution/execution_sort.h"
 
 
 /*
@@ -816,5 +817,156 @@ void HashJoinOperatorState::rebuild_hash_table(HashJoinExecutor* hash_join_op, c
     for(int i = 0; i < left_hash_table_size_; i++) {
         hash_join_op_->append_tuple_to_hash_table_from_state(src + offset, left_record_len_, join_key);
         offset += left_record_len_;
+    }
+}
+
+SortOperatorState::SortOperatorState(): OperatorState(-1, -1, time(nullptr), ExecutionType::SORT) {
+    sort_op_ = nullptr;
+    op_state_size_ = sort_state_size_min;
+    be_call_times_ = -1;
+    left_child_call_times_ = -1;
+    left_child_is_join_ = false;
+    left_child_state_ = nullptr;
+    tuple_len_ = 0;
+    unsorted_records_count_ = 0;
+    is_sort_index_checkpointed_ = false;
+    unsorted_records_ = nullptr;
+    sorted_index_ = nullptr;
+}
+
+SortOperatorState::SortOperatorState(SortExecutor* sort_op): 
+    OperatorState(sort_op->sql_id_, sort_op->operator_id_, time(nullptr), sort_op->exec_type_), sort_op_(sort_op) {
+    op_state_size_ = OperatorState::getSize();
+
+    be_call_times_ = sort_op->be_call_times_;
+    left_child_call_times_ = sort_op->left_child_call_times_;
+    tuple_len_ = sort_op->tuple_len_;
+
+    op_state_size_ += sizeof(int) * 3;
+
+    op_state_size_ += sizeof(bool);
+    if(is_sort_index_checkpointed_ == false && sort_op->is_sorted_ == true) {
+        op_state_size_ += sizeof(int) * sort_op->num_records_;
+        is_sort_index_checkpointed_ = true;
+    }
+    else {
+        is_sort_index_checkpointed_ = false;
+    }
+
+    unsorted_records_ = &sort_op->unsorted_records_;
+    sorted_index_ = sort_op->sorted_index_;
+    unsorted_records_count_ = sort_op->num_records_ - sort_op->checkpointed_tuple_num_;
+    op_state_size_ += sizeof(int);
+    op_state_size_ += unsorted_records_count_ * tuple_len_;
+
+    op_state_size_ += sizeof(bool);
+    if(auto x = dynamic_cast<IndexScanExecutor *>(sort_op->prev_.get())) {
+        left_child_is_join_ = false;
+        left_child_state_ = new IndexScanOperatorState(x);
+        op_state_size_ += left_child_state_->getSize();
+    } else if(auto x = dynamic_cast<ProjectionExecutor *>(sort_op->prev_.get())) {
+        left_child_is_join_ = false;
+        left_child_state_ = new ProjectionOperatorState(x);
+        op_state_size_ += left_child_state_->getSize();
+    } else if(auto x = dynamic_cast<BlockNestedLoopJoinExecutor *>(sort_op->prev_.get())) {
+        left_child_is_join_ = true;
+    } else if(auto x = dynamic_cast<HashJoinExecutor *>(sort_op->prev_.get())) {
+        left_child_is_join_ = true;
+    } else {
+        std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
+    }
+}
+
+size_t SortOperatorState::serialize(char *dest) {
+    size_t offset = OperatorState::serialize(dest);
+
+    memcpy(dest + offset, (char*)&be_call_times_, sizeof(int));
+    offset += sizeof(int);
+    memcpy(dest + offset, (char*)&left_child_call_times_, sizeof(int));
+    offset += sizeof(int);
+    memcpy(dest + offset, (char*)&tuple_len_, sizeof(int));
+    offset += sizeof(int);
+    memcpy(dest + offset, (char*)&is_sort_index_checkpointed_, sizeof(bool));
+    offset += sizeof(bool);
+    memcpy(dest + offset, (char*)&unsorted_records_count_, sizeof(int));
+    offset += sizeof(int);
+
+    // serialize unsorted records
+    for(int i = sort_op_->checkpointed_tuple_num_; i < sort_op_->num_records_; i++) {
+        memcpy(dest + offset, (*unsorted_records_)[i]->raw_data_, tuple_len_);
+        offset += tuple_len_;
+    }
+
+    if(is_sort_index_checkpointed_ == true) {
+        memcpy(dest + offset, (char*)sorted_index_, sizeof(int) * sort_op_->num_records_);
+        offset += sizeof(int) * sort_op_->num_records_;
+    }
+
+    memcpy(dest + offset, (char*)&left_child_is_join_, sizeof(bool));
+    offset += sizeof(bool);
+    // serialize left child
+    if(left_child_is_join_ == false) {
+        size_t left_child_size = left_child_state_->serialize(dest + offset);
+        offset += left_child_size;
+    }
+
+    assert(offset == op_state_size_);
+    return offset;
+}
+
+bool SortOperatorState::deserialize(char* src, size_t size) {
+    if(size < OperatorState::getSize()) return false;
+
+    bool status = OperatorState::deserialize(src, OperatorState::getSize());
+    if(!status) return false;
+
+    size_t offset = OperatorState::getSize();
+    memcpy((char*)&be_call_times_, src + offset, sizeof(int));
+    offset += sizeof(int);
+    memcpy((char*)&left_child_call_times_, src + offset, sizeof(int));
+    offset += sizeof(int);
+    memcpy((char*)&tuple_len_, src + offset, sizeof(int));
+    offset += sizeof(int);
+    memcpy((char*)&is_sort_index_checkpointed_, src + offset, sizeof(bool));
+    offset += sizeof(bool);
+    memcpy((char*)&unsorted_records_count_, src + offset, sizeof(int));
+    offset += sizeof(int);
+
+    // 跳过unsorted records，在rebuild_sort_records中构建
+    offset += unsorted_records_count_ * tuple_len_;
+
+    if(is_sort_index_checkpointed_ == true) {
+        // 跳过排序索引，在rebuild_sort_records中构建
+        offset += sizeof(int) * sort_op_->num_records_;
+    }
+
+    // deserialize left child
+    memcpy((char*)&left_child_is_join_, src + offset, sizeof(bool));
+    offset += sizeof(bool);
+    if(left_child_is_join_ == false) {
+        left_child_state_ = new IndexScanOperatorState();
+        left_child_state_->deserialize(src + offset, size - offset);
+        offset += left_child_state_->getSize();
+    }
+
+    assert(offset == op_state_size_);
+    return true;
+}
+
+void SortOperatorState::rebuild_sort_records(SortExecutor* sort_op, char* src, size_t size) {
+    if(sort_op_ == nullptr) {
+        sort_op_ = sort_op;
+    }
+
+    int offset = OperatorState::getSize() + sizeof(int) * 3 + sizeof(bool) + sizeof(int);
+    char* record = new char[tuple_len_];
+    for(int i = sort_op_->checkpointed_tuple_num_; i < sort_op_->num_records_; i++) {
+        memcpy(record, src + offset, tuple_len_);
+        sort_op_->unsorted_records_.push_back(std::make_unique<Record>(record, tuple_len_));
+        offset += tuple_len_;
+    }
+
+    if(is_sort_index_checkpointed_ == true) {
+        memcpy(sort_op_->sorted_index_, src + offset, sizeof(int) * sort_op_->num_records_);
     }
 }

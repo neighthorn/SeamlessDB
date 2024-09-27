@@ -8,5 +8,6 @@ enum class ExecutionType {
     BLOCK_JOIN,
     HASH_JOIN,
     PROJECTION,
+    SORT,
     NOT_DEFINED
 };

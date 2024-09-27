@@ -63,8 +63,8 @@ public:
     // return left_table id
     int get_join_cond(int left_tab_range, int right_tab_id, std::vector<Condition>& join_conds);
     std::string get_table_join_col(int tab_id);
-    std::shared_ptr<Plan> generate_proj_plan(int tab_id, std::shared_ptr<Plan> scan_plan);
-    std::shared_ptr<Plan> generate_total_proj_plan(int table_num, std::shared_ptr<Plan> prev_plan);
+    std::shared_ptr<Plan> generate_proj_plan(int tab_id, std::shared_ptr<Plan> scan_plan, Context* context, int& curr_sql_id, int& curr_plan_id);
+    std::shared_ptr<Plan> generate_total_proj_plan(int table_num, std::shared_ptr<Plan> prev_plan, Context* context, int& curr_sql_id, int& curr_plan_id);
 
     std::shared_ptr<Plan> generate_query_tree(Context* context);
     void normal_exec();

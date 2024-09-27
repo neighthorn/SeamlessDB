@@ -182,7 +182,7 @@ class Portal
     {
         if(auto x = std::dynamic_pointer_cast<ProjectionPlan>(plan)){
             return std::make_unique<ProjectionExecutor>(convert_plan_executor(x->subplan_, context), 
-                                                        x->sel_cols_);
+                                                        x->sel_cols_, context, x->sql_id_, x->plan_id_);
         } else if(auto x = std::dynamic_pointer_cast<ScanPlan>(plan)) {
             if(x->tag == T_SeqScan) {
                 return std::make_unique<SeqScanExecutor>(sm_manager_, x->tab_name_, x->filter_conds_, context);
@@ -203,7 +203,7 @@ class Portal
             }
         } else if(auto x = std::dynamic_pointer_cast<SortPlan>(plan)) {
             return std::make_unique<SortExecutor>(convert_plan_executor(x->subplan_, context), 
-                                            x->sel_col_, x->is_desc_);
+                                            x->sel_col_, x->is_desc_, context, x->sql_id_, x->plan_id_);
         }
         return nullptr;
     }
@@ -218,8 +218,8 @@ class Portal
 
         */
         
-        return std::make_unique<ProjectionExecutor>(convert_plan_executor(plan->subplan_, context), 
-                                                    plan->sel_cols_);
+        return std::make_unique<ProjectionExecutor>(convert_plan_executor(plan->subplan_, context),
+                                                    plan->sel_cols_, context, plan->sql_id_, plan->plan_id_);
     }
 
 };

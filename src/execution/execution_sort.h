@@ -13,98 +13,82 @@ struct SortCheckpointInfo {
 };
 
 class SortExecutor : public AbstractExecutor {
-   private:
+public:
     std::unique_ptr<AbstractExecutor> prev_;
     //目前只支持一个键排序
     ColMeta cols_;
-    size_t tuple_num;
     bool is_desc_;
-    std::vector<size_t> used_tuple;
-    std::unique_ptr<Record> current_tuple;
+    std::vector<std::unique_ptr<Record>> unsorted_records_;
+    int* sorted_index_;     // 比如[3, 1, 0, 2]代表unsorted_records_中的第3个元素是排第一的
+    int num_records_;
+    Context* context_;
+    bool is_sorted_;
+    bool is_sort_index_checkpointed_;
+    int tuple_len_;
 
     std::vector<SortCheckpointInfo> ck_infos_;
     int be_call_times_;
     int left_child_call_times_;
+    int checkpointed_tuple_num_;
 
    public:
-    SortExecutor(std::unique_ptr<AbstractExecutor> prev, TabCol sel_cols, bool is_desc) {
+    SortExecutor(std::unique_ptr<AbstractExecutor> prev, TabCol sel_cols, bool is_desc, Context* context, int sql_id, int operator_id):
+        AbstractExecutor(sql_id, operator_id) {
         prev_ = std::move(prev);
         cols_ = prev_->get_col_offset(sel_cols);
+        tuple_len_ = prev_->tupleLen();
         is_desc_ = is_desc;
-        tuple_num = 0;
-        used_tuple.clear();
+        num_records_ = 0;
+        context_ = context;
+        is_sorted_ = false;
+
+        be_call_times_ = 0;
+        left_child_call_times_ = 0;
+        is_sort_index_checkpointed_ = false;
+        checkpointed_tuple_num_ = 0;
+        exec_type_ = ExecutionType::SORT;
+        ck_infos_.push_back(SortCheckpointInfo{.ck_timestamp_ = std::chrono::high_resolution_clock::now()});
     }
 
     std::string getType() override { return "Sort"; }
 
-    size_t tupleLen() const override { return prev_->tupleLen(); }
+    size_t tupleLen() const override { return tuple_len_; }
 
     const std::vector<ColMeta> &cols() const override { return prev_->cols(); }
 
     void beginTuple() override { 
-        // 使用暴力排序，sort节点并不会存储所有的元组（只保存已经扫描rid和当前的元组），
-        // begin时需要找到最大，或者最小的元组，然后记录元组的数量
-        // 首先清理保存元素的vector（防止上层节点重复调用）
-        used_tuple.clear();
-        bool start = true;
-        char *current;
-        size_t tuple_index = 0, curr_index = 0;
-        for (prev_->beginTuple(); !prev_->is_end(); prev_->nextTuple()) {
-            auto Tuple = prev_->Next();
-            char *rec_buf = Tuple->raw_data_ + cols_.offset;
-            if(start) {
-                current = rec_buf;
-                curr_index = tuple_index;
-                start = false;
-                current_tuple = std::move(Tuple);
-            } else {
-                int cpm = ix_compare(current, rec_buf, cols_.type, cols_.len);
-                if((is_desc_ && cpm < 0) || (!is_desc_ && cpm > 0 )) {
-                    current = rec_buf;
-                    curr_index = tuple_index;
-                    current_tuple = std::move(Tuple);
-                }
-            }
-            tuple_num++;
-            tuple_index++;
+        for(prev_->beginTuple(); !prev_->is_end(); prev_->nextTuple()) {
+            // TODO: 这里直接move了，后面记录检查点的时候会不会有问题？
+            unsorted_records_.push_back(std::move(prev_->Next()));
+        } 
+        num_records_ = unsorted_records_.size();
+        sorted_index_ = new int[num_records_];
+        for(int i = 0; i < unsorted_records_.size(); i++) {
+            sorted_index_[i] = i;
         }
-        used_tuple.emplace_back(curr_index);
+
+        std::sort(sorted_index_, sorted_index_ + num_records_, [&](int lhs, int rhs) {
+            const Record* left = unsorted_records_[lhs].get();
+            const Record* right = unsorted_records_[rhs].get();
+
+            const char* left_field = left->raw_data_ + cols_.offset;
+            const char* right_field = right->raw_data_ + cols_.offset;
+
+            return std::memcmp(left_field, right_field, cols_.len) < 0;
+        });
+
+        is_sorted_ = true;
     }
 
     void nextTuple() override {
-        bool start = true;
-        char *current;
-        size_t tuple_index = 0, curr_index = 0;
-        for (prev_->beginTuple(); !prev_->is_end(); prev_->nextTuple()) {
-            if (std::find(used_tuple.begin(), used_tuple.end(), tuple_index) != used_tuple.end()) {
-                tuple_index++;
-                continue;
-            }
-            auto Tuple = prev_->Next();
-            char *rec_buf = Tuple->raw_data_ + cols_.offset;
-            if(start) {
-                current = rec_buf;
-                curr_index = tuple_index;
-                start = false;
-                current_tuple = std::move(Tuple);
-            } else {
-                int cpm = ix_compare(current, rec_buf, cols_.type, cols_.len);
-                if((is_desc_ && cpm < 0) || (!is_desc_ && cpm > 0 )) {
-                    current = rec_buf;
-                    curr_index = tuple_index;
-                    current_tuple = std::move(Tuple);
-                }
-            }
-            tuple_index++;
-        }
-        tuple_num--;
-        used_tuple.emplace_back(curr_index);
+        be_call_times_ ++;
     }
 
-    bool is_end() const override { return tuple_num == 0; }
+    bool is_end() const override { return be_call_times_ >= num_records_; }
 
     std::unique_ptr<Record> Next() override {
-        return std::move(current_tuple);
+        assert(!is_end());
+        return std::move(unsorted_records_[sorted_index_[be_call_times_]]);
     }
     
     ColMeta get_col_offset(const TabCol &target) override {

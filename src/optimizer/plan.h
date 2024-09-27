@@ -310,8 +310,8 @@ class JoinPlan : public Plan
 class SortPlan : public Plan
 {
     public:
-        SortPlan(PlanTag tag, std::shared_ptr<Plan> subplan, TabCol sel_col, bool is_desc)
-        {
+        SortPlan(PlanTag tag, int sql_id, int plan_id, std::shared_ptr<Plan> subplan, TabCol sel_col, bool is_desc)
+        : Plan(sql_id, plan_id) {
             Plan::tag = tag;
             subplan_ = std::move(subplan);
             sel_col_ = sel_col;
@@ -393,7 +393,7 @@ class SortPlan : public Plan
                 subplan_ = ScanPlan::deserialize(src + off_subplan, sm_mgr);
             }
 
-            return std::make_shared<SortPlan>(tag, subplan_, sel_col_, is_desc_);
+            return std::make_shared<SortPlan>(tag, sql_id, plan_id, subplan_, sel_col_, is_desc_);
         }
 
         std::shared_ptr<Plan> subplan_;
@@ -405,8 +405,8 @@ class SortPlan : public Plan
 class ProjectionPlan : public Plan
 {
     public:
-        ProjectionPlan(PlanTag tag, std::shared_ptr<Plan> subplan, std::vector<TabCol> sel_cols)
-        {
+        ProjectionPlan(PlanTag tag, int sql_id, int plan_id, std::shared_ptr<Plan> subplan, std::vector<TabCol> sel_cols)
+        : Plan(sql_id, plan_id) {
             Plan::tag = tag;
             subplan_ = std::move(subplan);
             sel_cols_ = std::move(sel_cols);
@@ -501,7 +501,7 @@ class ProjectionPlan : public Plan
                 subplan_ = SortPlan::deserialize(src + off_subplan, sm_mgr);
             }
 
-            return std::make_shared<ProjectionPlan>(tag, subplan_, sel_cols_);
+            return std::make_shared<ProjectionPlan>(tag, sql_id, plan_id, subplan_, sel_cols_);
         }
 
         std::shared_ptr<Plan> subplan_;

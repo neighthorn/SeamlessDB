@@ -27,7 +27,7 @@ public:
     int checkpointed_result_num_;
 
    public:
-    ProjectionExecutor(std::unique_ptr<AbstractExecutor> prev, const std::vector<TabCol> &sel_cols, Context* context) {
+    ProjectionExecutor(std::unique_ptr<AbstractExecutor> prev, const std::vector<TabCol> &sel_cols, Context* context, int sql_id, int operator_id) : AbstractExecutor(sql_id, operator_id) {
         prev_ = std::move(prev);
 
         size_t curr_offset = 0;

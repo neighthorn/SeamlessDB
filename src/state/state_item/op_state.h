@@ -244,7 +244,7 @@ public:
     // IndexScanOperatorState right_index_scan_state_;
     OperatorState* right_child_state_;
 
-    int left_hash_table_size_;  // 哈希表中的tuple条数
+    int left_hash_table_size_;  // 当前检查点包含的哈希表中的tuple条数，也就是相对于上一个检查点的增量
     int left_record_len_;       // 哈希表中每个tuple的长度
     std::unordered_map<std::string, std::vector<std::unique_ptr<Record>>>* left_hash_table_; 
     std::unordered_map<std::string, size_t>* checkpointed_indexes_;
@@ -260,20 +260,24 @@ public:
     SortOperatorState(SortExecutor *sort_op);
     size_t serialize(char *dest) override;
     bool deserialize(char *src, size_t size) override;
+    void rebuild_sort_records(SortExecutor *sort_op, char* src, size_t size);
     size_t getSize() override {
         std::cout << "SortOperatorState getSize(): " << op_state_size_ << std::endl;
         return op_state_size_;
     }
 
-    bool is_sorted_;
+    SortExecutor *sort_op_;
+
+    bool is_sort_index_checkpointed_;
+    int unsorted_records_count_;    // 当前检查点中包含的unsorted_records的数量，也就是相对于上一个检查点的增量
+    int tuple_len_;
+    
     int be_call_times_;
     int left_child_call_times_;
-    int checkpointed_tuple_count_;
-    int curr_tuple_count_;
 
     bool left_child_is_join_;
     OperatorState* left_child_state_;
 
-    std::vector<Record*>* unsorted_records_;
+    std::vector<std::unique_ptr<Record>>* unsorted_records_;
     int* sorted_index_;
 };

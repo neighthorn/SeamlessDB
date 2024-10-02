@@ -38,7 +38,7 @@ public:
 public:
     std::vector<HashJoinCheckpointInfo> ck_infos_;      // 记录建立检查点时的信息
     // int left_child_call_times_;     // 左儿子调用次数
-    int be_call_times_;             // 被调用次数
+    // int be_call_times_;             // 被调用次数
 
     HashJoinExecutor(std::unique_ptr<AbstractExecutor> left, std::unique_ptr<AbstractExecutor> right, std::vector<Condition> conds, Context* context, int sql_id, int operator_id) 
         : AbstractExecutor(sql_id, operator_id) {
@@ -66,6 +66,12 @@ public:
 
         ck_infos_.push_back(HashJoinCheckpointInfo{.ck_timestamp_ = std::chrono::high_resolution_clock::now()});
         exec_type_ = ExecutionType::HASH_JOIN;
+
+        be_call_times_ = 0;
+        left_child_call_times_ = 0;
+
+        finished_begin_tuple_ = false; 
+        is_in_recovery_ = false;
 
         context_ = context;
     }

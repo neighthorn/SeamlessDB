@@ -100,6 +100,9 @@ void rebuild_exec_plan_with_query_tree(Context* context, std::shared_ptr<PortalS
                 else if(auto left_child = dynamic_cast<HashJoinExecutor *>(x->left_.get())) {
                     exec_plan = left_child;
                 }
+                else if(auto left_child = dynamic_cast<ProjectionExecutor *>(x->left_.get())) {
+                    exec_plan = left_child;
+                }
                 else {
                     exec_plan = nullptr;
                 }
@@ -157,6 +160,9 @@ void rebuild_exec_plan_with_query_tree(Context* context, std::shared_ptr<PortalS
                 else if(auto left_child = dynamic_cast<HashJoinExecutor *>(x->left_.get())) {
                     exec_plan = left_child;
                 }
+                else if(auto left_child = dynamic_cast<ProjectionExecutor *>(x->left_.get())) {
+                    exec_plan = left_child;
+                }
                 else {
                     exec_plan = nullptr;
                 }
@@ -194,7 +200,10 @@ void rebuild_exec_plan_with_query_tree(Context* context, std::shared_ptr<PortalS
                     }
                     // 如果存在sort_index，则反序列化sorted_index
                     if(op_checkpoints[i]->operator_id_ == x->operator_id_ && *reinterpret_cast<bool*>(op_checkpoints[i]->op_state_addr_ + OPERATOR_STATE_HEADER_SIZE + OFF_SORT_IS_SORTED_INDEX_CKPT) == true) {
-                        x->sorted_index_ = reinterpret_cast<int*>(op_checkpoints[i]->op_state_addr_ + OPERATOR_STATE_HEADER_SIZE + OFF_SORT_IS_SORTED_INDEX_CKPT);
+                        // x->sorted_index_ = reinterpret_cast<int*>(op_checkpoints[i]->op_state_addr_ + OPERATOR_STATE_HEADER_SIZE + OFF_SORT_IS_SORTED_INDEX_CKPT);
+                        std::unique_ptr<SortOperatorState> sort_op_state = std::make_unique<SortOperatorState>();
+                        sort_op_state->deserialize(op_checkpoints[i]->op_state_addr_, op_checkpoints[i]->op_state_size_);
+                        sort_op_state->rebuild_sort_index(x, op_checkpoints[i]->op_state_addr_, op_checkpoints[i]->op_state_size_);
                     }
                 }
 
@@ -204,6 +213,18 @@ void rebuild_exec_plan_with_query_tree(Context* context, std::shared_ptr<PortalS
                 x->load_state_info(sort_op_state.get());
 
                 RwServerDebug::getInstance()->DEBUG_PRINT("[RECOVER EXEC PLAN][SortExecutor][operator_id: " + std::to_string(x->operator_id_) + "][be_call_time: " + std::to_string(x->be_call_times_) + "][left child call times: " + std::to_string(x->left_child_call_times_));
+                if(auto left_child = dynamic_cast<BlockNestedLoopJoinExecutor *>(x->prev_.get())) {
+                    exec_plan = left_child;
+                }
+                else if(auto left_child = dynamic_cast<HashJoinExecutor *>(x->prev_.get())) {
+                    exec_plan = left_child;
+                }
+                else if(auto left_child = dynamic_cast<ProjectionExecutor *>(x->prev_.get())) {
+                    exec_plan = left_child;
+                }
+                else {
+                    exec_plan = nullptr;
+                }
             }
             else {
                 exec_plan = nullptr;
@@ -223,78 +244,79 @@ void rebuild_exec_plan_with_query_tree(Context* context, std::shared_ptr<PortalS
     /*
         从需要beginTuple的节点开始，手动执行beginTuple
     */
-    if(need_to_begin_tuple != nullptr) {
-        need_to_begin_tuple->beginTuple();
-    }
+    // if(need_to_begin_tuple != nullptr) {
+    //     need_to_begin_tuple->beginTuple();
+    // }
 
     /*
         所有算子恢复到一致性的状态(自底向上)
     */
+   recover_exec_plan_to_consistent_state(context, portal_stmt->root.get(), portal_stmt->root.get()->left_child_call_times_);
 
     #ifdef TIME_OPEN
         auto recover_consistency_start = std::chrono::high_resolution_clock::now();
     #endif
     
-    {
-        // std::stack<BlockNestedLoopJoinExecutor *> block_ops_;
-        std::stack<AbstractExecutor *> left_ops_;
-        auto exec_plan = portal_stmt->root.get();
-        while(exec_plan != nullptr) {
-            std::cout << "operator_id: " << exec_plan->operator_id_ << "left_child_call_time: " << exec_plan->left_child_call_times_ << std::endl;
-            if(auto x = dynamic_cast<ProjectionExecutor *>(exec_plan)) {
-                exec_plan = (x->prev_).get();
-                left_ops_.push(x);
-            } else if(auto x = dynamic_cast<BlockNestedLoopJoinExecutor *>(exec_plan)) {
-                // block_ops_.push(x);
-                left_ops_.push(x);
+    // {
+    //     // std::stack<BlockNestedLoopJoinExecutor *> block_ops_;
+    //     std::stack<AbstractExecutor *> left_ops_;
+    //     auto exec_plan = portal_stmt->root.get();
+    //     while(exec_plan != nullptr) {
+    //         std::cout << "operator_id: " << exec_plan->operator_id_ << "left_child_call_time: " << exec_plan->left_child_call_times_ << std::endl;
+    //         if(auto x = dynamic_cast<ProjectionExecutor *>(exec_plan)) {
+    //             exec_plan = (x->prev_).get();
+    //             left_ops_.push(x);
+    //         } else if(auto x = dynamic_cast<BlockNestedLoopJoinExecutor *>(exec_plan)) {
+    //             // block_ops_.push(x);
+    //             left_ops_.push(x);
 
-                if(auto left_child = dynamic_cast<BlockNestedLoopJoinExecutor *>(x->left_.get())) {
-                    exec_plan = left_child;
-                } else {
-                    exec_plan = nullptr;
-                }
-            } else if(auto x = dynamic_cast<HashJoinExecutor *>(exec_plan)) {
-                // block_ops_.push(x);
-                left_ops_.push(x);
-                if(auto left_child = dynamic_cast<BlockNestedLoopJoinExecutor *>(x->left_.get())) {
-                    exec_plan = left_child;
-                } else {
-                    exec_plan = nullptr;
-                }
-            } else {
-                exec_plan = nullptr;
-            }
-        }
+    //             if(auto left_child = dynamic_cast<BlockNestedLoopJoinExecutor *>(x->left_.get())) {
+    //                 exec_plan = left_child;
+    //             } else {
+    //                 exec_plan = nullptr;
+    //             }
+    //         } else if(auto x = dynamic_cast<HashJoinExecutor *>(exec_plan)) {
+    //             // block_ops_.push(x);
+    //             left_ops_.push(x);
+    //             if(auto left_child = dynamic_cast<BlockNestedLoopJoinExecutor *>(x->left_.get())) {
+    //                 exec_plan = left_child;
+    //             } else {
+    //                 exec_plan = nullptr;
+    //             }
+    //         } else {
+    //             exec_plan = nullptr;
+    //         }
+    //     }
 
-        // while(block_ops_.size() > 1) {
-        // while(left_ops_.size() > 1) {
-        //     auto child = block_ops_.top();
-        //     block_ops_.pop();
-        //     auto father = block_ops_.top();
-        //     /*
-        //         重做
-        //     */
-        //     while(child->be_call_times_ < father->left_child_call_times_) {
-        //         child->nextTuple();
-        //     }
-        // }
-        while(left_ops_.size() > 2) {
-            auto child = left_ops_.top();
-            left_ops_.pop();
-            auto father = left_ops_.top();
+    //     // while(block_ops_.size() > 1) {
+    //     // while(left_ops_.size() > 1) {
+    //     //     auto child = block_ops_.top();
+    //     //     block_ops_.pop();
+    //     //     auto father = block_ops_.top();
+    //     //     /*
+    //     //         重做
+    //     //     */
+    //     //     while(child->be_call_times_ < father->left_child_call_times_) {
+    //     //         child->nextTuple();
+    //     //     }
+    //     // }
+    //     while(left_ops_.size() > 2) {
+    //         auto child = left_ops_.top();
+    //         left_ops_.pop();
+    //         auto father = left_ops_.top();
             
-            if(auto x = dynamic_cast<BlockNestedLoopJoinExecutor *>(child)) {
-                while(x->be_call_times_ < father->left_child_call_times_) {
-                    x->nextTuple();
-                }
-            }
-            else if(auto x = dynamic_cast<HashJoinExecutor *>(child)) {
-                while(x->be_call_times_ < father->left_child_call_times_) {
-                    x->nextTuple();
-                }
-            }
-        }
-    }
+    //         if(auto x = dynamic_cast<BlockNestedLoopJoinExecutor *>(child)) {
+    //             while(x->be_call_times_ < father->left_child_call_times_) {
+    //                 x->nextTuple();
+    //             }
+    //         }
+    //         else if(auto x = dynamic_cast<HashJoinExecutor *>(child)) {
+    //             while(x->be_call_times_ < father->left_child_call_times_) {
+    //                 x->nextTuple();
+    //             }
+    //         }
+    //     }
+    // }
 
     #ifdef TIME_OPEN
         auto recover_consistency_end = std::chrono::high_resolution_clock::now();
@@ -361,4 +383,57 @@ std::shared_ptr<PortalStmt> rebuild_exec_plan_from_state(RWNode *node, Context *
 
     rebuild_exec_plan_with_query_tree(context, portal_stmt, op_ck_meta, op_checkpoints);
     return portal_stmt;
+}
+
+void recover_exec_plan_to_consistent_state(Context* context, AbstractExecutor* root, int need_to_be_call_time) {
+    if(auto x = dynamic_cast<BlockNestedLoopJoinExecutor *>(root)) {
+         if(x->finished_begin_tuple_ == false) {
+            std::cout << "Recover: BlockNestedLoopJoinExecutor beginTuple" << std::endl;
+            x->beginTuple();
+         }
+         else {
+            recover_exec_plan_to_consistent_state(context, x->left_.get(), x->left_child_call_times_);
+         }
+
+        std::cout << "x->be_call_times: " << x->be_call_times_ << ", need_to_be_call_time: " << need_to_be_call_time << std::endl;
+         while(x->be_call_times_ < need_to_be_call_time) {
+            x->nextTuple();
+            x->be_call_times_ ++;
+         }
+    }
+    else if(auto x = dynamic_cast<HashJoinExecutor *>(root)) {
+        if(x->finished_begin_tuple_ == false) {
+            // 如果未完成beginTuple，则需要首先将左子树恢复到一致性状态，然后将左儿子恢复到调用次数为left_child_call_times_的状态，再完成beginTuple
+            // 如果已经完成了beginTuple，则无需恢复左子树的状态
+            recover_exec_plan_to_consistent_state(context, x->left_.get(), x->left_child_call_times_);
+            x->beginTuple();
+        }
+        
+        std::cout << "x->be_call_times: " << x->be_call_times_ << ", need_to_be_call_time: " << need_to_be_call_time << std::endl;
+        // 将当前算子恢复到被调用次数为need_to_be_call_time的状态
+        while(x->be_call_times_ < need_to_be_call_time) {
+            x->nextTuple();
+            x->be_call_times_ ++;
+        }
+    }
+    else if(auto x = dynamic_cast<SortExecutor *>(root)) {
+        if(x->finished_begin_tuple_ == false) {
+            recover_exec_plan_to_consistent_state(context, x->prev_.get(), x->left_child_call_times_);
+            x->beginTuple();
+        }
+
+        std::cout << "x->be_call_times: " << x->be_call_times_ << ", need_to_be_call_time: " << need_to_be_call_time << std::endl;
+        while(x->be_call_times_ < need_to_be_call_time) {
+            x->nextTuple();
+        }
+    }
+    else if(auto x = dynamic_cast<ProjectionExecutor *>(root)) {
+        recover_exec_plan_to_consistent_state(context, x->prev_.get(), x->left_child_call_times_);
+
+        std::cout << "x->be_call_times: " << x->be_call_times_ << ", need_to_be_call_time: " << need_to_be_call_time << std::endl;
+        while(x->be_call_times_ < need_to_be_call_time) {
+            x->nextTuple();
+            x->be_call_times_ ++;
+        }
+    }
 }

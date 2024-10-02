@@ -231,6 +231,9 @@ BlockNestedLoopJoinExecutor::BlockNestedLoopJoinExecutor(std::unique_ptr<Abstrac
 
     left_child_call_times_  = 0;
     be_call_times_          = 0;
+
+    finished_begin_tuple_ = false;
+    is_in_recovery_ = false;
     /*
         debug test
     */
@@ -257,12 +260,13 @@ void BlockNestedLoopJoinExecutor::beginTuple() {
         写状态如果可以的话
     */
     left_child_call_times_ += left_block_->size_;
-    write_state_if_allow();
         
     // 2. 初始化 isend并开启循环寻找第一个符合要求的节点
     isend = false;
     find_next_valid_tuple();
-    be_call_times_++;
+    finished_begin_tuple_ = true;
+    write_state_if_allow();
+    // be_call_times_++;
 }
 
 void BlockNestedLoopJoinExecutor::nextTuple() {
@@ -272,7 +276,7 @@ void BlockNestedLoopJoinExecutor::nextTuple() {
     
     find_next_valid_tuple();
 
-    be_call_times_++;
+    // be_call_times_++;
 }
 
 std::unique_ptr<Record> BlockNestedLoopJoinExecutor::Next() {
@@ -285,6 +289,9 @@ std::unique_ptr<Record> BlockNestedLoopJoinExecutor::Next() {
     auto ret = std::make_unique<Record>(len_);
     memcpy(ret->raw_data_, left_record->raw_data_, left_record->data_length_);
     memcpy(ret->raw_data_ + left_record->data_length_, right_record->raw_data_, right_record->data_length_);
+    
+    be_call_times_ ++;
+    // write_state_if_allow();
     return ret;
 }
 
@@ -407,6 +414,7 @@ std::pair<bool, double> BlockNestedLoopJoinExecutor::judge_state_reward(BlockChe
         rc op
     */
     rc_op = getRCop(current_ck_info->ck_timestamp_);
+    current_ck_info->left_rc_op_ = rc_op;
 
     if(rc_op == 0) {
         return {false, -1};
@@ -457,10 +465,12 @@ int64_t BlockNestedLoopJoinExecutor::getRCop(std::chrono::time_point<std::chrono
         计算ck info
     */
     if(auto x =  dynamic_cast<BlockNestedLoopJoinExecutor *>(left_.get())) {
-        return std::chrono::duration_cast<std::chrono::milliseconds>(current_time - latest_ck_info->ck_timestamp_).count() + x->getRCop(latest_ck_info->ck_timestamp_);
+        // return std::chrono::duration_cast<std::chrono::milliseconds>(current_time - latest_ck_info->ck_timestamp_).count() + x->getRCop(latest_ck_info->ck_timestamp_);
+        return std::chrono::duration_cast<std::chrono::milliseconds>(current_time - latest_ck_info->ck_timestamp_).count() + latest_ck_info->left_rc_op_;
     } 
     else if(auto x = dynamic_cast<HashJoinExecutor*>(left_.get())) {
-        return std::chrono::duration_cast<std::chrono::milliseconds>(current_time - latest_ck_info->ck_timestamp_).count() + x->getRCop(latest_ck_info->ck_timestamp_);
+        // return std::chrono::duration_cast<std::chrono::milliseconds>(current_time - latest_ck_info->ck_timestamp_).count() + x->getRCop(latest_ck_info->ck_timestamp_);
+        return std::chrono::duration_cast<std::chrono::milliseconds>(current_time - latest_ck_info->ck_timestamp_).count() + latest_ck_info->left_rc_op_;
     }
     else {
         return std::chrono::duration_cast<std::chrono::milliseconds>(current_time - latest_ck_info->ck_timestamp_).count();
@@ -472,7 +482,7 @@ int64_t BlockNestedLoopJoinExecutor::getRCop(std::chrono::time_point<std::chrono
 */
 void BlockNestedLoopJoinExecutor::write_state_if_allow(int type) {
     // RwServerDebug::getInstance()->DEBUG_PRINT("This line is number: " + std::string(__FILE__)  + ":" + std::to_string(__LINE__));
-    BlockCheckpointInfo current_ck_info         = {.ck_timestamp_ = std::chrono::high_resolution_clock::now(), .left_block_id_ = left_blocks_->current_block_id_, .left_block_size_ = left_block_->getEstimateSize()};
+    BlockCheckpointInfo current_ck_info         = {.ck_timestamp_ = std::chrono::high_resolution_clock::now(), .left_block_id_ = left_blocks_->current_block_id_, .left_block_size_ = left_block_->getEstimateSize(), .left_rc_op_ = 0};
 
     switch (type)
     {
@@ -516,6 +526,7 @@ void BlockNestedLoopJoinExecutor::load_state_info(BlockJoinOperatorState *block_
         加载block join state
     */
     if(block_join_op != nullptr) {
+        is_in_recovery_ = true;
         /*
             类似beginTuple的逻辑
         */

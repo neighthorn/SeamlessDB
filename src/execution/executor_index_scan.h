@@ -107,6 +107,9 @@ friend class IndexScanOperatorState;
             assert(lock != nullptr);
             context_->txn_->append_lock(lock);
         }
+
+        be_call_times_ = 0;
+        left_child_call_times_ = 0;
     }
 
     std::string getType() override { return "indexScan"; }

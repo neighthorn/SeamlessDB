@@ -90,6 +90,7 @@ struct BlockCheckpointInfo {
     std::chrono::time_point<std::chrono::system_clock> ck_timestamp_;       // 记录建立检查点时的时间戳
     int left_block_id_;         // 记录建立检查点时的left block id
     size_t left_block_size_;    // 记录建立检查点时的left block 大小
+    double left_rc_op_;         // 左子树重做到当前检查点的rc_op
 };
 
 class BlockNestedLoopJoinExecutor : public AbstractExecutor {
@@ -117,7 +118,7 @@ public:
     std::vector<BlockCheckpointInfo>    ck_infos_;  // 记录建立检查点时的信息
 
     // int     left_child_call_times_;     // 左儿子调用次数
-    int     be_call_times_;             // 被调用次数
+    // int     be_call_times_;             // 被调用次数
 
 
    public:
@@ -155,7 +156,7 @@ public:
 public:
 
     // 找到下一个符合fed_cond的tuple
-    void find_next_valid_tuple() ;
+    void find_next_valid_tuple();
 
     /*
         根据代价估计函数，判断是否需要写状态

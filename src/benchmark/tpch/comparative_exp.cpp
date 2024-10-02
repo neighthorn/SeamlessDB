@@ -540,6 +540,9 @@ void ComparativeExp::re_exec() {
     delete context;
 }
 
+const int bytes_num = 1024*1024*70;
+char* test_buffer = new char[bytes_num];
+
 int main(int argc, char** argv) {
     /*
     整体执行流程：执行normal_time * break_percentage秒之后，kill掉正常执行的进程，进行恢复

@@ -12,15 +12,20 @@ void HashJoinExecutor::beginTuple() {
         std::unique_ptr<Record> left_rec;
         char* left_key = new char[join_key_size_];
         int offset;
-
-        left_->beginTuple();
-        if(left_->is_end()) {
-            is_end_ = true;
-            return;
+        
+        if(is_in_recovery_ == false) {
+            left_->beginTuple();
+            if(left_->is_end()) {
+                is_end_ = true;
+                finished_begin_tuple_ = true;
+                write_state_if_allow();
+                return;
+            }
         }
 
         for(;!left_->is_end(); left_->nextTuple()) {
             left_rec = left_->Next();
+            left_child_call_times_ ++;
             memset(left_key, 0, join_key_size_);
             offset = 0;
 
@@ -68,6 +73,9 @@ void HashJoinExecutor::beginTuple() {
         }
         right_rec = right_->Next();
     }
+
+    finished_begin_tuple_ = true;
+    write_state_if_allow();
 }
 
 void HashJoinExecutor::append_tuple_to_hash_table_from_state(char* src, int left_rec_len, char* join_key) {
@@ -135,7 +143,7 @@ std::unique_ptr<Record> HashJoinExecutor::Next() {
 
     be_call_times_ ++;
 
-    write_state_if_allow();
+    // write_state_if_allow();
     
     return res;
 }
@@ -235,6 +243,7 @@ void HashJoinExecutor::write_state_if_allow(int type) {
 void HashJoinExecutor::load_state_info(HashJoinOperatorState* state) {
     // load state except hash_table
     assert(state != nullptr);
+    is_in_recovery_ = true;
 
     // if(auto x = dynamic_cast<IndexScanExecutor *>(right_.get())) {
     //     x->load_state_info(&(state->right_index_scan_state_));

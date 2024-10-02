@@ -22,7 +22,7 @@ constexpr int index_scan_state_size_min = operator_size_min + sizeof(Rid) * 3;
 constexpr int projection_state_size_min = operator_size_min + sizeof(bool) + sizeof(int);
 constexpr int block_join_state_size_min = operator_size_min + projection_state_size_min + sizeof(int) * 7 + sizeof(bool) * 2 + sizeof(size_t) + index_scan_state_size_min;
 constexpr int hash_join_state_size_min = operator_size_min + projection_state_size_min + sizeof(int) * 5 + sizeof(bool) * 4 + index_scan_state_size_min;
-constexpr int sort_state_size_min = operator_size_min + sizeof(int) * 2 + sizeof(size_t) + sizeof(int) * 2 + sizeof(double);
+constexpr int sort_state_size_min = operator_size_min + sizeof(int) * 4 + sizeof(bool) * 2;
 // constexpr int hash_join_state_size_min = operator_size_min;
 
 struct CheckPointMeta {

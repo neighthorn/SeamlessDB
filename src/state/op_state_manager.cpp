@@ -411,6 +411,30 @@ std::pair<bool, size_t> OperatorStateManager::add_operator_state_to_buffer(Abstr
         op_checkpoint_queue_.push(OpCheckpointBlock{.buffer = alloc_buffer, .size = actual_size});
         op_checkpoint_not_empty_.notify_all();
     }
+    else if(auto projection_op = dynamic_cast<ProjectionExecutor *>(abstract_executor)) {
+        assert(projection_op->is_root_);
+        ProjectionOperatorState projection_state(projection_op);
+        size_t projection_checkpoint_size = projection_state.getSize();
+
+        char* alloc_buffer;
+        do {
+            auto [status, buffer] = op_checkpoint_buffer_allocator_->Alloc(projection_checkpoint_size);
+            if(status) {
+                alloc_buffer = buffer;
+                break;
+            } else {
+                std::cout << "waiting for free buffer.\n";
+                op_checkpoint_not_full_.wait(lock);
+            }
+        }while(true);
+
+        actual_size = projection_state.serialize(alloc_buffer);
+        assert(actual_size == projection_checkpoint_size);
+        write_status = true;
+
+        op_checkpoint_queue_.push(OpCheckpointBlock{.buffer = alloc_buffer, .size = actual_size});
+        op_checkpoint_not_empty_.notify_all();
+    }
     else {
         std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
 
@@ -620,12 +644,12 @@ std::vector<std::unique_ptr<OperatorState>> OperatorStateManager::read_op_checkp
         解析
     */
     for(int i = 0; i < ck_meta->checkpoint_num; ++i) {
-        std::cout << "Deserialize checkpoint " << i << " state header\n";
+        // std::cout << "Deserialize checkpoint " << i << " state header\n";
         auto op_stat = std::make_unique<OperatorState>();
         op_stat->deserialize(buffer + offset, op_stat->getSize());
         op_stat->op_state_addr_ = buffer + offset;
 
-        std::cout << "op_state_addr: " << op_stat->op_state_addr_ << "\n";
+        // std::cout << "op_state_addr: " << op_stat->op_state_addr_ << "\n";
 
         offset += op_stat->op_state_size_;
 

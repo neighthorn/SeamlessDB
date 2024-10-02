@@ -19,6 +19,11 @@ class AbstractExecutor {
     int     operator_id_;
 
     int left_child_call_times_;
+    int be_call_times_;
+    
+    bool finished_begin_tuple_; // whether the beginTuple() has been finished
+    
+    bool is_in_recovery_;   // whether the executor is in recovery or normal_exec
 
     inline AbstractExecutor(int sql_id = -1, int op_id = -1) : sql_id_(sql_id), operator_id_(op_id) , exec_type_(ExecutionType::NOT_DEFINED){}
 

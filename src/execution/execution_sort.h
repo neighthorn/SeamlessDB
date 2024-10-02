@@ -27,8 +27,6 @@ public:
     int tuple_len_;
 
     std::vector<SortCheckpointInfo> ck_infos_;
-    int be_call_times_;
-    int left_child_call_times_;
     int checkpointed_tuple_num_;
 
    public:
@@ -43,10 +41,11 @@ public:
         is_sorted_ = false;
 
         be_call_times_ = 0;
-        left_child_call_times_ = 0;
+        finished_begin_tuple_ = false;
         is_sort_index_checkpointed_ = false;
         checkpointed_tuple_num_ = 0;
         exec_type_ = ExecutionType::SORT;
+        is_in_recovery_ = false;
         ck_infos_.push_back(SortCheckpointInfo{.ck_timestamp_ = std::chrono::high_resolution_clock::now()});
     }
 
@@ -57,11 +56,22 @@ public:
     const std::vector<ColMeta> &cols() const override { return prev_->cols(); }
 
     void beginTuple() override { 
-        for(prev_->beginTuple(); !prev_->is_end(); prev_->nextTuple()) {
+        if(is_in_recovery_ == false) prev_->beginTuple();
+        if(prev_->is_end()) {
+            is_sorted_ = true;
+            finished_begin_tuple_ = true;
+            write_state_if_allow();
+            return;
+        }
+
+        for(; !prev_->is_end(); prev_->nextTuple()) {
             // TODO: 这里直接move了，后面记录检查点的时候会不会有问题？
             unsorted_records_.push_back(std::move(prev_->Next()));
+            num_records_ ++;
+            left_child_call_times_ ++;
+            write_state_if_allow();
         } 
-        num_records_ = unsorted_records_.size();
+
         sorted_index_ = new int[num_records_];
         for(int i = 0; i < unsorted_records_.size(); i++) {
             sorted_index_[i] = i;
@@ -78,6 +88,8 @@ public:
         });
 
         is_sorted_ = true;
+        finished_begin_tuple_ = true;
+        write_state_if_allow();
     }
 
     void nextTuple() override {
@@ -88,7 +100,10 @@ public:
 
     std::unique_ptr<Record> Next() override {
         assert(!is_end());
+        // std::cout << "sorted_index[be_call_times]: " << sorted_index_[be_call_times_] << ", be_call_times: " << be_call_times_ << std::endl;
+        assert(sorted_index_[be_call_times_] < unsorted_records_.size());
         return std::move(unsorted_records_[sorted_index_[be_call_times_]]);
+        // write_state_if_allow();
     }
     
     ColMeta get_col_offset(const TabCol &target) override {

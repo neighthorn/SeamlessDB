@@ -11,6 +11,7 @@
 
 void ProjectionExecutor::load_state_info(ProjectionOperatorState *proj_op_state) {
     be_call_times_ = proj_op_state->left_child_call_times_;
+    left_child_call_times_ = be_call_times_;
 
     if(is_root_) {
         curr_result_num_ = be_call_times_;

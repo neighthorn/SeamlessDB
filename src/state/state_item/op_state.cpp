@@ -153,6 +153,7 @@ bool IndexScanOperatorState::deserialize(char *src, size_t size) {
 ProjectionOperatorState::ProjectionOperatorState() : OperatorState(-1, -1, time(nullptr), ExecutionType::PROJECTION) {
     projection_op_ = nullptr;
     is_left_child_join_ = false;
+    left_index_scan_state_ = nullptr;
     op_state_size_ = OperatorState::getSize() + sizeof(bool);
 }
 
@@ -162,19 +163,24 @@ ProjectionOperatorState::ProjectionOperatorState(ProjectionExecutor* projection_
     op_state_size_ = OperatorState::getSize();
     left_child_call_times_ = projection_op_->be_call_times_;
     op_state_size_ += sizeof(int);
+    left_index_scan_state_ = nullptr;
 
     if(auto x = dynamic_cast<IndexScanExecutor *>(projection_op_->prev_.get())) {
         is_left_child_join_ = false;
         left_index_scan_state_ = new IndexScanOperatorState(x);
         op_state_size_ += left_index_scan_state_->getSize();
         op_state_size_ += sizeof(bool);
-    } else if(auto x = dynamic_cast<BlockNestedLoopJoinExecutor *>(projection_op_->prev_.get())) {
+    } else if(dynamic_cast<BlockNestedLoopJoinExecutor *>(projection_op_->prev_.get())) {
         is_left_child_join_ = true;
         op_state_size_ += sizeof(bool);
-    } else if(auto x = dynamic_cast<HashJoinExecutor *>(projection_op_->prev_.get())) {
+    } else if(dynamic_cast<HashJoinExecutor *>(projection_op_->prev_.get())) {
         is_left_child_join_ = true;
         op_state_size_ += sizeof(bool);
-    } else {
+    } else if(dynamic_cast<SortExecutor *>(projection_op_->prev_.get())) {
+        is_left_child_join_ = true;
+        op_state_size_ += sizeof(bool);
+    }
+     else {
         std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
     }
     std::cout << "final op_state_size: " << "\n";
@@ -962,7 +968,7 @@ void SortOperatorState::rebuild_sort_records(SortExecutor* sort_op, char* src, s
 
     int offset = OperatorState::getSize() + sizeof(int) * 3 + sizeof(bool) + sizeof(int);
 
-    for(int i = sort_op_->checkpointed_tuple_num_; i < sort_op_->num_records_; i++) {
+    for(int i = 0; i < unsorted_records_count_; i++) {
         auto record = std::make_unique<Record>(tuple_len_);
         memcpy(record->raw_data_, src + offset, tuple_len_);
         sort_op_->unsorted_records_.push_back(std::move(record));

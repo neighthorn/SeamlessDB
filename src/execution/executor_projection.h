@@ -20,7 +20,7 @@ public:
     std::vector<size_t> sel_idxs_;
 
     std::vector<ProjectionCheckpointInfo> ck_infos_;
-    int be_call_times_; // 只需要记录be_call_times，left_child_call_times_应该和当前节点的be_call_times一致
+    // int be_call_times_; // 只需要记录be_call_times，left_child_call_times_应该和当前节点的be_call_times一致
 
     bool is_root_;
     int curr_result_num_;
@@ -45,6 +45,8 @@ public:
         exec_type_ = ExecutionType::PROJECTION;
 
         be_call_times_ = 0;
+        is_root_ = false;
+        left_child_call_times_ = 0;
         context_ = context;
     }
 
@@ -82,9 +84,11 @@ public:
         }
 
         be_call_times_ ++;
+        left_child_call_times_ ++;
 
         if(is_root_) {
             curr_result_num_ ++;
+            write_state_if_allow();
         }
         return proj_rec;
     }

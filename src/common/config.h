@@ -151,3 +151,6 @@ extern double   state_theta_;
 extern double   src_scale_factor_;
 extern int      block_size_;
 extern int      node_type_;
+extern int      MB_;
+extern int      RB_;
+extern int      C_;

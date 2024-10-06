@@ -40,11 +40,22 @@ std::pair<bool, double> ProjectionExecutor::judge_state_reward(ProjectionCheckpo
         return {false, -1};
     }
 
-    double new_src_op = src_op / src_scale_factor_;
+    // double new_src_op = src_op / src_scale_factor_;
+    double new_src_op = src_op / MB_ + src_op / RB_ + C_;
     double rew_op = rc_op / new_src_op - state_theta_;
-    RwServerDebug::getInstance()->DEBUG_PRINT("[ProjectionExecutor][op_id: " + std::to_string(operator_id_) + "]: [delta result num]: " + std::to_string(curr_result_num_ - checkpointed_result_num_) + " [Rew_op]: " + std::to_string(rew_op) + " [Src_op]: " + std::to_string(new_src_op) + " [Rc_op]: " + std::to_string(rc_op) + " [State Theta]: " + std::to_string(state_theta_));
+    RwServerDebug::getInstance()->DEBUG_PRINT("[ProjectionExecutor][op_id: " + std::to_string(operator_id_) + "]: [delta result num]: " + std::to_string(curr_result_num_ - checkpointed_result_num_) \
+        + " [Rew_op]: " + std::to_string(rew_op) + " [state_size]: " + std::to_string(src_op) + " [Src_op]: " + std::to_string(new_src_op) + " [Rc_op]: " + std::to_string(rc_op) + " [State Theta]: " + std::to_string(state_theta_));
 
     if(rew_op > 0) {
+        if(auto x = dynamic_cast<HashJoinExecutor *>(prev_.get())) {
+            current_ck_info->left_rc_op_ = x->getRCop(current_ck_info->ck_timestamp_);
+        }
+        else if(auto x = dynamic_cast<BlockNestedLoopJoinExecutor *>(prev_.get())) {
+            current_ck_info->left_rc_op_ = x->getRCop(current_ck_info->ck_timestamp_);
+        }
+        else if(auto x = dynamic_cast<SortExecutor *>(prev_.get())) {
+            current_ck_info->left_rc_op_ = x->getRCop(current_ck_info->ck_timestamp_);
+        }
         return {true, src_op};
     }
 
@@ -53,6 +64,19 @@ std::pair<bool, double> ProjectionExecutor::judge_state_reward(ProjectionCheckpo
 
 int64_t ProjectionExecutor::getRCop(std::chrono::time_point<std::chrono::system_clock> curr_time) {
     // TODO: 如果是root的projection，按照当前这个逻辑就可以，如果是非root的projection，直接返回儿子节点的RCop
+    if(is_root_ == false) {
+        if(auto x = dynamic_cast<HashJoinExecutor *>(prev_.get())) {
+            return x->getRCop(curr_time);
+        }
+        else if(auto x = dynamic_cast<BlockNestedLoopJoinExecutor *>(prev_.get())) {
+            return x->getRCop(curr_time);
+        }
+        else if(auto x = dynamic_cast<SortExecutor *>(prev_.get())) {
+            return x->getRCop(curr_time);
+        }
+        return 0;
+    }
+    
     ProjectionCheckpointInfo* latest_ck_info = nullptr;
     for(int i = ck_infos_.size() - 1; i >= 0; --i) {
         if(ck_infos_[i].ck_timestamp_ <= curr_time) {
@@ -64,17 +88,22 @@ int64_t ProjectionExecutor::getRCop(std::chrono::time_point<std::chrono::system_
         assert(0);
     }
 
+    RwServerDebug::getInstance()->DEBUG_PRINT("[ProjectionExecutor: " + std::to_string(operator_id_) \
+     + "]: [Get RCop]: [Curr_time]: " + std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(curr_time.time_since_epoch()).count()) \
+     + " [Latest_ck_time]: " + std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(latest_ck_info->ck_timestamp_.time_since_epoch()).count()) \
+     + " [Left_rc_op]: " + std::to_string(latest_ck_info->left_rc_op_));
+    
     if(auto x = dynamic_cast<HashJoinExecutor *>(prev_.get())) {
-        return std::chrono::duration_cast<std::chrono::milliseconds>(curr_time - latest_ck_info->ck_timestamp_).count() + x->getRCop(latest_ck_info->ck_timestamp_);
+        return std::chrono::duration_cast<std::chrono::microseconds>(curr_time - latest_ck_info->ck_timestamp_).count() + latest_ck_info->left_rc_op_;
     }
     else if(auto x = dynamic_cast<BlockNestedLoopJoinExecutor *>(prev_.get())) {
-        return std::chrono::duration_cast<std::chrono::milliseconds>(curr_time - latest_ck_info->ck_timestamp_).count() + x->getRCop(latest_ck_info->ck_timestamp_);
+        return std::chrono::duration_cast<std::chrono::microseconds>(curr_time - latest_ck_info->ck_timestamp_).count() + latest_ck_info->left_rc_op_;
     }
     else if(auto x = dynamic_cast<SortExecutor *>(prev_.get())) {
-        return std::chrono::duration_cast<std::chrono::milliseconds>(curr_time - latest_ck_info->ck_timestamp_).count() + x->getRCop(latest_ck_info->ck_timestamp_);
+        return std::chrono::duration_cast<std::chrono::microseconds>(curr_time - latest_ck_info->ck_timestamp_).count() + latest_ck_info->left_rc_op_;
     }
     else {
-        return std::chrono::duration_cast<std::chrono::milliseconds>(curr_time - latest_ck_info->ck_timestamp_).count();
+        return std::chrono::duration_cast<std::chrono::microseconds>(curr_time - latest_ck_info->ck_timestamp_).count();
     }
 }
 
@@ -85,7 +114,7 @@ void ProjectionExecutor::write_state_if_allow(int type) {
         auto [able_to_write, src_op] = judge_state_reward(&curr_ck_info);
         if(able_to_write) {
             auto [status, actual_size] = context_->op_state_mgr_->add_operator_state_to_buffer(this, src_op);
-            RwServerDebug::getInstance()->DEBUG_PRINT("[ProjectionExecutor: " + std::to_string(operator_id_) + "]: [Write State]: [Src_op]: " + std::to_string(src_op));
+            RwServerDebug::getInstance()->DEBUG_PRINT("[ProjectionExecutor: " + std::to_string(operator_id_) + "]: [Write State]: [Actual size]: " + std::to_string(src_op));
             if(status) {
                 ck_infos_.push_back(curr_ck_info);
                 checkpointed_result_num_ = curr_result_num_;

@@ -12,7 +12,10 @@
         "state_open": 1,
         "state_theta": 0.3,
         "src_scale_factor": 0.9,
-        "block_size": 500
+        "block_size": 500,
+        "MB": 8192,
+        "RB": 8192,
+        "C": 1000
     },
     "remote_state_nodes": {
         "remote_ips": [

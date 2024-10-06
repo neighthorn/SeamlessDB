@@ -74,7 +74,7 @@ bool OperatorState::deserialize(char *src, size_t size) {
     /*
         deserialize
     */
-   std::cout << "OperatorState deserialize: src: " << src << std::endl;
+//    std::cout << "OperatorState deserialize: src: " << src << std::endl;
     size_t offset = 0;
     memcpy((char *)&sql_id_, src + offset, sizeof(int));
     offset += sizeof(int);
@@ -87,7 +87,7 @@ bool OperatorState::deserialize(char *src, size_t size) {
     memcpy((char *)&exec_type_, src + offset, sizeof(exec_type_));
     offset += sizeof(exec_type_);
 
-    std::cout << "OperatorState::deserialize: sql_id_: " << sql_id_ << ", operator_id_: " << operator_id_ << ", op_state_size_: " << op_state_size_ << ", op_state_time_: " << op_state_time_ << ", exec_type_: " << exec_type_ << std::endl;
+    // std::cout << "OperatorState::deserialize: sql_id_: " << sql_id_ << ", operator_id_: " << operator_id_ << ", op_state_size_: " << op_state_size_ << ", op_state_time_: " << op_state_time_ << ", exec_type_: " << exec_type_ << std::endl;
     
     assert(offset == OPERATOR_STATE_HEADER_SIZE);
     return true;
@@ -107,7 +107,7 @@ IndexScanOperatorState::IndexScanOperatorState(IndexScanExecutor *index_scan_op)
 }
     
 size_t  IndexScanOperatorState::serialize(char *dest) {
-    RwServerDebug::getInstance()->DEBUG_PRINT("Serialize IndexScanOperatorState: op_id=" + std::to_string(operator_id_));
+    // RwServerDebug::getInstance()->DEBUG_PRINT("Serialize IndexScanOperatorState: op_id=" + std::to_string(operator_id_));
     size_t offset = OperatorState::serialize(dest);
     memcpy(dest + offset, (char *)&lower_rid_, sizeof(Rid));
     offset += sizeof(Rid);
@@ -116,9 +116,9 @@ size_t  IndexScanOperatorState::serialize(char *dest) {
     memcpy(dest + offset, (char *)&current_rid_, sizeof(Rid));
     offset += sizeof(Rid);
 
-    RwServerDebug::getInstance()->DEBUG_PRINT("lower_rid: " + std::to_string(lower_rid_.page_no) + ", " + std::to_string(lower_rid_.slot_no));
-    RwServerDebug::getInstance()->DEBUG_PRINT("upper_rid: " + std::to_string(upper_rid_.page_no) + ", " + std::to_string(upper_rid_.slot_no));
-    RwServerDebug::getInstance()->DEBUG_PRINT("current_rid: " + std::to_string(current_rid_.page_no) + ", " + std::to_string(current_rid_.slot_no));
+    // RwServerDebug::getInstance()->DEBUG_PRINT("lower_rid: " + std::to_string(lower_rid_.page_no) + ", " + std::to_string(lower_rid_.slot_no));
+    // RwServerDebug::getInstance()->DEBUG_PRINT("upper_rid: " + std::to_string(upper_rid_.page_no) + ", " + std::to_string(upper_rid_.slot_no));
+    // RwServerDebug::getInstance()->DEBUG_PRINT("current_rid: " + std::to_string(current_rid_.page_no) + ", " + std::to_string(current_rid_.slot_no));
 
     assert(offset == getSize());
     return offset;
@@ -127,7 +127,7 @@ size_t  IndexScanOperatorState::serialize(char *dest) {
 bool IndexScanOperatorState::deserialize(char *src, size_t size) {
     if(size < OperatorState::getSize()) return false;
 
-    RwServerDebug::getInstance()->DEBUG_PRINT("[IndexScanOperatorState::deserialize] op_id: " + std::to_string(operator_id_) + " getSize(): " + std::to_string(getSize()));
+    // RwServerDebug::getInstance()->DEBUG_PRINT("[IndexScanOperatorState::deserialize] op_id: " + std::to_string(operator_id_) + " getSize(): " + std::to_string(getSize()));
     // std::cout << "This line is number: " << __FILE__  << ":" << __LINE__ << std::endl;
     bool status = OperatorState::deserialize(src, OperatorState::getSize());
     if(!status) return false;
@@ -141,9 +141,9 @@ bool IndexScanOperatorState::deserialize(char *src, size_t size) {
     offset += sizeof(Rid);
     memcpy((char *)&current_rid_, src + offset, sizeof(Rid));
     offset += sizeof(Rid);
-    RwServerDebug::getInstance()->DEBUG_PRINT("lower_rid: " + std::to_string(lower_rid_.page_no) + ", " + std::to_string(lower_rid_.slot_no));
-    RwServerDebug::getInstance()->DEBUG_PRINT("upper_rid: " + std::to_string(upper_rid_.page_no) + ", " + std::to_string(upper_rid_.slot_no));
-    RwServerDebug::getInstance()->DEBUG_PRINT("current_rid: " + std::to_string(current_rid_.page_no) + ", " + std::to_string(current_rid_.slot_no));
+    // RwServerDebug::getInstance()->DEBUG_PRINT("lower_rid: " + std::to_string(lower_rid_.page_no) + ", " + std::to_string(lower_rid_.slot_no));
+    // RwServerDebug::getInstance()->DEBUG_PRINT("upper_rid: " + std::to_string(upper_rid_.page_no) + ", " + std::to_string(upper_rid_.slot_no));
+    // RwServerDebug::getInstance()->DEBUG_PRINT("current_rid: " + std::to_string(current_rid_.page_no) + ", " + std::to_string(current_rid_.slot_no));
 
     return true;
     // std::cout << "This line is number: " << __FILE__  << ":" << __LINE__ << std::endl;
@@ -183,11 +183,11 @@ ProjectionOperatorState::ProjectionOperatorState(ProjectionExecutor* projection_
      else {
         std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
     }
-    std::cout << "final op_state_size: " << "\n";
+    // std::cout << "final op_state_size: " << "\n";
 }
 
 size_t ProjectionOperatorState::serialize(char *dest) {
-    RwServerDebug::getInstance()->DEBUG_PRINT("Serialize ProjectionOperatorState");
+    // RwServerDebug::getInstance()->DEBUG_PRINT("Serialize ProjectionOperatorState");
 
     size_t offset = OperatorState::serialize(dest);
     memcpy(dest + offset, (char *)&left_child_call_times_, sizeof(int));
@@ -209,7 +209,7 @@ size_t ProjectionOperatorState::serialize(char *dest) {
 bool ProjectionOperatorState::deserialize(char *src, size_t size) {
     if(size < OperatorState::getSize()) return false;
 
-    RwServerDebug::getInstance()->DEBUG_PRINT("Deserialize ProjectionOperatorState\n");
+    // RwServerDebug::getInstance()->DEBUG_PRINT("Deserialize ProjectionOperatorState\n");
 
     bool status = OperatorState::deserialize(src, OperatorState::getSize());
     if(!status) return false;
@@ -218,7 +218,7 @@ bool ProjectionOperatorState::deserialize(char *src, size_t size) {
 
     size_t offset = OperatorState::getSize();
 
-    std::cout << "Deserialize ProjectionOperatorState\n";
+    // std::cout << "Deserialize ProjectionOperatorState\n";
 
     memcpy((char *)&left_child_call_times_, src + offset, sizeof(int));
     offset += sizeof(int);
@@ -345,7 +345,7 @@ BlockJoinOperatorState::BlockJoinOperatorState(BlockNestedLoopJoinExecutor *bloc
         right_child_is_join_ = false;
         right_child_state_ = new ProjectionOperatorState(x);
         state_size += sizeof(bool) + right_child_state_->getSize();
-        std::cout << "right child projection state size: " << right_child_state_->getSize() << std::endl;
+        // std::cout << "right child projection state size: " << right_child_state_->getSize() << std::endl;
     }
     else {
         std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
@@ -382,7 +382,7 @@ BlockJoinOperatorState::BlockJoinOperatorState(BlockNestedLoopJoinExecutor *bloc
 }
 
 size_t BlockJoinOperatorState::serialize(char *dest) {
-    RwServerDebug::getInstance()->DEBUG_PRINT("[BlockJoinOperatorState::serialize] op_id" + std::to_string(operator_id_) + ", state_size: " + std::to_string(op_state_size_));
+    // RwServerDebug::getInstance()->DEBUG_PRINT("[BlockJoinOperatorState::serialize] op_id" + std::to_string(operator_id_) + ", state_size: " + std::to_string(op_state_size_));
 
     size_t offset = OperatorState::serialize(dest);
     /*
@@ -406,12 +406,12 @@ size_t BlockJoinOperatorState::serialize(char *dest) {
     offset += sizeof(bool);
     // size_t left_index_scan_size = left_index_scan_state_.serialize(dest + offset);
     if(left_child_is_join_ == false) {
-        RwServerDebug::getInstance()->DEBUG_PRINT("left child is not join, expect projection/index scan serialization following");
+        // RwServerDebug::getInstance()->DEBUG_PRINT("left child is not join, expect projection/index scan serialization following");
         size_t left_index_scan_size = left_child_state_->serialize(dest + offset);
         offset += left_index_scan_size;
     }
     else {
-        RwServerDebug::getInstance()->DEBUG_PRINT("left child is join");
+        // RwServerDebug::getInstance()->DEBUG_PRINT("left child is join");
     }
 
     /*
@@ -420,13 +420,13 @@ size_t BlockJoinOperatorState::serialize(char *dest) {
     memcpy(dest + offset, (char *)&right_child_is_join_, sizeof(bool));
     offset += sizeof(bool);
     if(right_child_is_join_ == false) {
-        RwServerDebug::getInstance()->DEBUG_PRINT("right child is not join, expect projection/index scan serialization following");
+        // RwServerDebug::getInstance()->DEBUG_PRINT("right child is not join, expect projection/index scan serialization following");
         size_t right_index_scan_size = right_child_state_->serialize(dest + offset);
         offset += right_index_scan_size;
         std::cout << "right index scan size: " << right_index_scan_size << std::endl;
     }
     else {
-        RwServerDebug::getInstance()->DEBUG_PRINT("right child is join");
+        // RwServerDebug::getInstance()->DEBUG_PRINT("right child is join");
     }
 
 
@@ -465,13 +465,13 @@ size_t BlockJoinOperatorState::serialize(char *dest) {
     join block是new出来的内存，需要外部释放
 */
 bool BlockJoinOperatorState::deserialize(char *src, size_t size) {
-    RwServerDebug::getInstance()->DEBUG_PRINT("[BlockJoinOperatorState::deserialize] op_id: " + std::to_string(operator_id_) +  "size: " +  std::to_string(size));
+    // RwServerDebug::getInstance()->DEBUG_PRINT("[BlockJoinOperatorState::deserialize] op_id: " + std::to_string(operator_id_) +  "size: " +  std::to_string(size));
     if (size < OperatorState::getSize()) return false;
 
-    std::cout << "BlockJoinOperatorState::deserialize: src: " << src << std::endl;
+    // std::cout << "BlockJoinOperatorState::deserialize: src: " << src << std::endl;
     bool status = OperatorState::deserialize(src, OperatorState::getSize());
     // assert(exec_type_ == ExecutionType::BLOCK_JOIN);
-    std::cout << "operator_id: " << operator_id_ << ", operator_state_size: " << op_state_size_ << ", exec_type: " << exec_type_ << std::endl;
+    // std::cout << "operator_id: " << operator_id_ << ", operator_state_size: " << op_state_size_ << ", exec_type: " << exec_type_ << std::endl;
     if (!status) return false;
 
     assert(size >= op_state_size_);
@@ -508,7 +508,7 @@ bool BlockJoinOperatorState::deserialize(char *src, size_t size) {
     memcpy((char *)&left_child_is_join_, src + offset, sizeof(bool));
     offset += sizeof(bool);
     if(left_child_is_join_ == false) {
-        RwServerDebug::getInstance()->DEBUG_PRINT("left child is not join, expect projection/index scan deserialization following");
+        // RwServerDebug::getInstance()->DEBUG_PRINT("left child is not join, expect projection/index scan deserialization following");
         // left_index_scan_state_.deserialize(src + offset, left_index_scan_state_.getSize());
         ExecutionType child_exec_type = *reinterpret_cast<ExecutionType*>(src + offset + EXECTYPE_OFFSET);
         if(child_exec_type == ExecutionType::INDEX_SCAN) {
@@ -524,7 +524,7 @@ bool BlockJoinOperatorState::deserialize(char *src, size_t size) {
         }
     }
     else {
-        RwServerDebug::getInstance()->DEBUG_PRINT("left child is join");
+        // RwServerDebug::getInstance()->DEBUG_PRINT("left child is join");
     }
     // offset += left_index_scan_state_.getSize();
     // RwServerDebug::getInstance()->DEBUG_PRINT("BlockJoinState Deserialize: Success to deserialize left child. This line is number: " + std::string(__FILE__)  + ":" + std::to_string(__LINE__));
@@ -537,7 +537,7 @@ bool BlockJoinOperatorState::deserialize(char *src, size_t size) {
     offset += sizeof(bool);
     // std::cout << "This line is number: " << __FILE__  << ":" << __LINE__ << std::endl;
     if(right_child_is_join_ == false) {
-        RwServerDebug::getInstance()->DEBUG_PRINT("right child is not join, expect projection/index scan deserialization following");
+        // RwServerDebug::getInstance()->DEBUG_PRINT("right child is not join, expect projection/index scan deserialization following");
         ExecutionType child_exec_type = *reinterpret_cast<ExecutionType*>(src + offset + EXECTYPE_OFFSET);
         if(child_exec_type == ExecutionType::INDEX_SCAN) {
             right_child_state_ = new IndexScanOperatorState();
@@ -552,7 +552,7 @@ bool BlockJoinOperatorState::deserialize(char *src, size_t size) {
         }
     }
     else {
-        RwServerDebug::getInstance()->DEBUG_PRINT("right child is join");
+        // RwServerDebug::getInstance()->DEBUG_PRINT("right child is join");
     }
     // RwServerDebug::getInstance()->DEBUG_PRINT("BlockJoinState Deserialize: Success to deserialize left child. This line is number: " + std::string(__FILE__)  + ":" + std::to_string(__LINE__));
     
@@ -572,11 +572,11 @@ bool BlockJoinOperatorState::deserialize(char *src, size_t size) {
         if left block is empty
     */
     if(left_block_size_ == 0) {
-        RwServerDebug::getInstance()->DEBUG_PRINT("[BlockJoinOperatorState::deserialize] left block is empty");
+        // RwServerDebug::getInstance()->DEBUG_PRINT("[BlockJoinOperatorState::deserialize] left block is empty");
         assert(left_block_cursor_ == left_block_num_);
         join_block_ = nullptr;
     } else {
-        RwServerDebug::getInstance()->DEBUG_PRINT("[BlockJoinOperatorState::deserialize] left block is not empty");
+        // RwServerDebug::getInstance()->DEBUG_PRINT("[BlockJoinOperatorState::deserialize] left block is not empty");
         join_block_ = std::make_unique<JoinBlock>(left_block_max_size_);
         size_t acutal_size = join_block_->deserialize(src + offset, left_block_num_, left_block_cursor_, left_block_record_len);
         assert(acutal_size == left_block_size_);

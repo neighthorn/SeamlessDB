@@ -469,6 +469,9 @@ double state_theta_ = -1.0;
 double src_scale_factor_ = 1000.0;
 int block_size_ = 500;
 int node_type_ = 0; // rw_server default
+int MB_ = 1024;
+int RB_ = 1024;
+int C_ = 1000;
 
 void ComparativeExp::normal_exec() {
     std::cout << "************************ normal_exec ************************" << std::endl;
@@ -540,7 +543,7 @@ void ComparativeExp::re_exec() {
     delete context;
 }
 
-const int bytes_num = 1024*1024*70;
+const int bytes_num = 1024*8;
 char* test_buffer = new char[bytes_num];
 
 int main(int argc, char** argv) {
@@ -581,5 +584,46 @@ int main(int argc, char** argv) {
     comparative_exp->re_exec();
 
     if(normal_thread.joinable()) normal_thread.join();
+
+    
+    // memset(test_buffer, 0, bytes_num);
+    // CoroutineScheduler* coro_sched = new CoroutineScheduler(0, CORO_NUM);
+    // auto rdma_region = RDMARegionAllocator::get_instance()->GetThreadLocalJoinBlockRegion(0);
+    // MetaManager* meta_mgr = MetaManager::get_instance();
+    // QPManager* qp_mgr = QPManager::get_instance();
+    // OperatorStateManager* op_state_manager = new OperatorStateManager(0, coro_sched, meta_mgr, qp_mgr);
+    // RCQP* qp = qp_mgr->GetRemoteJoinBlockBufQPWithNodeID(0);
+    // size_t remote_offset = meta_mgr->GetJoinBlockAddrByThread(0);
+
+    // memset(test_buffer, 1, bytes_num);
+
+    // auto begin = std::chrono::high_resolution_clock::now();
+    
+    // // op_state_manager->add_operator_state_to_buffer()
+    // // RCQP* qp = QPManager::get_instance()->GetRemoteJoinBlockBufQPWithNodeID(0);
+    
+    // if(!coro_sched->RDMAReadSync(0, qp, rdma_region.first, remote_offset, bytes_num)) {
+    //     std::cerr << "RDMAReadSync failed" << std::endl;
+    // }
+    
+    // auto end = std::chrono::high_resolution_clock::now();
+    
+    // if(!coro_sched->RDMAWriteSync(0, qp, rdma_region.first + bytes_num, remote_offset, bytes_num)) {
+    //     std::cerr << "RDMAWriteSync failed" << std::endl;
+    // }
+    
+
+    // auto rdma_write_end = std::chrono::high_resolution_clock::now();
+
+    
+    // memcpy(rdma_region.first, test_buffer, bytes_num);
+
+    // auto rdma_read_end = std::chrono::high_resolution_clock::now();
+
+    // std::cout << "time for memcpy 1MB: " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << " miu s" << std::endl;
+
+    // std::cout << "time for RDMAWrite 1MB: " << std::chrono::duration_cast<std::chrono::microseconds>(rdma_write_end - end).count() << " miu s" << std::endl;
+
+    // std::cout << "time for RDMARead 1MB: " << std::chrono::duration_cast<std::chrono::microseconds>(rdma_read_end - rdma_write_end).count() << " miu s" << std::endl;
     return 0;
 }

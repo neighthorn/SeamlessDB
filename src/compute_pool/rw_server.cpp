@@ -36,6 +36,9 @@ double state_theta_ = -1.0;
 double src_scale_factor_ = 1000.0;
 int block_size_ = 500;
 int node_type_ = 0; // rw_server default
+int MB_ = 1024;
+int RB_ = 1024;
+int C_ = 1000;
 
 int back_up_resumption_ = 0;
 

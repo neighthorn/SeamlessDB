@@ -10,6 +10,7 @@ class ProjectionOperatorState;
 
 struct ProjectionCheckpointInfo {
     std::chrono::time_point<std::chrono::system_clock> ck_timestamp_;
+    double left_rc_op_;
 };
 
 class ProjectionExecutor : public AbstractExecutor {

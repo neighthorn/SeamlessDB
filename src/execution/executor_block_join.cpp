@@ -152,7 +152,7 @@ void JoinBlockExecutor::beginBlock() {
         executor_->nextTuple();
     }
     
-    RwServerDebug::getInstance()->DEBUG_PRINT("[JoinBlockExecutor: " + std::to_string(father_exec_->operator_id_) +  "]: [BeginBlock]: [BlockId]: " + std::to_string(current_block_id_));
+    // RwServerDebug::getInstance()->DEBUG_PRINT("[JoinBlockExecutor: " + std::to_string(father_exec_->operator_id_) +  "]: [BeginBlock]: [BlockId]: " + std::to_string(current_block_id_));
 }
 
 /*
@@ -184,7 +184,7 @@ void JoinBlockExecutor::nextBlock() {
         executor_->nextTuple();
     }
     
-    RwServerDebug::getInstance()->DEBUG_PRINT("[JoinBlockExecutor: " + std::to_string(father_exec_->operator_id_) + "]: [NextBlock]: [BlockId]: " + std::to_string(current_block_id_));
+    // RwServerDebug::getInstance()->DEBUG_PRINT("[JoinBlockExecutor: " + std::to_string(father_exec_->operator_id_) + "]: [NextBlock]: [BlockId]: " + std::to_string(current_block_id_));
 }
 
 JoinBlock* JoinBlockExecutor::Next() {
@@ -238,7 +238,7 @@ BlockNestedLoopJoinExecutor::BlockNestedLoopJoinExecutor(std::unique_ptr<Abstrac
         debug test
     */
     {
-        RwServerDebug::getInstance()->DEBUG_PRINT("[BLOCK JOIN][LEFT: " + left_->getType() + "], [RIGHT: " + right_->getType());
+        // RwServerDebug::getInstance()->DEBUG_PRINT("[BLOCK JOIN][LEFT: " + left_->getType() + "], [RIGHT: " + right_->getType());
     }
 
 }
@@ -414,7 +414,7 @@ std::pair<bool, double> BlockNestedLoopJoinExecutor::judge_state_reward(BlockChe
         rc op
     */
     rc_op = getRCop(current_ck_info->ck_timestamp_);
-    current_ck_info->left_rc_op_ = rc_op;
+    // current_ck_info->left_rc_op_ = rc_op;
 
     if(rc_op == 0) {
         return {false, -1};
@@ -423,17 +423,28 @@ std::pair<bool, double> BlockNestedLoopJoinExecutor::judge_state_reward(BlockChe
     /*
         对src_op 做放缩
     */
-    double new_src_op = src_op / src_scale_factor_;
+    // double new_src_op = src_op / src_scale_factor_;
+    double new_src_op = src_op / MB_ + src_op / RB_ + C_;
     /*
         计算REW op
     */
     double rew_op = rc_op / new_src_op - state_theta_;
 
-    RwServerDebug::getInstance()->DEBUG_PRINT("[BlockNestedLoopJoinExecutor][op_id: " + std::to_string(operator_id_) + "]: [Rew_op]: " + std::to_string(rew_op) + " [Src_op]: " + std::to_string(new_src_op) + " [Rc_op]: " + std::to_string(rc_op) + " [State Theta]: " + std::to_string(state_theta_));
+    RwServerDebug::getInstance()->DEBUG_PRINT("[BlockNestedLoopJoinExecutor][op_id: " + std::to_string(operator_id_) + "]: [Rew_op]: " + std::to_string(rew_op) \
+     + "state_size: " + std::to_string(src_op) + " [Src_op]: " + std::to_string(new_src_op) + " [Rc_op]: " + std::to_string(rc_op) + " [State Theta]: " + std::to_string(state_theta_));
     /*
         判断是否需要写状态
     */
     if(rew_op > 0) {
+        if(auto x = dynamic_cast<HashJoinExecutor*>(left_.get())) {
+            current_ck_info->left_rc_op_ = x->getRCop(current_ck_info->ck_timestamp_);
+        }
+        else if(auto x = dynamic_cast<BlockNestedLoopJoinExecutor*>(left_.get())) {
+            current_ck_info->left_rc_op_ = x->getRCop(current_ck_info->ck_timestamp_);
+        }
+        else if(auto x = dynamic_cast<ProjectionExecutor*>(left_.get())) {
+            current_ck_info->left_rc_op_ = x->getRCop(current_ck_info->ck_timestamp_);
+        }
         return {true, src_op};
     }
     
@@ -461,19 +472,26 @@ int64_t BlockNestedLoopJoinExecutor::getRCop(std::chrono::time_point<std::chrono
         // throw RMDBError("Not Implemented!");
     }
 
+    RwServerDebug::getInstance()->DEBUG_PRINT("[BlockNestedLoopJoinExecutor][op_id: " + std::to_string(operator_id_) + "]: [Current Time]: " + std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(current_time.time_since_epoch()).count()) \
+    + " [Latest Time]: " + std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(latest_ck_info->ck_timestamp_.time_since_epoch()).count()) \
+    + " [Left RC op]: " + std::to_string(latest_ck_info->left_rc_op_));
+
     /*
         计算ck info
     */
     if(auto x =  dynamic_cast<BlockNestedLoopJoinExecutor *>(left_.get())) {
         // return std::chrono::duration_cast<std::chrono::milliseconds>(current_time - latest_ck_info->ck_timestamp_).count() + x->getRCop(latest_ck_info->ck_timestamp_);
-        return std::chrono::duration_cast<std::chrono::milliseconds>(current_time - latest_ck_info->ck_timestamp_).count() + latest_ck_info->left_rc_op_;
+        return std::chrono::duration_cast<std::chrono::microseconds>(current_time - latest_ck_info->ck_timestamp_).count() + latest_ck_info->left_rc_op_;
     } 
     else if(auto x = dynamic_cast<HashJoinExecutor*>(left_.get())) {
         // return std::chrono::duration_cast<std::chrono::milliseconds>(current_time - latest_ck_info->ck_timestamp_).count() + x->getRCop(latest_ck_info->ck_timestamp_);
-        return std::chrono::duration_cast<std::chrono::milliseconds>(current_time - latest_ck_info->ck_timestamp_).count() + latest_ck_info->left_rc_op_;
+        return std::chrono::duration_cast<std::chrono::microseconds>(current_time - latest_ck_info->ck_timestamp_).count() + latest_ck_info->left_rc_op_;
+    }
+    else if(auto x = dynamic_cast<ProjectionExecutor*>(left_.get())) {
+        return std::chrono::duration_cast<std::chrono::microseconds>(current_time - latest_ck_info->ck_timestamp_).count() + latest_ck_info->left_rc_op_;
     }
     else {
-        return std::chrono::duration_cast<std::chrono::milliseconds>(current_time - latest_ck_info->ck_timestamp_).count();
+        return std::chrono::duration_cast<std::chrono::microseconds>(current_time - latest_ck_info->ck_timestamp_).count();
     }
 } 
 
@@ -508,6 +526,7 @@ void BlockNestedLoopJoinExecutor::write_state_if_allow(int type) {
             auto [able_to_write, src_op] = judge_state_reward(&current_ck_info);
             if(able_to_write) {
                 auto [status, actual_size] = context_->op_state_mgr_->add_operator_state_to_buffer(this, src_op);
+                RwServerDebug::getInstance()->DEBUG_PRINT("[BlockNestedLoopJoinExecutor][op_id: " + std::to_string(operator_id_) + "]: [Write State]: [state size]: " + std::to_string(actual_size));
                 if(status) {
                     ck_infos_.push_back(current_ck_info);
                 }

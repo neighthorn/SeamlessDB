@@ -185,16 +185,29 @@ std::pair<bool, double> HashJoinExecutor::judge_state_reward(HashJoinCheckpointI
     src_op = (double)left_->tupleLen() * (left_hash_table_curr_tuple_count_ - latest_ck_info->left_hash_table_curr_tuple_count_);
 
     rc_op = getRCop(curr_ck_info->ck_timestamp_);
+    // curr_ck_info->left_rc_op_ = rc_op;
 
     if(rc_op == 0) {
         return {false, -1};
     }
 
-    double new_src_op = src_op / src_scale_factor_;
+    // double new_src_op = src_op / src_scale_factor_;
+    double new_src_op = src_op / MB_ + src_op / RB_ + C_;
     double rew_op = rc_op / new_src_op - state_theta_;
-    RwServerDebug::getInstance()->DEBUG_PRINT("[HashJoinExecutor][op_id: " + std::to_string(operator_id_) + "]: [delta_hash_table_tuple_count]: " + std::to_string(left_hash_table_curr_tuple_count_ - latest_ck_info->left_hash_table_curr_tuple_count_) + " [Rew_op]: " + std::to_string(rew_op) + " [Src_op]: " + std::to_string(new_src_op) + " [Rc_op]: " + std::to_string(rc_op) + " [State Theta]: " + std::to_string(state_theta_));
+    RwServerDebug::getInstance()->DEBUG_PRINT("[HashJoinExecutor][op_id: " + std::to_string(operator_id_) + "]: [delta_hash_table_tuple_count]: " + std::to_string(left_hash_table_curr_tuple_count_ - latest_ck_info->left_hash_table_curr_tuple_count_) \
+    + " [Rew_op]: " + std::to_string(rew_op) + " [state_size]: " + std::to_string(src_op) + " [Src_op]: " + std::to_string(new_src_op) + " [Rc_op]: " + std::to_string(rc_op) + " [State Theta]: " + std::to_string(state_theta_));
 
     if(rew_op > 0) {
+        // if create checkpoint in current time, calculate the rc_op(curr_time) for left child and right child
+        if(auto x = dynamic_cast<HashJoinExecutor* >(left_.get())) {
+            curr_ck_info->left_rc_op_ = x->getRCop(curr_ck_info->ck_timestamp_);
+        }
+        else if(auto x = dynamic_cast<BlockNestedLoopJoinExecutor*>(left_.get())) {
+            curr_ck_info->left_rc_op_ = x->getRCop(curr_ck_info->ck_timestamp_);
+        }
+        else if(auto x = dynamic_cast<ProjectionExecutor*>(left_.get())) {
+            curr_ck_info->left_rc_op_ = x->getRCop(curr_ck_info->ck_timestamp_);
+        }
         return {true, src_op};
     }
 
@@ -213,14 +226,21 @@ int64_t HashJoinExecutor::getRCop(std::chrono::time_point<std::chrono::system_cl
         std::cerr << "[Error]: HashJoinExecutor: No ck points found! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
     }
 
+    RwServerDebug::getInstance()->DEBUG_PRINT("[HashJoinExecutor][op_id: " + std::to_string(operator_id_) + "]: [Get RCop]: [curr_time] " + std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(curr_time.time_since_epoch()).count()) \
+     + " [latest_ck_info->ck_timestamp_]: " + std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(latest_ck_info->ck_timestamp_.time_since_epoch()).count()) \
+     + " [left_rc_op]: " + std::to_string(latest_ck_info->left_rc_op_));
+
     if(auto x =  dynamic_cast<HashJoinExecutor *>(left_.get())) {
-        return std::chrono::duration_cast<std::chrono::milliseconds>(curr_time - latest_ck_info->ck_timestamp_).count() + x->getRCop(latest_ck_info->ck_timestamp_);
+        return std::chrono::duration_cast<std::chrono::microseconds>(curr_time - latest_ck_info->ck_timestamp_).count() + latest_ck_info->left_rc_op_;
     } 
     else if(auto x = dynamic_cast<BlockNestedLoopJoinExecutor*>(left_.get())) {
-        return std::chrono::duration_cast<std::chrono::milliseconds>(curr_time - latest_ck_info->ck_timestamp_).count() + x->getRCop(latest_ck_info->ck_timestamp_);
+        return std::chrono::duration_cast<std::chrono::microseconds>(curr_time - latest_ck_info->ck_timestamp_).count() + latest_ck_info->left_rc_op_;
+    }
+    else if(auto x = dynamic_cast<ProjectionExecutor*>(left_.get())) {
+        return std::chrono::duration_cast<std::chrono::microseconds>(curr_time - latest_ck_info->ck_timestamp_).count() + latest_ck_info->left_rc_op_;
     }
     else {
-        return std::chrono::duration_cast<std::chrono::milliseconds>(curr_time - latest_ck_info->ck_timestamp_).count();
+        return std::chrono::duration_cast<std::chrono::microseconds>(curr_time - latest_ck_info->ck_timestamp_).count();
     }
 }
 

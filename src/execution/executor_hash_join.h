@@ -11,6 +11,7 @@ class HashJoinOperatorState;
 struct HashJoinCheckpointInfo {
     std::chrono::time_point<std::chrono::system_clock> ck_timestamp_;
     int left_hash_table_curr_tuple_count_;
+    double left_rc_op_;
 };
 
 class HashJoinExecutor : public AbstractExecutor {

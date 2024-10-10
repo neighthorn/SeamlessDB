@@ -157,6 +157,7 @@ class IxManager {
         // 由于在更新file_hdr的时候直接更新的数据结构，没有更新页面，所以要最后把数据结构写到页面中
         Page* page = buffer_pool_manager_->fetch_page(PageId{.table_id = ih->table_meta_.table_id_, .page_no = IX_FILE_HDR_PAGE});
         ih->file_hdr_->serialize(page->get_data());
+        buffer_pool_manager_->unpin_page(PageId{.table_id = ih->table_meta_.table_id_, .page_no = IX_FILE_HDR_PAGE}, true);
 
         // 缓冲区的所有页刷到磁盘，注意这句话必须写在close_file前面
         buffer_pool_manager_->flush_all_pages(ih->table_meta_.table_id_);

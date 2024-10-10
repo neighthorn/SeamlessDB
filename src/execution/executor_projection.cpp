@@ -12,6 +12,7 @@
 void ProjectionExecutor::load_state_info(ProjectionOperatorState *proj_op_state) {
     be_call_times_ = proj_op_state->left_child_call_times_;
     left_child_call_times_ = be_call_times_;
+    finished_begin_tuple_ = proj_op_state->finish_begin_tuple_;
 
     if(is_root_) {
         curr_result_num_ = be_call_times_;
@@ -21,6 +22,12 @@ void ProjectionExecutor::load_state_info(ProjectionOperatorState *proj_op_state)
     if(proj_op_state->is_left_child_join_ == false) {
         if(auto x = dynamic_cast<IndexScanExecutor *>(prev_.get())) {
             x->load_state_info(proj_op_state->left_index_scan_state_);
+            if(x->finished_begin_tuple_ == false) {
+                x->beginTuple();
+            }
+            else {
+                x->nextTuple();
+            }
         }
     }
 }
@@ -28,6 +35,7 @@ void ProjectionExecutor::load_state_info(ProjectionOperatorState *proj_op_state)
 std::pair<bool, double> ProjectionExecutor::judge_state_reward(ProjectionCheckpointInfo *current_ck_info) {
     ProjectionCheckpointInfo* latest_ck_info = nullptr;
     if(ck_infos_.empty()) {
+        std::cerr << "[Error]: ProjOp ck_infos_ is empty!" << std::endl;
         assert(0);
     }
 
@@ -37,14 +45,15 @@ std::pair<bool, double> ProjectionExecutor::judge_state_reward(ProjectionCheckpo
     double rc_op = getRCop(current_ck_info->ck_timestamp_);
 
     if(rc_op == 0) {
+        std::cerr << "[Error]: RCop is 0! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
         return {false, -1};
     }
 
     // double new_src_op = src_op / src_scale_factor_;
     double new_src_op = src_op / MB_ + src_op / RB_ + C_;
     double rew_op = rc_op / new_src_op - state_theta_;
-    RwServerDebug::getInstance()->DEBUG_PRINT("[ProjectionExecutor][op_id: " + std::to_string(operator_id_) + "]: [delta result num]: " + std::to_string(curr_result_num_ - checkpointed_result_num_) \
-        + " [Rew_op]: " + std::to_string(rew_op) + " [state_size]: " + std::to_string(src_op) + " [Src_op]: " + std::to_string(new_src_op) + " [Rc_op]: " + std::to_string(rc_op) + " [State Theta]: " + std::to_string(state_theta_));
+    // RwServerDebug::getInstance()->DEBUG_PRINT("[ProjectionExecutor][op_id: " + std::to_string(operator_id_) + "]: [delta result num]: " + std::to_string(curr_result_num_ - checkpointed_result_num_) \
+    //     + " [Rew_op]: " + std::to_string(rew_op) + " [state_size]: " + std::to_string(src_op) + " [Src_op]: " + std::to_string(new_src_op) + " [Rc_op]: " + std::to_string(rc_op) + " [State Theta]: " + std::to_string(state_theta_));
 
     if(rew_op > 0) {
         if(auto x = dynamic_cast<HashJoinExecutor *>(prev_.get())) {
@@ -56,6 +65,8 @@ std::pair<bool, double> ProjectionExecutor::judge_state_reward(ProjectionCheckpo
         else if(auto x = dynamic_cast<SortExecutor *>(prev_.get())) {
             current_ck_info->left_rc_op_ = x->getRCop(current_ck_info->ck_timestamp_);
         }
+        // RwServerDebug::getInstance()->DEBUG_PRINT("[ProjectionExecutor][op_id: " + std::to_string(operator_id_) + "]: [delta result num]: " + std::to_string(curr_result_num_ - checkpointed_result_num_) \
+        // + " [Rew_op]: " + std::to_string(rew_op) + " [state_size]: " + std::to_string(src_op) + " [Src_op]: " + std::to_string(new_src_op) + " [Rc_op]: " + std::to_string(rc_op) + " [State Theta]: " + std::to_string(state_theta_));
         return {true, src_op};
     }
 
@@ -85,13 +96,14 @@ int64_t ProjectionExecutor::getRCop(std::chrono::time_point<std::chrono::system_
         }
     }
     if(latest_ck_info == nullptr) {
+        std::cerr << "[Error]: No ck points found! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
         assert(0);
     }
 
-    RwServerDebug::getInstance()->DEBUG_PRINT("[ProjectionExecutor: " + std::to_string(operator_id_) \
-     + "]: [Get RCop]: [Curr_time]: " + std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(curr_time.time_since_epoch()).count()) \
-     + " [Latest_ck_time]: " + std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(latest_ck_info->ck_timestamp_.time_since_epoch()).count()) \
-     + " [Left_rc_op]: " + std::to_string(latest_ck_info->left_rc_op_));
+    // RwServerDebug::getInstance()->DEBUG_PRINT("[ProjectionExecutor: " + std::to_string(operator_id_) \
+    //  + "]: [Get RCop]: [Curr_time]: " + std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(curr_time.time_since_epoch()).count()) \
+    //  + " [Latest_ck_time]: " + std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(latest_ck_info->ck_timestamp_.time_since_epoch()).count()) \
+    //  + " [Left_rc_op]: " + std::to_string(latest_ck_info->left_rc_op_));
     
     if(auto x = dynamic_cast<HashJoinExecutor *>(prev_.get())) {
         return std::chrono::duration_cast<std::chrono::microseconds>(curr_time - latest_ck_info->ck_timestamp_).count() + latest_ck_info->left_rc_op_;
@@ -114,7 +126,7 @@ void ProjectionExecutor::write_state_if_allow(int type) {
         auto [able_to_write, src_op] = judge_state_reward(&curr_ck_info);
         if(able_to_write) {
             auto [status, actual_size] = context_->op_state_mgr_->add_operator_state_to_buffer(this, src_op);
-            RwServerDebug::getInstance()->DEBUG_PRINT("[ProjectionExecutor: " + std::to_string(operator_id_) + "]: [Write State]: [Actual size]: " + std::to_string(src_op));
+            // RwServerDebug::getInstance()->DEBUG_PRINT("[ProjectionExecutor: " + std::to_string(operator_id_) + "]: [Write State]: [Actual size]: " + std::to_string(src_op));
             if(status) {
                 ck_infos_.push_back(curr_ck_info);
                 checkpointed_result_num_ = curr_result_num_;

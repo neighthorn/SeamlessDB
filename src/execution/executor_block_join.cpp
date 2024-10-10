@@ -83,7 +83,7 @@ int JoinBlock::serialize_data(char* dest) {
     record_length 不包括sizeof(hdr)
 */
 size_t JoinBlock::deserialize(char *src, int record_num, int current_pos, int record_length) {
-    RwServerDebug::getInstance()->DEBUG_PRINT("[JoinBlock]: [Deserialize]: [RecordNum]: " + std::to_string(record_num) + " [CurrentPos]: " + std::to_string(current_pos) + " [RecordLength]: " + std::to_string(record_length));
+    // RwServerDebug::getInstance()->DEBUG_PRINT("[JoinBlock]: [Deserialize]: [RecordNum]: " + std::to_string(record_num) + " [CurrentPos]: " + std::to_string(current_pos) + " [RecordLength]: " + std::to_string(record_length));
     /*
         reset重置block
     */
@@ -170,7 +170,7 @@ void JoinBlockExecutor::load_block_info(BlockJoinOperatorState *block_op_state) 
     }
     else {
         // 代表join block已经消耗完了
-        
+        nextBlock();
     }
     current_block_id_ = block_op_state->left_block_id_;
 }
@@ -179,9 +179,11 @@ void JoinBlockExecutor::nextBlock() {
     assert(!is_end());
     join_block_->reset();
     current_block_id_++;
+    std::cout << "left_block_id: " << current_block_id_ << std::endl;
     while(!executor_->is_end() && !join_block_->is_full()) {
         join_block_->push_back(std::move(executor_->Next()));
         executor_->nextTuple();
+        std::cout << "BNLJ leftchild rid: " << executor_->rid().page_no << ", " << executor_->rid().slot_no << std::endl;
     }
     
     // RwServerDebug::getInstance()->DEBUG_PRINT("[JoinBlockExecutor: " + std::to_string(father_exec_->operator_id_) + "]: [NextBlock]: [BlockId]: " + std::to_string(current_block_id_));
@@ -192,7 +194,8 @@ JoinBlock* JoinBlockExecutor::Next() {
 }
 
 bool JoinBlockExecutor::is_end() {
-    return join_block_->size_ == 0;
+    // return join_block_->size_ == 0;
+    return executor_->is_end();
 }
 
 /*
@@ -226,7 +229,7 @@ BlockNestedLoopJoinExecutor::BlockNestedLoopJoinExecutor(std::unique_ptr<Abstrac
     /*
         初始化push ck points
     */
-    ck_infos_.push_back(BlockCheckpointInfo{.ck_timestamp_ = std::chrono::high_resolution_clock::now(), .left_block_id_ = -1, .left_block_size_ = 0});
+    ck_infos_.push_back(BlockCheckpointInfo{.ck_timestamp_ = std::chrono::high_resolution_clock::now(), .left_block_id_ = -1, .left_block_size_ = 0, .left_rc_op_ = 0});
     left_block_ = nullptr;
 
     left_child_call_times_  = 0;
@@ -246,6 +249,8 @@ BlockNestedLoopJoinExecutor::BlockNestedLoopJoinExecutor(std::unique_ptr<Abstrac
 
 // 
 void BlockNestedLoopJoinExecutor::beginTuple() {
+    if(is_in_recovery_ && finished_begin_tuple_)  return;
+    std::cout << "BlockNestedLoopJoinExecutor::beginTuple()" << std::endl;
     left_child_call_times_ = 0;
     /*
         初始化 left blocks, left block, right abstractor
@@ -349,11 +354,17 @@ void BlockNestedLoopJoinExecutor::find_next_valid_tuple() {
                 }
                 left_block_->nextTuple();
             }
-            left_block_->beginTuple();
+
             right_->nextTuple();
+
+            if(right_->is_end()) {
+                // std::cout << "left_block->cur_pos_ = " << left_block_->cur_pos_  << ", left_block->size_ = " << left_block_->size_ << std::endl;
+                if(node_type_ == 1)
+                    write_state_if_allow(1);
+                break;
+            }
+            left_block_->beginTuple();
         } 
-        if(node_type_ == 1)
-            write_state_if_allow(1);
 
         left_blocks_->nextBlock();
         left_block_ = left_blocks_->Next();
@@ -395,8 +406,8 @@ std::pair<bool, double> BlockNestedLoopJoinExecutor::judge_state_reward(BlockChe
     if(current_ck_info->left_block_id_ == latest_ck_info->left_block_id_) {
         if(current_ck_info->left_block_size_ < latest_ck_info->left_block_size_) {
             std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
-            std::cout << "current ck info size = " << current_ck_info->left_block_size_ << ", latest ck info size = " << latest_ck_info->left_block_size_ << std::endl;
-            std::cout << "latest ck info block id = " << latest_ck_info->left_block_id_ << ", current ck info block id = " << current_ck_info->left_block_id_ << std::endl;
+            // std::cout << "current ck info size = " << current_ck_info->left_block_size_ << ", latest ck info size = " << latest_ck_info->left_block_size_ << std::endl;
+            // std::cout << "latest ck info block id = " << latest_ck_info->left_block_id_ << ", current ck info block id = " << current_ck_info->left_block_id_ << std::endl;
         }
         src_op += double(current_ck_info->left_block_size_ - latest_ck_info->left_block_size_);
     } else if(current_ck_info->left_block_id_ > latest_ck_info->left_block_id_){
@@ -430,8 +441,8 @@ std::pair<bool, double> BlockNestedLoopJoinExecutor::judge_state_reward(BlockChe
     */
     double rew_op = rc_op / new_src_op - state_theta_;
 
-    RwServerDebug::getInstance()->DEBUG_PRINT("[BlockNestedLoopJoinExecutor][op_id: " + std::to_string(operator_id_) + "]: [Rew_op]: " + std::to_string(rew_op) \
-     + "state_size: " + std::to_string(src_op) + " [Src_op]: " + std::to_string(new_src_op) + " [Rc_op]: " + std::to_string(rc_op) + " [State Theta]: " + std::to_string(state_theta_));
+    // RwServerDebug::getInstance()->DEBUG_PRINT("[BlockNestedLoopJoinExecutor][op_id: " + std::to_string(operator_id_) + "]: [Rew_op]: " + std::to_string(rew_op) \
+    //  + "state_size: " + std::to_string(src_op) + " [Src_op]: " + std::to_string(new_src_op) + " [Rc_op]: " + std::to_string(rc_op) + " [State Theta]: " + std::to_string(state_theta_));
     /*
         判断是否需要写状态
     */
@@ -445,6 +456,8 @@ std::pair<bool, double> BlockNestedLoopJoinExecutor::judge_state_reward(BlockChe
         else if(auto x = dynamic_cast<ProjectionExecutor*>(left_.get())) {
             current_ck_info->left_rc_op_ = x->getRCop(current_ck_info->ck_timestamp_);
         }
+        // RwServerDebug::getInstance()->DEBUG_PRINT("[BlockNestedLoopJoinExecutor][op_id: " + std::to_string(operator_id_) + "]: [Rew_op]: " + std::to_string(rew_op) \
+        // + "state_size: " + std::to_string(src_op) + " [Src_op]: " + std::to_string(new_src_op) + " [Rc_op]: " + std::to_string(rc_op) + " [State Theta]: " + std::to_string(state_theta_));
         return {true, src_op};
     }
     
@@ -472,9 +485,9 @@ int64_t BlockNestedLoopJoinExecutor::getRCop(std::chrono::time_point<std::chrono
         // throw RMDBError("Not Implemented!");
     }
 
-    RwServerDebug::getInstance()->DEBUG_PRINT("[BlockNestedLoopJoinExecutor][op_id: " + std::to_string(operator_id_) + "]: [Current Time]: " + std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(current_time.time_since_epoch()).count()) \
-    + " [Latest Time]: " + std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(latest_ck_info->ck_timestamp_.time_since_epoch()).count()) \
-    + " [Left RC op]: " + std::to_string(latest_ck_info->left_rc_op_));
+    // RwServerDebug::getInstance()->DEBUG_PRINT("[BlockNestedLoopJoinExecutor][op_id: " + std::to_string(operator_id_) + "]: [Current Time]: " + std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(current_time.time_since_epoch()).count()) \
+    // + " [Latest Time]: " + std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(latest_ck_info->ck_timestamp_.time_since_epoch()).count()) \
+    // + " [Left RC op]: " + std::to_string(latest_ck_info->left_rc_op_));
 
     /*
         计算ck info
@@ -509,13 +522,14 @@ void BlockNestedLoopJoinExecutor::write_state_if_allow(int type) {
             consume完一个block就写状态，绕过代价估计
             src op记录为block operator的最小size
         */
-        RwServerDebug::getInstance()->DEBUG_PRINT("[JoinBlockExecutor: " + std::to_string(operator_id_) +  "][Consume block id: " + std::to_string(left_blocks_->current_block_id_) + "]");
+        // RwServerDebug::getInstance()->DEBUG_PRINT("[JoinBlockExecutor: " + std::to_string(operator_id_) +  "][Consume block id: " + std::to_string(left_blocks_->current_block_id_) + "]");
         if(state_open_) {
             auto [status, actual_size] = context_->op_state_mgr_->add_operator_state_to_buffer(this, block_join_state_size_min);
             if(status) {
                 ck_infos_.push_back(current_ck_info);
             }
         }
+        // std::cout << "JoinBlock Consumed" << std::endl;
     } break;
     
     /*
@@ -526,7 +540,7 @@ void BlockNestedLoopJoinExecutor::write_state_if_allow(int type) {
             auto [able_to_write, src_op] = judge_state_reward(&current_ck_info);
             if(able_to_write) {
                 auto [status, actual_size] = context_->op_state_mgr_->add_operator_state_to_buffer(this, src_op);
-                RwServerDebug::getInstance()->DEBUG_PRINT("[BlockNestedLoopJoinExecutor][op_id: " + std::to_string(operator_id_) + "]: [Write State]: [state size]: " + std::to_string(actual_size));
+                // RwServerDebug::getInstance()->DEBUG_PRINT("[BlockNestedLoopJoinExecutor][op_id: " + std::to_string(operator_id_) + "]: [Write State]: [state size]: " + std::to_string(actual_size));
                 if(status) {
                     ck_infos_.push_back(current_ck_info);
                 }
@@ -555,9 +569,23 @@ void BlockNestedLoopJoinExecutor::load_state_info(BlockJoinOperatorState *block_
         if(block_join_op->left_child_is_join_ == false) {
             if(auto x = dynamic_cast<IndexScanExecutor *>(left_.get())) {
                 x->load_state_info(dynamic_cast<IndexScanOperatorState *>(block_join_op->left_child_state_));
+                if(x->finished_begin_tuple_ == false) {
+                    std::cout << "BlockNestedLoopJoinExecutor::load_state_info: IndexScanExecutor beginTuple\n";
+                    x->beginTuple();
+                }
+                else {
+                    std::cout << "BlockNestedLoopJoinExecutor::load_state_info: IndexScanExecutor NextTuple\n";
+                    x->nextTuple();
+                }
             }
             else if(auto x = dynamic_cast<ProjectionExecutor *>(left_.get())) {
                 x->load_state_info(dynamic_cast<ProjectionOperatorState *>(block_join_op->left_child_state_));
+                if(x->finished_begin_tuple_ == false) {
+                    x->beginTuple();
+                }
+                else {
+                    x->nextTuple();
+                }
             }
             else {
                 std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
@@ -566,25 +594,34 @@ void BlockNestedLoopJoinExecutor::load_state_info(BlockJoinOperatorState *block_
         if(block_join_op->right_child_is_join_ == false) {
             if(auto x = dynamic_cast<IndexScanExecutor *>(right_.get())) {
                 x->load_state_info(dynamic_cast<IndexScanOperatorState *>(block_join_op->right_child_state_));
+                if(x->finished_begin_tuple_ == false) {
+                    x->beginTuple();
+                }
+                else {
+                    x->nextTuple();
+                }
             }
             else if(auto x = dynamic_cast<ProjectionExecutor *>(right_.get())) {
                 x->load_state_info(dynamic_cast<ProjectionOperatorState *>(block_join_op->right_child_state_));
+                if(x->finished_begin_tuple_ == false) {
+                    x->beginTuple();
+                }
+                else {
+                    x->nextTuple();
+                }
             }
             else {
                 std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
             }
         }
+
+        finished_begin_tuple_ = block_join_op->finish_begin_tuple_;
         
         /*
             再恢复自己
         */
         left_blocks_->load_block_info(block_join_op);
         left_block_ = left_blocks_->Next();
-        /*
-            这里直接调用right_的nextTuple
-            left的会在恢复时自动调用
-        */
-        right_->nextTuple();
 
         left_child_call_times_ = block_join_op->left_child_call_times_;
         be_call_times_ = block_join_op->be_call_times_;

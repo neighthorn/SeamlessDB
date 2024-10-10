@@ -612,11 +612,12 @@ public:
                 col_defs.emplace_back(ColDef("o_shippriority", ColType::TYPE_INT, 4));
                 col_defs.emplace_back(ColDef("o_comment", ColType::TYPE_STRING, 79));
             */
-           int rnd = RandomGenerator::generate_random_int(1, 2);
-           if(rnd == 1)
-                o_custkey = RandomGenerator::generate_random_int(1, c_custkey_max);
-            else 
-                o_custkey = o_orderkey;
+        //    int rnd = RandomGenerator::generate_random_int(1, 2);
+        //    if(rnd == 1)
+        //         o_custkey = RandomGenerator::generate_random_int(1, c_custkey_max);
+        //     else 
+        //         o_custkey = o_orderkey;
+            o_custkey = RandomGenerator::generate_random_int(1, c_custkey_max);
             RandomGenerator::generate_random_str(o_orderstatus, 1);
             o_totalprice = RandomGenerator::generate_random_float(1, 20000);
             // RandomGenerator::generate_random_str(o_orderdate, Clock::DATETIME_SIZE + 1);
@@ -902,11 +903,12 @@ public:
                     col_defs.emplace_back(ColDef("ps_supplycost", ColType::TYPE_FLOAT, 4));
                     col_defs.emplace_back(ColDef("ps_comment", ColType::TYPE_STRING, 199));
                 */
-                int rnd = RandomGenerator::generate_random_int(1, 2);
-                if(rnd == 1)
-                    ps_suppkey = RandomGenerator::generate_random_int(1, ps_suppkey_max);
-                else
-                    ps_suppkey = ps_partkey + ps_suppkey_i - 1;
+                // int rnd = RandomGenerator::generate_random_int(1, 2);
+                // if(rnd == 1)
+                //     ps_suppkey = RandomGenerator::generate_random_int(1, ps_suppkey_max);
+                // else
+                //     ps_suppkey = ps_partkey + ps_suppkey_i - 1;
+                ps_suppkey = RandomGenerator::generate_random_int(1, ps_suppkey_max);
                 ps_availqty = RandomGenerator::generate_random_int(1, 200000);
                 ps_supplycost = RandomGenerator::generate_random_float(1, 200000);
                 RandomGenerator::generate_random_str(ps_comment, 199);
@@ -989,9 +991,9 @@ public:
     float   l_tax           ;
     char    l_returnflag[1] ;
     char    l_linestatus[1] ;
-    char    l_shipdate[Clock::DATETIME_SIZE + 1]    ;
-    char    l_commitdate[Clock::DATETIME_SIZE + 1]  ;
-    char    l_receiptdate[Clock::DATETIME_SIZE + 1] ;
+    char    l_shipdate[RandomGenerator::DATE_SIZE + 1] ;
+    char    l_commitdate[RandomGenerator::DATE_SIZE + 1] ;
+    char    l_receiptdate[RandomGenerator::DATE_SIZE + 1] ;
     char    l_shipinstruct[25]  ;
     char    l_shipmode[10]      ;
     char    l_comment[4]       ;
@@ -1010,9 +1012,9 @@ public:
         col_defs.emplace_back(ColDef("l_tax", ColType::TYPE_FLOAT, 4));
         col_defs.emplace_back(ColDef("l_returnflag", ColType::TYPE_STRING, 1));
         col_defs.emplace_back(ColDef("l_linestatus", ColType::TYPE_STRING, 1));
-        col_defs.emplace_back(ColDef("l_shipdate", ColType::TYPE_STRING, Clock::DATETIME_SIZE + 1));
-        col_defs.emplace_back(ColDef("l_commitdate", ColType::TYPE_STRING, Clock::DATETIME_SIZE + 1));
-        col_defs.emplace_back(ColDef("l_receiptdate", ColType::TYPE_STRING, Clock::DATETIME_SIZE + 1));
+        col_defs.emplace_back(ColDef("l_shipdate", ColType::TYPE_STRING, RandomGenerator::DATE_SIZE + 1));
+        col_defs.emplace_back(ColDef("l_commitdate", ColType::TYPE_STRING, RandomGenerator::DATE_SIZE + 1));
+        col_defs.emplace_back(ColDef("l_receiptdate", ColType::TYPE_STRING, RandomGenerator::DATE_SIZE + 1));
         col_defs.emplace_back(ColDef("l_shipinstruct", ColType::TYPE_STRING, 25));
         col_defs.emplace_back(ColDef("l_shipmode", ColType::TYPE_STRING, 10));
         col_defs.emplace_back(ColDef("l_comment", ColType::TYPE_STRING, 4));
@@ -1097,17 +1099,18 @@ public:
                     col_defs.emplace_back(ColDef("l_shipmode", ColType::TYPE_STRING, 10));
                     col_defs.emplace_back(ColDef("l_comment", ColType::TYPE_STRING, 44));
                 */
-                int rnd = RandomGenerator::generate_random_int(1, 2);
-                if(rnd == 1) {
-                    l_partkey = RandomGenerator::generate_random_int(1, l_partkey_max);
-                    l_suppkey = RandomGenerator::generate_random_int(1, l_suppkey_max);
-                }
-                else {
-                    l_partkey = l_orderkey;
-                    l_suppkey = l_orderkey;
-                }
+                // int rnd = RandomGenerator::generate_random_int(1, 2);
+                // if(rnd == 1) {
+                //     l_partkey = RandomGenerator::generate_random_int(1, l_partkey_max);
+                //     l_suppkey = RandomGenerator::generate_random_int(1, l_suppkey_max);
+                // }
+                // else {
+                //     l_partkey = l_orderkey;
+                //     l_suppkey = l_orderkey;
+                // }
                 
-
+                l_partkey = RandomGenerator::generate_random_int(1, l_partkey_max);
+                l_suppkey = RandomGenerator::generate_random_int(1, l_suppkey_max);
                 l_quantity = RandomGenerator::generate_random_float(1, 20000);
                 l_extendedprice = RandomGenerator::generate_random_float(1, 20000);
                 l_discount = RandomGenerator::generate_random_float(1, 20000);
@@ -1115,9 +1118,12 @@ public:
                 
                 RandomGenerator::generate_random_str(l_returnflag, 1);
                 RandomGenerator::generate_random_str(l_linestatus, 1);
-                RandomGenerator::generate_random_str(l_shipdate, Clock::DATETIME_SIZE + 1);
-                RandomGenerator::generate_random_str(l_commitdate, Clock::DATETIME_SIZE + 1);
-                RandomGenerator::generate_random_str(l_receiptdate, Clock::DATETIME_SIZE + 1);
+                // RandomGenerator::generate_random_str(l_shipdate, Clock::DATETIME_SIZE + 1);
+                RandomGenerator::generate_random_date(l_shipdate);
+                // RandomGenerator::generate_random_str(l_commitdate, Clock::DATETIME_SIZE + 1);
+                RandomGenerator::generate_random_date(l_commitdate);
+                // RandomGenerator::generate_random_str(l_receiptdate, Clock::DATETIME_SIZE + 1);
+                RandomGenerator::generate_random_date(l_receiptdate);
                 RandomGenerator::generate_random_str(l_shipinstruct, 25);
                 RandomGenerator::generate_random_str(l_shipmode, 10);
                 RandomGenerator::generate_random_str(l_comment, 4);
@@ -1149,12 +1155,12 @@ public:
                 offset += 1;
                 memcpy(record.raw_data_ + offset, l_linestatus, 1);
                 offset += 1;
-                memcpy(record.raw_data_ + offset, l_shipdate, Clock::DATETIME_SIZE + 1);
-                offset += Clock::DATETIME_SIZE + 1;
-                memcpy(record.raw_data_ + offset, l_commitdate, Clock::DATETIME_SIZE + 1);
-                offset += Clock::DATETIME_SIZE + 1;
-                memcpy(record.raw_data_ + offset, l_receiptdate, Clock::DATETIME_SIZE + 1);
-                offset += Clock::DATETIME_SIZE + 1;
+                memcpy(record.raw_data_ + offset, l_shipdate, RandomGenerator::DATE_SIZE + 1);
+                offset += RandomGenerator::DATE_SIZE + 1;
+                memcpy(record.raw_data_ + offset, l_commitdate, RandomGenerator::DATE_SIZE + 1);
+                offset += RandomGenerator::DATE_SIZE + 1;
+                memcpy(record.raw_data_ + offset, l_receiptdate, RandomGenerator::DATE_SIZE + 1);
+                offset += RandomGenerator::DATE_SIZE + 1;
                 memcpy(record.raw_data_ + offset, l_shipinstruct, 25);
                 offset += 25;
                 memcpy(record.raw_data_ + offset, l_shipmode, 10);

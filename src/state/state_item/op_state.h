@@ -54,12 +54,12 @@ struct CheckPointMeta {
 */
 
 #define EXECTYPE_OFFSET sizeof(int) * 2 + sizeof(size_t) + sizeof(time_t)
-#define OPERATOR_STATE_HEADER_SIZE sizeof(int) * 2 + sizeof(size_t) + sizeof(time_t) + sizeof(ExecutionType)
+#define OPERATOR_STATE_HEADER_SIZE sizeof(int) * 2 + sizeof(size_t) + sizeof(time_t) + sizeof(ExecutionType) + sizeof(bool)
 
 class OperatorState {
 public:
     OperatorState();
-    OperatorState(int sql_id, int operator_id, time_t op_state_time, ExecutionType exec_type);
+    OperatorState(int sql_id, int operator_id, time_t op_state_time, ExecutionType exec_type, bool finish_begin_tuple) ;
 
     virtual size_t  serialize(char *dest) ;
 
@@ -69,7 +69,7 @@ public:
         get size of Op
     */
     virtual size_t getSize() {
-        std::cout << "Base OperatorState size: " << OPERATOR_STATE_HEADER_SIZE << std::endl;
+        // std::cout << "Base OperatorState size: " << OPERATOR_STATE_HEADER_SIZE << std::endl;
         return OPERATOR_STATE_HEADER_SIZE;
     }
 
@@ -79,6 +79,7 @@ public:
     size_t  op_state_size_;
     time_t  op_state_time_;
     ExecutionType exec_type_;
+    bool finish_begin_tuple_;
 
 public:
     /*
@@ -100,7 +101,7 @@ public:
     bool    deserialize(char *src, size_t size) override;
 
     size_t getSize() override {
-        std::cout << "IndexScanOperatorState getSize(): " << op_state_size_ << std::endl;
+        // std::cout << "IndexScanOperatorState getSize(): " << op_state_size_ << std::endl;
         return OperatorState::getSize() + sizeof(Rid) * 3;
     }
 
@@ -133,7 +134,7 @@ public:
     bool    deserialize(char *src, size_t size) override;
 
     size_t getSize() override {
-        std::cout << "ProjectionOperatorState size: " << op_state_size_ << std::endl;
+        // std::cout << "ProjectionOperatorState size: " << op_state_size_ << std::endl;
         return op_state_size_;
     }
 
@@ -155,7 +156,7 @@ public:
 
 class BlockNestedLoopJoinExecutor;
 class JoinBlock;
-class BlockJoinOperatorState : OperatorState {
+class BlockJoinOperatorState : public OperatorState {
 public:
     BlockJoinOperatorState();
 
@@ -169,7 +170,7 @@ public:
         TODO
     */
     size_t getSize() override {
-        std::cout << "BlockJoinOperatorState getSize(): " << op_state_size_ << std::endl;
+        // std::cout << "BlockJoinOperatorState getSize(): " << op_state_size_ << std::endl;
         return OperatorState::getSize() + state_size;
     }
 
@@ -211,7 +212,7 @@ public:
 class HashJoinExecutor; 
 // HashJoin的状态需要分为两部分，一部分是哈希表的数据，也就是哈希表中每个record，这部分是增量存储的，单独开辟一块区域，
 // 一部分是left child和right child的状态，这部分可以覆盖写，不需要增量存储，因此需要分别维护着两块内存区域的元数据（也就是start和offset）
-class HashJoinOperatorState : OperatorState {
+class HashJoinOperatorState : public OperatorState {
 public:
     HashJoinOperatorState();
 
@@ -224,7 +225,7 @@ public:
     void rebuild_hash_table(HashJoinExecutor *hash_join_op, char* src, size_t size);
 
     size_t getSize() override {
-        std::cout << "HashJoinExecutorState getSize(): " << op_state_size_ << std::endl;
+        // std::cout << "HashJoinExecutorState getSize(): " << op_state_size_ << std::endl;
         // return OperatorState::getSize() + state_size;
         return op_state_size_;
     }   
@@ -257,7 +258,7 @@ public:
 #define OFF_SORT_UNSORTED_TUPLE_CNT sizeof(int) * 3 + sizeof(bool)
 #define OFF_SORT_IS_SORTED_INDEX_CKPT sizeof(int) * 3
 class SortExecutor;
-class SortOperatorState: OperatorState {
+class SortOperatorState: public OperatorState {
 public:
     SortOperatorState();
     SortOperatorState(SortExecutor *sort_op);
@@ -266,7 +267,7 @@ public:
     void rebuild_sort_records(SortExecutor *sort_op, char* src, size_t size);
     void rebuild_sort_index(SortExecutor *sort_op, char* src, size_t size);
     size_t getSize() override {
-        std::cout << "SortOperatorState getSize(): " << op_state_size_ << std::endl;
+        // std::cout << "SortOperatorState getSize(): " << op_state_size_ << std::endl;
         return op_state_size_;
     }
 

@@ -42,8 +42,8 @@ bool CheckPointMeta::deserialize(char *src, size_t size) {
 
 OperatorState::OperatorState() {};
 
-OperatorState::OperatorState(int sql_id, int operator_id, time_t op_state_time, ExecutionType exec_type) : 
-        sql_id_(sql_id), operator_id_(operator_id), op_state_time_(op_state_time), exec_type_(exec_type) {}
+OperatorState::OperatorState(int sql_id, int operator_id, time_t op_state_time, ExecutionType exec_type, bool finish_begin_tuple) : 
+        sql_id_(sql_id), operator_id_(operator_id), op_state_time_(op_state_time), exec_type_(exec_type), finish_begin_tuple_(finish_begin_tuple) {}
 
 size_t OperatorState::serialize(char *dest) {
     size_t offset = 0;
@@ -57,6 +57,8 @@ size_t OperatorState::serialize(char *dest) {
     offset += sizeof(time_t);
     memcpy(dest + offset, (char *)&exec_type_, sizeof(exec_type_));
     offset += sizeof(exec_type_);
+    memcpy(dest + offset, (char *)&finish_begin_tuple_, sizeof(bool));
+    offset += sizeof(bool);
     
     assert(offset == OPERATOR_STATE_HEADER_SIZE);
     return offset;
@@ -86,6 +88,8 @@ bool OperatorState::deserialize(char *src, size_t size) {
     offset += sizeof(time_t);
     memcpy((char *)&exec_type_, src + offset, sizeof(exec_type_));
     offset += sizeof(exec_type_);
+    memcpy((char *)&finish_begin_tuple_, src + offset, sizeof(bool));
+    offset += sizeof(bool);
 
     // std::cout << "OperatorState::deserialize: sql_id_: " << sql_id_ << ", operator_id_: " << operator_id_ << ", op_state_size_: " << op_state_size_ << ", op_state_time_: " << op_state_time_ << ", exec_type_: " << exec_type_ << std::endl;
     
@@ -93,10 +97,10 @@ bool OperatorState::deserialize(char *src, size_t size) {
     return true;
 }
 
-IndexScanOperatorState::IndexScanOperatorState() : OperatorState(-1, -1, time(nullptr), ExecutionType::NOT_DEFINED){};
+IndexScanOperatorState::IndexScanOperatorState() : OperatorState(-1, -1, time(nullptr), ExecutionType::NOT_DEFINED, false){};
 
 IndexScanOperatorState::IndexScanOperatorState(IndexScanExecutor *index_scan_op) :
-    OperatorState(index_scan_op->sql_id_, index_scan_op->operator_id_, time(nullptr),index_scan_op->exec_type_), 
+    OperatorState(index_scan_op->sql_id_, index_scan_op->operator_id_, time(nullptr),index_scan_op->exec_type_, index_scan_op->finished_begin_tuple_), 
     index_scan_op_(index_scan_op)
 {
     lower_rid_      = index_scan_op_->lower_rid_;
@@ -150,7 +154,7 @@ bool IndexScanOperatorState::deserialize(char *src, size_t size) {
     // RwServerDebug::getInstance()->DEBUG_PRINT("This line is number: " + std::string(__FILE__)  + ":" + std::to_string(__LINE__));
 }
 
-ProjectionOperatorState::ProjectionOperatorState() : OperatorState(-1, -1, time(nullptr), ExecutionType::PROJECTION) {
+ProjectionOperatorState::ProjectionOperatorState() : OperatorState(-1, -1, time(nullptr), ExecutionType::PROJECTION, false) {
     projection_op_ = nullptr;
     is_left_child_join_ = false;
     left_index_scan_state_ = nullptr;
@@ -158,7 +162,7 @@ ProjectionOperatorState::ProjectionOperatorState() : OperatorState(-1, -1, time(
 }
 
 ProjectionOperatorState::ProjectionOperatorState(ProjectionExecutor* projection_op) : 
-    OperatorState(projection_op->sql_id_, projection_op->operator_id_, time(nullptr), projection_op->exec_type_), 
+    OperatorState(projection_op->sql_id_, projection_op->operator_id_, time(nullptr), projection_op->exec_type_, projection_op->finished_begin_tuple_), 
     projection_op_(projection_op) {
     op_state_size_ = OperatorState::getSize();
     left_child_call_times_ = projection_op_->be_call_times_;
@@ -237,7 +241,7 @@ bool ProjectionOperatorState::deserialize(char *src, size_t size) {
 //     index_scan_op->
 // }
 
-BlockJoinOperatorState::BlockJoinOperatorState() : OperatorState(-1, -1, time(nullptr),ExecutionType::NOT_DEFINED) {
+BlockJoinOperatorState::BlockJoinOperatorState() : OperatorState(-1, -1, time(nullptr),ExecutionType::NOT_DEFINED, false) {
     
     
     block_join_op_ = nullptr;
@@ -271,7 +275,7 @@ BlockJoinOperatorState::BlockJoinOperatorState() : OperatorState(-1, -1, time(nu
 }
 
 BlockJoinOperatorState::BlockJoinOperatorState(BlockNestedLoopJoinExecutor *block_join_op) : 
-        OperatorState(block_join_op->sql_id_, block_join_op->operator_id_, time(nullptr), block_join_op->exec_type_), 
+        OperatorState(block_join_op->sql_id_, block_join_op->operator_id_, time(nullptr), block_join_op->exec_type_, block_join_op->finished_begin_tuple_), 
         block_join_op_(block_join_op)
 {
     state_size = 0;
@@ -364,9 +368,11 @@ BlockJoinOperatorState::BlockJoinOperatorState(BlockNestedLoopJoinExecutor *bloc
         一个优化，如果left block cursor = left block size，那么说明这个block已经扫描完了，不需要序列化
     */
     if(left_block_num_ == left_block_cursor_) {
+        // std::cout << "left_block_num_ == left_block_cursor_" << std::endl;
         left_block_size_ = 0;
         left_block_ = nullptr;
     }else {
+        // std::cout << "left_block_num_ != left_block_cursor_" << std::endl;
         left_block_size_ = left_block_num_ * (left_block_record_len + sizeof(RecordHdr));
         left_block_ = block_join_op->left_block_;
     }
@@ -423,7 +429,7 @@ size_t BlockJoinOperatorState::serialize(char *dest) {
         // RwServerDebug::getInstance()->DEBUG_PRINT("right child is not join, expect projection/index scan serialization following");
         size_t right_index_scan_size = right_child_state_->serialize(dest + offset);
         offset += right_index_scan_size;
-        std::cout << "right index scan size: " << right_index_scan_size << std::endl;
+        // std::cout << "right index scan size: " << right_index_scan_size << std::endl;
     }
     else {
         // RwServerDebug::getInstance()->DEBUG_PRINT("right child is join");
@@ -493,17 +499,17 @@ bool BlockJoinOperatorState::deserialize(char *src, size_t size) {
 
     // RwServerDebug::getInstance()->DEBUG_PRINT("This line is number: " + std::string(__FILE__)  + ":" + std::to_string(__LINE__));
 
-    std::cout << "left_block_id_: " << left_block_id_ << std::endl;
-    std::cout << "left block max size: " << left_block_max_size_ << std::endl; 
-    std::cout << "left_block_cursor_: " << left_block_cursor_ << std::endl;
-    std::cout << "left_child_call_times_: " << left_child_call_times_ << std::endl;
-    std::cout << "be_call_times_: " << be_call_times_ << std::endl;
+    // std::cout << "left_block_id_: " << left_block_id_ << std::endl;
+    // std::cout << "left block max size: " << left_block_max_size_ << std::endl; 
+    // std::cout << "left_block_cursor_: " << left_block_cursor_ << std::endl;
+    // std::cout << "left_child_call_times_: " << left_child_call_times_ << std::endl;
+    // std::cout << "be_call_times_: " << be_call_times_ << std::endl;
 
     
     /*
         deserialize left child
     */
-    std::cout << "This line is number: " << __FILE__  << ":" << __LINE__ << std::endl;
+    // std::cout << "This line is number: " << __FILE__  << ":" << __LINE__ << std::endl;
     // RwServerDebug::getInstance()->DEBUG_PRINT("offset= " + std::to_string(offset));
     memcpy((char *)&left_child_is_join_, src + offset, sizeof(bool));
     offset += sizeof(bool);
@@ -591,7 +597,7 @@ bool BlockJoinOperatorState::deserialize(char *src, size_t size) {
     return true;
 }
 
-HashJoinOperatorState::HashJoinOperatorState(): OperatorState(-1, -1, time(nullptr), ExecutionType::HASH_JOIN) {
+HashJoinOperatorState::HashJoinOperatorState(): OperatorState(-1, -1, time(nullptr), ExecutionType::HASH_JOIN, false) {
     hash_join_op_ = nullptr;
     op_state_size_ = hash_join_state_size_min;
     
@@ -616,17 +622,18 @@ HashJoinOperatorState::HashJoinOperatorState(): OperatorState(-1, -1, time(nullp
 }
 
 HashJoinOperatorState::HashJoinOperatorState(HashJoinExecutor* hash_join_op):
-    OperatorState(hash_join_op->sql_id_, hash_join_op->operator_id_, time(nullptr), hash_join_op->exec_type_), hash_join_op_(hash_join_op) {
+    OperatorState(hash_join_op->sql_id_, hash_join_op->operator_id_, time(nullptr), hash_join_op->exec_type_, hash_join_op->finished_begin_tuple_), hash_join_op_(hash_join_op) {
 
     op_state_size_ = OperatorState::getSize();
 
-    hash_table_contained_ = false;  // default false
     be_call_times_ = hash_join_op->be_call_times_;
     left_child_call_times_ = hash_join_op->left_child_call_times_;
     left_record_len_ = hash_join_op_->left_->tupleLen();
     left_hash_table_size_ = hash_join_op_->left_hash_table_curr_tuple_count_ - hash_join_op_->left_hash_table_checkpointed_tuple_count_;
     left_tuples_index_ = hash_join_op_->left_tuples_index_;
     is_hash_table_built_ = hash_join_op_->initialized_;
+    if(left_hash_table_size_ > 0) hash_table_contained_ = true;
+    else hash_table_contained_ = false;
 
     op_state_size_ += sizeof(bool) * 2 + sizeof(int) * 5;
 
@@ -655,6 +662,7 @@ HashJoinOperatorState::HashJoinOperatorState(HashJoinExecutor* hash_join_op):
     // right exec info
     op_state_size_ += sizeof(bool);
     if(auto x = dynamic_cast<IndexScanExecutor *>(hash_join_op_->right_.get())) {
+        // std::cout << "HashJoin: right child is index scan" << std::endl;
         right_child_is_join_ = false;
         // right_index_scan_state_ = IndexScanOperatorState(x);
         right_child_state_ = new IndexScanOperatorState(x);
@@ -667,6 +675,7 @@ HashJoinOperatorState::HashJoinOperatorState(HashJoinExecutor* hash_join_op):
         // right_index_scan_state_ = IndexScanOperatorState();
     } else if (auto x = dynamic_cast<ProjectionExecutor *>(hash_join_op_->right_.get())) {
         right_child_is_join_ = false;
+        // std::cout << "HashJoin: right child is projection" << std::endl;
         right_child_state_ = new ProjectionOperatorState(x);
         op_state_size_ += right_child_state_->getSize();
     } else {
@@ -712,7 +721,7 @@ size_t HashJoinOperatorState::serialize(char *dest) {
             const std::string& key = iter.first;
             const std::vector<std::unique_ptr<Record>>& record_vector = iter.second;
             size_t* last_checkpoint_index = &checkpointed_indexes_->find(key)->second;
-            std::cout << "checkpointed_index: " << *last_checkpoint_index << ", record_vector size: " << record_vector.size() << std::endl;
+            // std::cout << "checkpointed_index: " << *last_checkpoint_index << ", record_vector size: " << record_vector.size() << std::endl;
             for(size_t i = *last_checkpoint_index; i < record_vector.size(); i++) {
                 memcpy(dest + offset, record_vector[i]->raw_data_, left_record_len_);
                 offset += left_record_len_;
@@ -802,6 +811,7 @@ bool HashJoinOperatorState::deserialize(char* src, size_t size) {
             right_child_state_->deserialize(src + offset, size - offset);
             offset += right_child_state_->getSize();
         } else {
+            std::cerr << "right child node type: " << child_exec_type << std::endl;
             std::cerr << "[Error]: Unexpected right child node type for HashJoinExecutor! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
         }
     }
@@ -828,7 +838,7 @@ void HashJoinOperatorState::rebuild_hash_table(HashJoinExecutor* hash_join_op, c
     delete[] join_key;
 }
 
-SortOperatorState::SortOperatorState(): OperatorState(-1, -1, time(nullptr), ExecutionType::SORT) {
+SortOperatorState::SortOperatorState(): OperatorState(-1, -1, time(nullptr), ExecutionType::SORT, false) {
     sort_op_ = nullptr;
     op_state_size_ = sort_state_size_min;
     be_call_times_ = -1;
@@ -843,7 +853,7 @@ SortOperatorState::SortOperatorState(): OperatorState(-1, -1, time(nullptr), Exe
 }
 
 SortOperatorState::SortOperatorState(SortExecutor* sort_op): 
-    OperatorState(sort_op->sql_id_, sort_op->operator_id_, time(nullptr), sort_op->exec_type_), sort_op_(sort_op) {
+    OperatorState(sort_op->sql_id_, sort_op->operator_id_, time(nullptr), sort_op->exec_type_, sort_op->finished_begin_tuple_), sort_op_(sort_op) {
     op_state_size_ = OperatorState::getSize();
 
     be_call_times_ = sort_op->be_call_times_;

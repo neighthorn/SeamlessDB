@@ -58,6 +58,7 @@ friend class IndexScanOperatorState;
     IndexScanExecutor(SmManager *sm_manager, std::string tab_name, std::vector<Condition> filter_conds, std::vector<Condition> index_conds, Context *context, int sql_id, int operator_id)
         : AbstractExecutor(sql_id, operator_id) {
         exec_type_ = ExecutionType::INDEX_SCAN;
+        finished_begin_tuple_ = false;
         
         sm_manager_ = sm_manager;
         context_ = context;
@@ -91,6 +92,8 @@ friend class IndexScanOperatorState;
 
         // first request LOCK_IX on table
         Lock* lock = nullptr;
+
+        if(node_type_ == 1) goto NOTALBELOCK;
         if(context_ != nullptr) {
             switch(context_->plan_tag_) {
                 case T_Update:
@@ -107,7 +110,7 @@ friend class IndexScanOperatorState;
             assert(lock != nullptr);
             context_->txn_->append_lock(lock);
         }
-
+NOTALBELOCK:
         be_call_times_ = 0;
         left_child_call_times_ = 0;
     }
@@ -153,6 +156,7 @@ friend class IndexScanOperatorState;
     }
 
     void beginTuple() override {
+        // if(finished_begin_tuple_)  return;
         check_runtime_conds();
 
             // CompOp right_op = OP_EQ;
@@ -278,6 +282,9 @@ friend class IndexScanOperatorState;
         LockManager* lock_mgr = context_->lock_mgr_;
         Transaction* txn = context_->txn_;
         Lock* lock = nullptr;
+
+        if(node_type_ == 1) goto NOLOCK1;
+        
         switch(op) {
             case OP_EQ: {
                 if(index_meta_.col_num == (int)index_conds_.size()) {
@@ -349,6 +356,7 @@ friend class IndexScanOperatorState;
         assert(lock != nullptr);
         txn->append_lock(lock);
 
+NOLOCK1:
         while (!scan_->is_end()) {
             rid_ = scan_->rid();
             // auto [is_visible, rec] = mvcc_get_record(rid_);
@@ -360,9 +368,9 @@ friend class IndexScanOperatorState;
             // if (eval_conds(cols_, index_conds_, rec.get()) && rec->is_deleted() == false) {
             //     current_record_ = std::move(rec);
             auto rec = pindex_handle_->get_record(rid_, context_);
-            
+
             if (rec->is_deleted() == false && eval_conds(cols_, filter_conds_, rec.get())) {
-                if(min_lock_ == false) {
+                if(node_type_ == 0 && min_lock_ == false) {
                     lock = lock_mgr->request_record_lock(tab_.table_id_, rid_, txn, RECORD_LOCK_ORDINARY, get_lock_mode_for_plan(context_->plan_tag_), context_->coro_sched_->t_id_);
                     assert(lock != nullptr);
                     txn->append_lock(lock);
@@ -373,7 +381,7 @@ friend class IndexScanOperatorState;
                 current_record_ = std::move(rec);
                 break;
             }
-            else {
+            else if(node_type_ == 0) {
                 if(min_lock_ == false) {
                     lock = lock_mgr->request_record_lock(tab_.table_id_, rid_, txn, RECORD_LOCK_ORDINARY, LOCK_S, context_->coro_sched_->t_id_);
                     assert(lock != nullptr);
@@ -383,8 +391,10 @@ friend class IndexScanOperatorState;
                     min_lock_ = false;
                 }
             }
+
             scan_->next();
         }
+        finished_begin_tuple_ = true;
     }
 
     bool check_match_for_key(const std::vector<ColMeta> &rec_cols, const Condition &cond, const Record *rec) {
@@ -418,6 +428,10 @@ friend class IndexScanOperatorState;
     void nextTuple() override {
         check_runtime_conds();
         assert(!is_end());
+        // if(load_from_state_) {
+        //     std::cout << "IndexScan Current location: " << rid_.page_no << ", " << rid_.slot_no << std::endl;
+        //     load_from_state_ = false;
+        // }
         Lock* lock = nullptr;
         for (scan_->next(); !scan_->is_end(); scan_->next()) {
             rid_ = scan_->rid();
@@ -431,14 +445,16 @@ friend class IndexScanOperatorState;
             auto rec = pindex_handle_->get_record(rid_, context_);
 
             if (rec->is_deleted() == false && eval_conds(cols_, filter_conds_, rec.get())) {
-                assert(context_ != nullptr);
-                lock = context_->lock_mgr_->request_record_lock(tab_.table_id_, rid_, context_->txn_, RECORD_LOCK_ORDINARY, get_lock_mode_for_plan(context_->plan_tag_), context_->coro_sched_->t_id_);
-                assert(lock != nullptr);
-                context_->txn_->append_lock(lock);
+                if(node_type_ == 0) {
+                    assert(context_ != nullptr);
+                    lock = context_->lock_mgr_->request_record_lock(tab_.table_id_, rid_, context_->txn_, RECORD_LOCK_ORDINARY, get_lock_mode_for_plan(context_->plan_tag_), context_->coro_sched_->t_id_);
+                    assert(lock != nullptr);
+                    context_->txn_->append_lock(lock);
+                }
                 current_record_ = std::move(rec);
                 break;
             }
-            else {
+            else if(node_type_ == 0) {
                 assert(context_ != nullptr);
                 lock = context_->lock_mgr_->request_record_lock(tab_.table_id_, rid_, context_->txn_, RECORD_LOCK_ORDINARY, LOCK_S, context_->coro_sched_->t_id_);
                 assert(lock != nullptr);
@@ -568,6 +584,8 @@ friend class IndexScanOperatorState;
         */
         if(index_scan_op_state != nullptr) {
             load_from_state_ = true;
+            finished_begin_tuple_ = index_scan_op_state->finish_begin_tuple_;
+            // finished_begin_tuple_ = true;
             index_scan_op_ = std::move(index_scan_op_state);
                 // Rid rid_;
                 // std::unique_ptr<IxScan> scan_;

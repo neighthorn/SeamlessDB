@@ -126,7 +126,7 @@ void send_recv_sql(int sockfd, std::string sql, char* recv_buf, int thread_index
         return;
     }
     // std::cout << sql << std::endl;
-    // print_char_array(recv_buf, len);
+    print_char_array(recv_buf, len);
 
     // str = "sockfd: " + std::to_string(sockfd)  + "       finish receive\n";
     // std::cout << str;
@@ -152,6 +152,7 @@ void run_client(BenchMark* benchmark, std::string remote_ip, int remote_port, in
     // int retry = 0;
     // std::ofstream longtxnfile("../result/longsql/configthread_" +  std::to_string(client_num) + "_" + std::to_string(thread_index) + "_sql.txt", std::ios::trunc);
 
+    auto ro_start = std::chrono::high_resolution_clock::now();
     // int cnt = TXN_NUM_PER_THREAD;
     while(true) {
         // std::cout << "client " << thread_index << " begin generate_txn " << TXN_NUM_PER_THREAD - cnt << "\n";
@@ -190,7 +191,12 @@ void run_client(BenchMark* benchmark, std::string remote_ip, int remote_port, in
         //     for(int i = 0; i < txn->queries.size(); ++i)
         //         longtxnfile << txn->queries[i] << "\n";
         // }
+        if(node_type == 1) break;
     }
+    auto ro_end = std::chrono::high_resolution_clock::now();
+    std::cout << "ro latency: " << std::chrono::duration<double, std::milli>(ro_end - ro_start).count() << "\n";
+
+    // print_char_array(recv_buf, MAX_MEM_BUFFER_SIZE);
 
     close(sockfd);
     // longtxnfile.close();

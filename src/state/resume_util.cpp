@@ -3,6 +3,8 @@
 #include "resume_util.h"
 #include "state_item/op_state.h"
 
+#define TIME_OPEN 1
+
 std::shared_ptr<PortalStmt> rebuild_exec_plan_without_state(RWNode *node, Context *context, SQLState *sql_state) {
     std::shared_ptr<PortalStmt> portal_stmt;
     /*
@@ -43,10 +45,14 @@ std::shared_ptr<PortalStmt> rebuild_exec_plan_without_state(RWNode *node, Contex
 }
 
 void rebuild_exec_plan_with_query_tree(Context* context, std::shared_ptr<PortalStmt> portal_stmt, CheckPointMeta *op_ck_meta, std::vector<std::unique_ptr<OperatorState>> &op_checkpoints) {
+    #ifdef TIME_OPEN
+        auto recover_state_start = std::chrono::high_resolution_clock::now();
+    #endif
     /*
         load checkpoint state
     */
-    AbstractExecutor *need_to_begin_tuple = nullptr;
+    AbstractExecutor *need_to_begin_tuple = nullptr;    // 这是需要beginTuple的非root节点
+    AbstractExecutor *first_ckpt_op = nullptr;      // 找到第一个有检查点的算子，作为根节点去恢复一致性状态
     {
         // up down load checkpoint state
         time_t latest_time = op_checkpoints[op_checkpoints.size() - 1]->op_state_time_;
@@ -54,7 +60,37 @@ void rebuild_exec_plan_with_query_tree(Context* context, std::shared_ptr<PortalS
         auto exec_plan = portal_stmt->root.get();
         while(exec_plan != nullptr) {
             if(auto x = dynamic_cast<ProjectionExecutor *>(exec_plan)) {
-                exec_plan = (x->prev_).get();
+                if(x->is_root_) {
+                    bool find_match_checkpoint = false;  
+                    int  checkpoint_index = -1;
+                    for(int i = last_checkpoint_index; i >= 0; i--) {
+                        if(op_checkpoints[i]->operator_id_ == x->operator_id_ && op_checkpoints[i]->op_state_time_ <= latest_time) {
+                            find_match_checkpoint = true;
+                            checkpoint_index = i;
+                            break;
+                        }
+                    }
+                    if(checkpoint_index == -1) {
+                        std::cout << "[Warning]: Checkpoints Not Found! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
+                        RwServerDebug::getInstance()->DEBUG_PRINT("[Warning]: Checkpoints Not Found! [Location]: " + std::string(__FILE__) + ":" + std::to_string(__LINE__));
+                        std::cout << "operator_id: " << x->operator_id_ << std::endl;
+                        exec_plan = (x->prev_).get();
+                        continue;
+                    }
+                    last_checkpoint_index = checkpoint_index;
+                    latest_time = op_checkpoints[checkpoint_index]->op_state_time_;
+                    if(first_ckpt_op == nullptr) {
+                        first_ckpt_op = x;
+                    }
+
+                    std::unique_ptr<ProjectionOperatorState> projection_op_state = std::make_unique<ProjectionOperatorState>();
+                    projection_op_state->deserialize(op_checkpoints[checkpoint_index]->op_state_addr_, op_checkpoints[checkpoint_index]->op_state_size_);
+                    x->load_state_info(projection_op_state.get());
+                    exec_plan = (x->prev_).get();
+                }
+                else {
+                    exec_plan = (x->prev_).get();
+                }
             } else if(auto x = dynamic_cast<BlockNestedLoopJoinExecutor *>(exec_plan)) {
                 RwServerDebug::getInstance()->DEBUG_PRINT("[REBUILD EXEC PLAN][BlockNestedLoopJoinExecutor][operator_id: " + std::to_string(x->operator_id_) + "]");
                 /*
@@ -73,7 +109,26 @@ void rebuild_exec_plan_with_query_tree(Context* context, std::shared_ptr<PortalS
                     std::cout << "[Warning]: Checkpoints Not Found! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
                     RwServerDebug::getInstance()->DEBUG_PRINT("[Warning]: Checkpoints Not Found! [Location]: " + std::string(__FILE__) + ":" + std::to_string(__LINE__));
                     std::cout << "operator_id: " << x->operator_id_ << std::endl;
-                    break ;
+                    
+                    if(first_ckpt_op != nullptr) {
+                        break;    
+                    }
+                    else {
+                        if(auto left_child = dynamic_cast<BlockNestedLoopJoinExecutor *>(x->left_.get())) {
+                            exec_plan = left_child;
+                        } 
+                        else if(auto left_child = dynamic_cast<HashJoinExecutor *>(x->left_.get())) {
+                            exec_plan = left_child;
+                        }
+                        else if(auto left_child = dynamic_cast<ProjectionExecutor *>(x->left_.get())) {
+                            exec_plan = left_child;
+                        }
+                        else {
+                            exec_plan = nullptr;
+                        }
+                        continue;
+                    }
+                    
                     /*
                         没有找到checkpoint，即需要从改exec_plan开始，需要手动执行beginTuple
                     */
@@ -82,6 +137,9 @@ void rebuild_exec_plan_with_query_tree(Context* context, std::shared_ptr<PortalS
 
                 RwServerDebug::getInstance()->DEBUG_PRINT("[REBUILD EXEC PLAN][BlockNestedLoopJoinExecutor][checkpoint_index: " + std::to_string(checkpoint_index) + "][operator_id: " + std::to_string(op_checkpoints[checkpoint_index]->operator_id_) + "][op_state_time: " + std::to_string(op_checkpoints[checkpoint_index]->op_state_time_) + "][op_state_size: " + std::to_string(op_checkpoints[checkpoint_index]->op_state_size_) + "]");
                 latest_time = op_checkpoints[checkpoint_index]->op_state_time_;
+                if(first_ckpt_op == nullptr) {
+                    first_ckpt_op = x;
+                }
                 /*
                     恢复算子状态
                 */
@@ -117,13 +175,32 @@ void rebuild_exec_plan_with_query_tree(Context* context, std::shared_ptr<PortalS
                     if(op_checkpoints[i]->operator_id_ == x->operator_id_ && op_checkpoints[i]->op_state_time_ <= latest_time) {
                         find_match_checkpoint = true;
                         checkpoint_index = i;
+                        std::cout << "HashJoin checkpoint index: " << checkpoint_index << "  " << __FILE__ << ":" << __LINE__ << std::endl;
                         break;
                     }
                 }
                 if(checkpoint_index == -1) {
                     std::cout << "[Warning]: Checkpoints Not Found! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
                     RwServerDebug::getInstance()->DEBUG_PRINT("[Warning]: Checkpoints Not Found! [Location]: " + std::string(__FILE__) + ":" + std::to_string(__LINE__));
-                    break ;
+                    
+                    if(first_ckpt_op != nullptr) {
+                        break;
+                    }
+                    else {
+                        if(auto left_child = dynamic_cast<BlockNestedLoopJoinExecutor *>(x->left_.get())) {
+                            exec_plan = left_child;
+                        } 
+                        else if(auto left_child = dynamic_cast<HashJoinExecutor *>(x->left_.get())) {
+                            exec_plan = left_child;
+                        }
+                        else if(auto left_child = dynamic_cast<ProjectionExecutor *>(x->left_.get())) {
+                            exec_plan = left_child;
+                        }
+                        else {
+                            exec_plan = nullptr;
+                        }
+                        continue;
+                    }
                     /*
                         没有找到checkpoint，即需要从改exec_plan开始，需要手动执行beginTuple
                     */
@@ -132,6 +209,9 @@ void rebuild_exec_plan_with_query_tree(Context* context, std::shared_ptr<PortalS
 
                 RwServerDebug::getInstance()->DEBUG_PRINT("[REBUILD EXEC PLAN][HashJoinExecutor][checkpoint_index: " + std::to_string(checkpoint_index) + "][operator_id: " + std::to_string(op_checkpoints[checkpoint_index]->operator_id_) + "][op_state_time: " + std::to_string(op_checkpoints[checkpoint_index]->op_state_time_) + "][op_state_size: " + std::to_string(op_checkpoints[checkpoint_index]->op_state_size_) + "]");
                 latest_time = op_checkpoints[checkpoint_index]->op_state_time_;
+                if(first_ckpt_op == nullptr) {
+                    first_ckpt_op = x;
+                }
 
                 // 首先找到所有包含hash_table的检查点，然后重构hash_table
                 for(int i = 0; i <= last_checkpoint_index; ++i) {
@@ -181,7 +261,25 @@ void rebuild_exec_plan_with_query_tree(Context* context, std::shared_ptr<PortalS
                 if(checkpoint_index == -1) {
                     std::cout << "[Warning]: Checkpoints Not Found! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
                     RwServerDebug::getInstance()->DEBUG_PRINT("[Warning]: Checkpoints Not Found! [Location]: " + std::string(__FILE__) + ":" + std::to_string(__LINE__));
-                    break ;
+                    
+                    if(first_ckpt_op != nullptr) {
+                        break;
+                    }
+                    else {
+                        if(auto left_child = dynamic_cast<BlockNestedLoopJoinExecutor *>(x->prev_.get())) {
+                            exec_plan = left_child;
+                        } 
+                        else if(auto left_child = dynamic_cast<HashJoinExecutor *>(x->prev_.get())) {
+                            exec_plan = left_child;
+                        }
+                        else if(auto left_child = dynamic_cast<ProjectionExecutor *>(x->prev_.get())) {
+                            exec_plan = left_child;
+                        }
+                        else {
+                            exec_plan = nullptr;
+                        }
+                        continue;
+                    }
                     /*
                         没有找到checkpoint，即需要从改exec_plan开始，需要手动执行beginTuple
                     */
@@ -190,6 +288,9 @@ void rebuild_exec_plan_with_query_tree(Context* context, std::shared_ptr<PortalS
 
                 RwServerDebug::getInstance()->DEBUG_PRINT("[REBUILD EXEC PLAN][SortExecutor][checkpoint_index: " + std::to_string(checkpoint_index) + "][operator_id: " + std::to_string(op_checkpoints[checkpoint_index]->operator_id_) + "][op_state_time: " + std::to_string(op_checkpoints[checkpoint_index]->op_state_time_) + "][op_state_size: " + std::to_string(op_checkpoints[checkpoint_index]->op_state_size_) + "]");
                 latest_time = op_checkpoints[checkpoint_index]->op_state_time_;
+                if(first_ckpt_op == nullptr) {
+                    first_ckpt_op = x;
+                }
 
                 // 找到所有包含unsorted_tuple的检查点，重构unsorted_tuple
                 for(int i = 0; i <= last_checkpoint_index; ++i) {
@@ -244,18 +345,18 @@ void rebuild_exec_plan_with_query_tree(Context* context, std::shared_ptr<PortalS
     /*
         从需要beginTuple的节点开始，手动执行beginTuple
     */
-    // if(need_to_begin_tuple != nullptr) {
-    //     need_to_begin_tuple->beginTuple();
-    // }
+    if(need_to_begin_tuple != nullptr) {
+        need_to_begin_tuple->beginTuple();
+    }
 
     /*
         所有算子恢复到一致性的状态(自底向上)
     */
-   recover_exec_plan_to_consistent_state(context, portal_stmt->root.get(), portal_stmt->root.get()->left_child_call_times_);
-
-    #ifdef TIME_OPEN
+   #ifdef TIME_OPEN
         auto recover_consistency_start = std::chrono::high_resolution_clock::now();
     #endif
+   recover_exec_plan_to_consistent_state(context, first_ckpt_op, first_ckpt_op->be_call_times_);
+    
     
     // {
     //     // std::stack<BlockNestedLoopJoinExecutor *> block_ops_;
@@ -327,25 +428,39 @@ void rebuild_exec_plan_with_query_tree(Context* context, std::shared_ptr<PortalS
     /*
         检查是否恢复到一致性状态
     */
-    {
-        auto exec_plan = portal_stmt->root.get();
-        while(exec_plan != nullptr) {
-            if(auto x = dynamic_cast<ProjectionExecutor *>(exec_plan)) {
-                exec_plan = (x->prev_).get();
-                continue;
-            } else if(auto x = dynamic_cast<BlockNestedLoopJoinExecutor *>(exec_plan)) {
-                std::cout << "Be call times: " << x->be_call_times_ << ", left child call times: " << x->left_child_call_times_ << "\n";
-                RwServerDebug::getInstance()->DEBUG_PRINT("[be call times:" + std::to_string(x->be_call_times_) + "][left child call times: " + std::to_string(x->left_child_call_times_) + "]");
-                if(auto left_child = dynamic_cast<BlockNestedLoopJoinExecutor *>(x->left_.get())) {
-                    exec_plan = left_child;
-                } else {
-                    exec_plan = nullptr;
-                }
-            } else {
-                exec_plan = nullptr;
-            }
-        }
-    }    
+    // {
+    //     auto exec_plan = portal_stmt->root.get();
+    //     while(exec_plan != nullptr) {
+    //         if(auto x = dynamic_cast<ProjectionExecutor *>(exec_plan)) {
+    //             exec_plan = (x->prev_).get();
+    //             continue;
+    //         } else if(auto x = dynamic_cast<BlockNestedLoopJoinExecutor *>(exec_plan)) {
+    //             std::cout << "Be call times: " << x->be_call_times_ << ", left child call times: " << x->left_child_call_times_ << "\n";
+    //             RwServerDebug::getInstance()->DEBUG_PRINT("[be call times:" + std::to_string(x->be_call_times_) + "][left child call times: " + std::to_string(x->left_child_call_times_) + "]");
+    //             if(auto left_child = dynamic_cast<BlockNestedLoopJoinExecutor *>(x->left_.get())) {
+    //                 exec_plan = left_child;
+    //             } else {
+    //                 exec_plan = nullptr;
+    //             }
+    //         } else {
+    //             exec_plan = nullptr;
+    //         }
+    //     }
+    // } 
+
+    #ifdef TIME_OPEN
+        auto root_begin_start = std::chrono::high_resolution_clock::now();
+    #endif
+    std::cout << "first_ckpt_op->operator_id_: " << first_ckpt_op->operator_id_ << ", portal_stmt->root->operator_id_: " << portal_stmt->root->operator_id_ << std::endl;
+    if(first_ckpt_op->operator_id_ != portal_stmt->root->operator_id_ && portal_stmt->root->finished_begin_tuple_ == false) {
+        portal_stmt->root->beginTuple();
+    }
+    #ifdef TIME_OPEN
+        auto root_begin_end = std::chrono::high_resolution_clock::now();
+        auto root_begin_period = std::chrono::duration_cast<std::chrono::microseconds>(root_begin_end - root_begin_start).count();
+        std::cout << "time for root beginTuple(): " << root_begin_period << "\n";
+        RwServerDebug::getInstance()->DEBUG_PRINT("[time for root beginTuple(): " + std::to_string(root_begin_period) + "]");
+    #endif
 }
 
 /*
@@ -381,6 +496,12 @@ std::shared_ptr<PortalStmt> rebuild_exec_plan_from_state(RWNode *node, Context *
         }
     }
 
+    #ifdef TIME_OPEN
+        auto generate_query_tree_end = std::chrono::high_resolution_clock::now();
+        auto generate_query_tree_period = std::chrono::duration_cast<std::chrono::microseconds>(generate_query_tree_end - recover_state_start).count();
+        std::cout << "time for generate query tree: " << generate_query_tree_period << "\n";
+    #endif
+
     rebuild_exec_plan_with_query_tree(context, portal_stmt, op_ck_meta, op_checkpoints);
     return portal_stmt;
 }
@@ -395,7 +516,7 @@ void recover_exec_plan_to_consistent_state(Context* context, AbstractExecutor* r
             recover_exec_plan_to_consistent_state(context, x->left_.get(), x->left_child_call_times_);
          }
 
-        std::cout << "x->be_call_times: " << x->be_call_times_ << ", need_to_be_call_time: " << need_to_be_call_time << std::endl;
+        std::cout << "BlockJoinOp: x->be_call_times: " << x->be_call_times_ << ", need_to_be_call_time: " << need_to_be_call_time << std::endl;
          while(x->be_call_times_ < need_to_be_call_time) {
             x->nextTuple();
             x->be_call_times_ ++;
@@ -405,11 +526,12 @@ void recover_exec_plan_to_consistent_state(Context* context, AbstractExecutor* r
         if(x->finished_begin_tuple_ == false) {
             // 如果未完成beginTuple，则需要首先将左子树恢复到一致性状态，然后将左儿子恢复到调用次数为left_child_call_times_的状态，再完成beginTuple
             // 如果已经完成了beginTuple，则无需恢复左子树的状态
+            std::cout << "Recover: HashJoinExecutor beginTuple" << std::endl;
             recover_exec_plan_to_consistent_state(context, x->left_.get(), x->left_child_call_times_);
             x->beginTuple();
         }
         
-        std::cout << "x->be_call_times: " << x->be_call_times_ << ", need_to_be_call_time: " << need_to_be_call_time << std::endl;
+        std::cout << "HashJoinOp: x->be_call_times: " << x->be_call_times_ << ", need_to_be_call_time: " << need_to_be_call_time << std::endl;
         // 将当前算子恢复到被调用次数为need_to_be_call_time的状态
         while(x->be_call_times_ < need_to_be_call_time) {
             x->nextTuple();
@@ -422,15 +544,16 @@ void recover_exec_plan_to_consistent_state(Context* context, AbstractExecutor* r
             x->beginTuple();
         }
 
-        std::cout << "x->be_call_times: " << x->be_call_times_ << ", need_to_be_call_time: " << need_to_be_call_time << std::endl;
+        // std::cout << "x->be_call_times: " << x->be_call_times_ << ", need_to_be_call_time: " << need_to_be_call_time << std::endl;
         while(x->be_call_times_ < need_to_be_call_time) {
             x->nextTuple();
+            x->be_call_times_ ++;
         }
     }
     else if(auto x = dynamic_cast<ProjectionExecutor *>(root)) {
         recover_exec_plan_to_consistent_state(context, x->prev_.get(), x->left_child_call_times_);
 
-        std::cout << "x->be_call_times: " << x->be_call_times_ << ", need_to_be_call_time: " << need_to_be_call_time << std::endl;
+        // std::cout << "x->be_call_times: " << x->be_call_times_ << ", need_to_be_call_time: " << need_to_be_call_time << std::endl;
         while(x->be_call_times_ < need_to_be_call_time) {
             x->nextTuple();
             x->be_call_times_ ++;

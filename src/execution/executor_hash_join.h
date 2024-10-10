@@ -65,7 +65,7 @@ public:
         left_hash_table_checkpointed_tuple_count_ = 0;
         left_hash_table_curr_tuple_count_ = 0;
 
-        ck_infos_.push_back(HashJoinCheckpointInfo{.ck_timestamp_ = std::chrono::high_resolution_clock::now()});
+        ck_infos_.push_back(HashJoinCheckpointInfo{.ck_timestamp_ = std::chrono::high_resolution_clock::now(), .left_hash_table_curr_tuple_count_ = 0, .left_rc_op_ = 0});
         exec_type_ = ExecutionType::HASH_JOIN;
 
         be_call_times_ = 0;

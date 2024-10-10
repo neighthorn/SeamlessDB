@@ -7,7 +7,7 @@
 class BenchMark{
 public:
     BenchMark() {}
-    virtual void create_table() = 0;
+    virtual bool create_table() = 0;
     virtual void load_data() = 0;
     virtual void load_meta() = 0;
     virtual void init_transaction(int thread_num) = 0;

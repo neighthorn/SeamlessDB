@@ -11,6 +11,7 @@
 std::pair<bool, double> SortExecutor::judge_state_reward(SortCheckpointInfo* curr_ck_info) {
     SortCheckpointInfo* latest_ck_info = nullptr;
     if(ck_infos_.empty()) {
+        std::cerr << "[Error]: SortOp Initial ckpt not created! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
         assert(0);
     }
 
@@ -24,14 +25,15 @@ std::pair<bool, double> SortExecutor::judge_state_reward(SortCheckpointInfo* cur
     }
 
     if(rc_op == 0) {
+        std::cerr << "[Error]: SortOp RC op is 0! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
         return {false, -1};
     }
 
     // double new_src_op = src_op / src_scale_factor_;
     double new_src_op = src_op / MB_ + src_op / RB_ + C_;
     double rew_op = rc_op / new_src_op - state_theta_;
-    RwServerDebug::getInstance()->DEBUG_PRINT("[SortExecutor][op_id: " + std::to_string(operator_id_) + "]: [delta tuple num]: " + std::to_string(num_records_ - checkpointed_tuple_num_) \
-     + " [State size]: " + std::to_string(src_op) + " [Rew_op]: " + std::to_string(rew_op) + " [Src_op]: " + std::to_string(new_src_op) + " [Rc_op]: " + std::to_string(rc_op) + " [State Theta]: " + std::to_string(state_theta_));
+    // RwServerDebug::getInstance()->DEBUG_PRINT("[SortExecutor][op_id: " + std::to_string(operator_id_) + "]: [delta tuple num]: " + std::to_string(num_records_ - checkpointed_tuple_num_) \
+    //  + " [State size]: " + std::to_string(src_op) + " [Rew_op]: " + std::to_string(rew_op) + " [Src_op]: " + std::to_string(new_src_op) + " [Rc_op]: " + std::to_string(rc_op) + " [State Theta]: " + std::to_string(state_theta_));
 
     if(rew_op > 0) {
         if(auto x = dynamic_cast<HashJoinExecutor *>(prev_.get())) {
@@ -41,6 +43,9 @@ std::pair<bool, double> SortExecutor::judge_state_reward(SortCheckpointInfo* cur
         } else if(auto x = dynamic_cast<ProjectionExecutor *>(prev_.get())) {
             curr_ck_info->left_rc_op_ = x->getRCop(curr_ck_info->ck_timestamp_);
         }
+
+        // RwServerDebug::getInstance()->DEBUG_PRINT("[SortExecutor][op_id: " + std::to_string(operator_id_) + "]: [delta tuple num]: " + std::to_string(num_records_ - checkpointed_tuple_num_) \
+        // + " [State size]: " + std::to_string(src_op) + " [Rew_op]: " + std::to_string(rew_op) + " [Src_op]: " + std::to_string(new_src_op) + " [Rc_op]: " + std::to_string(rc_op) + " [State Theta]: " + std::to_string(state_theta_));
         return {true, src_op};
     }
 
@@ -56,18 +61,19 @@ int64_t SortExecutor::getRCop(std::chrono::time_point<std::chrono::system_clock>
         }
     }
     if(latest_ck_info == nullptr) {
+        std::cerr << "[Error]: No ck points found! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
         assert(0);
     }
 
-    RwServerDebug::getInstance()->DEBUG_PRINT("[SortExecutor][op_id: " + std::to_string(operator_id_) + "]: [Curr time]: " + std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(curr_time.time_since_epoch()).count()) \
-    + " [Latest ck time]: " + std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(latest_ck_info->ck_timestamp_.time_since_epoch()).count()) \
-    + " [Left rc op]: " + std::to_string(latest_ck_info->left_rc_op_));
+    // RwServerDebug::getInstance()->DEBUG_PRINT("[SortExecutor][op_id: " + std::to_string(operator_id_) + "]: [Curr time]: " + std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(curr_time.time_since_epoch()).count()) \
+    // + " [Latest ck time]: " + std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(latest_ck_info->ck_timestamp_.time_since_epoch()).count()) \
+    // + " [Left rc op]: " + std::to_string(latest_ck_info->left_rc_op_));
 
-    if(auto x = dynamic_cast<HashJoinExecutor *>(prev_.get())) {
+    if(dynamic_cast<HashJoinExecutor *>(prev_.get())) {
         return std::chrono::duration_cast<std::chrono::microseconds>(curr_time - latest_ck_info->ck_timestamp_).count() + latest_ck_info->left_rc_op_;
-    } else if(auto x = dynamic_cast<BlockNestedLoopJoinExecutor *>(prev_.get())) {
+    } else if(dynamic_cast<BlockNestedLoopJoinExecutor *>(prev_.get())) {
         return std::chrono::duration_cast<std::chrono::microseconds>(curr_time - latest_ck_info->ck_timestamp_).count() + latest_ck_info->left_rc_op_;
-    } else if(auto x = dynamic_cast<ProjectionExecutor *>(prev_.get())) {
+    } else if(dynamic_cast<ProjectionExecutor *>(prev_.get())) {
         return std::chrono::duration_cast<std::chrono::microseconds>(curr_time - latest_ck_info->ck_timestamp_).count() + latest_ck_info->left_rc_op_;
     }
     else {
@@ -77,13 +83,13 @@ int64_t SortExecutor::getRCop(std::chrono::time_point<std::chrono::system_clock>
 }
 
 void SortExecutor::write_state_if_allow(int type) {
-    if(type == 1) return;
+    // if(type == 1) return;
     SortCheckpointInfo curr_ck_info = {.ck_timestamp_ = std::chrono::high_resolution_clock::now()};
     if(state_open_) {
         auto [able_to_write, src_op] = judge_state_reward(&curr_ck_info);
         if(able_to_write) {
             auto [status, actual_size] = context_->op_state_mgr_->add_operator_state_to_buffer(this, src_op);
-            RwServerDebug::getInstance()->DEBUG_PRINT("[SortExecutor][op_id: " + std::to_string(operator_id_) + "]: [Write State]: [state size]: " + std::to_string(actual_size));
+            // RwServerDebug::getInstance()->DEBUG_PRINT("[SortExecutor][op_id: " + std::to_string(operator_id_) + "]: [Write State]: [state size]: " + std::to_string(actual_size));
             if(status) {
                 ck_infos_.push_back(curr_ck_info);
                 checkpointed_tuple_num_ = num_records_;
@@ -101,6 +107,7 @@ void SortExecutor::load_state_info(SortOperatorState *sort_op_state) {
     // is_sort_index_checkpointed_ = sort_op_state->is_sort_index_checkpointed_;
     be_call_times_ = sort_op_state->be_call_times_;
     left_child_call_times_ = sort_op_state->left_child_call_times_;
+    finished_begin_tuple_ = sort_op_state->finish_begin_tuple_;
 
     // std::cout << "SortExecutor: load_state_info: be_call_times_=" << be_call_times_ << ", left_child_call_times: " << left_child_call_times_ << ", num_records: " << num_records_ << std::endl;
     

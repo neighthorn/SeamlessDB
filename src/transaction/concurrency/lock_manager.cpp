@@ -218,6 +218,9 @@ Lock* LockManager::upgrade_record_lock_type_mode(RecordLockType lock_type, LockM
 
 Lock* LockManager::request_record_lock(int table_id, const Rid& rid, Transaction* txn, RecordLockType lock_type, LockMode lock_mode, int thread_index) {
     // std::cout << "request_record_lock: table_id: " << table_id << ", rid.record_no = " << rid.record_no << ", lock_type: " << LockTypeStr[lock_type] << ", lock_mode: " << LockModeStr[lock_mode] << "trx_id: " << txn->get_transaction_id() << "\n";
+    if(node_type_ == 1) {
+        return nullptr;
+    }
 
     std::unique_lock<std::mutex> lock(latch_);
     

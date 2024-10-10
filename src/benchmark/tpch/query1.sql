@@ -13,10 +13,13 @@ select
 from 
     lineitem
 where 
-    l_shipdate <= date'1998-12-01' - interval '90' day 
+    l_shipdate <= date'1998-09-01'
 group by 
     l_returnflag, 
     l_linestatus
 order by 
     l_returnflag, 
     l_linestatus;
+
+
+select l_returnflag, l_linestatus, l_quantity, l_extendedprice, l_discount, l_tax from lineitem where l_shipdate <= date'1998-09-01' order by l_returnflag;

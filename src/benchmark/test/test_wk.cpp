@@ -2,11 +2,12 @@
 #include "record/record.h"
 
 // test_table(id int, name char(4), score float)
-void TestWK::create_table() {
+bool TestWK::create_table() {
     std::string db_name = "db_test";
     struct stat st;
     if(stat(db_name.c_str(), &st) == 0 && S_ISDIR(st.st_mode)) {
-       chdir(db_name.c_str());
+       load_meta();
+       return false;
     }
     else {
         std::string cmd = "mkdir " + db_name;
@@ -38,6 +39,7 @@ void TestWK::create_table() {
     sm_mgr_->create_table(table_name, col_defs, pkeys, nullptr);
     index_handle_ = sm_mgr_->primary_index_.at(table_name).get();
     oldversion_handle_ = sm_mgr_->old_versions_.at(table_name).get();
+    return true;
 }
 
 // this function is specifically used for compute pool to get table meta

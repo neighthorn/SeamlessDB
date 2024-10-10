@@ -91,7 +91,7 @@ namespace storage_service {
             int table_id = request->page_id()[i].table_id();
             // int fd = disk_manager_->get_table_fd(table_id);
             int page_no = request->page_id()[i].page_no();
-            std::cout << "table_id: " << table_id << ", page_id: " << request->page_id()[i].page_no() << ", lsn: " << lsn << "\n";
+            // std::cout << "table_id: " << table_id << ", page_id: " << request->page_id()[i].page_no() << ", lsn: " << lsn << "\n";
             char data[PAGE_SIZE];
             // disk_manager_->read_page(fd, page_no, data, PAGE_SIZE);
             while(lsn > share_status_->current_replay_lsn_) {

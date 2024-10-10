@@ -10,7 +10,7 @@ public:
     TPCHWK() {}
     TPCHWK(SmManager* sm_mgr, IxManager* ix_mgr, int sf, MultiVersionManager* mvcc_mgr)
         : sm_mgr_(sm_mgr), ix_mgr_(ix_mgr), sf_(sf), mvcc_mgr_(mvcc_mgr) {}
-    void create_table() override;
+    bool create_table() override;
     void load_data() override;
     void load_meta() override;
     void init_transaction(int thread_num) override;

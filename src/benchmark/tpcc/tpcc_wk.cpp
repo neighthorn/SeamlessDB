@@ -4,14 +4,14 @@
 #include "table.h"
 #include "record/record.h"
 
-void TPCCWK::create_table() {
+bool TPCCWK::create_table() {
     std::string db_name = "db_tpcc";
     struct stat st;
     if(stat(db_name.c_str(), &st) == 0 && S_ISDIR(st.st_mode)) {
         std::cout << "exist dir, just load meta\n";
     //    chdir(db_name.c_str());
        load_meta();
-       return;
+       return false;
     }
     else {
         std::string cmd = "mkdir " + db_name;
@@ -39,6 +39,7 @@ void TPCCWK::create_table() {
     item->create_table(sm_mgr_);
     Stock* stock = new Stock();
     stock->create_table(sm_mgr_);
+    return true;
 }
 
 #define load_index(table_name) \
@@ -72,7 +73,7 @@ void TPCCWK::load_meta() {
     load_index(item);
     load_index(stock);
 
-    chdir("..");
+    // chdir("..");
 }
 
 #define load_table_data(table_name) \

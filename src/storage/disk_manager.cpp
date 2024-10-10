@@ -20,7 +20,7 @@ void DiskManager::write_page(int fd, page_id_t page_no, const char *offset, int 
     // 2.调用write()函数
     // 注意write返回值与num_bytes不等时 throw InternalError("DiskManager::write_page Error");
 
-    lseek(fd, page_no * PAGE_SIZE, SEEK_SET);
+    lseek(fd, (int64_t)page_no * (int64_t)PAGE_SIZE, SEEK_SET);
     ssize_t bytes_write = write(fd, offset, num_bytes);  // 这里的offset可以是uint_8*类型，也可以是char*类型
     if (bytes_write != num_bytes) {
         throw InternalError("DiskManager::write_page Error");
@@ -41,7 +41,7 @@ void DiskManager::read_page(int fd, page_id_t page_no, char *offset, int num_byt
     // 注意read返回值与num_bytes不等时，throw InternalError("DiskManager::read_page Error");
 
     // SEEK_SET 定位到文件头
-    lseek(fd, page_no * PAGE_SIZE, SEEK_SET);
+    lseek(fd, (int64_t)page_no * (int64_t)PAGE_SIZE, SEEK_SET);
     ssize_t bytes_read = read(fd, offset, num_bytes);
     // 没有成功从buffer偏移处读取指定数字节
     if (bytes_read != num_bytes) {
@@ -284,7 +284,7 @@ void DiskManager::write_log(char *log_data, int size) {
 
 
 void DiskManager::update_value(int fd, page_id_t page_no, int slot_offset, char* value, int value_size) {
-    lseek(fd, page_no * PAGE_SIZE + slot_offset, SEEK_SET);
+    lseek(fd, (int64_t)page_no * (int64_t)PAGE_SIZE + slot_offset, SEEK_SET);
     ssize_t bytes_write = write(fd, value, value_size);
     if(bytes_write != value_size) {
         // RDMA_LOG(FATAL) << "DiskManager::update_value Error: failed to write complete data.";

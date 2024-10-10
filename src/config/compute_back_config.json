@@ -10,7 +10,10 @@
         "state_theta": 0.9,
         "buffer_pool_size": 1310720,
         "src_scale_factor": 1.0,
-        "block_size": 500
+        "block_size": 500,
+        "MB": 8192,
+        "RB": 8192,
+        "C": 1000
     },
     "ro_node": {
         "machine_id": 3,
@@ -18,16 +21,19 @@
         "local_rdma_port": 12200,
         "thread_num": 2,
         "workload": "tpch",
-        "record_num": 1,
+        "record_num": 30,
         "state_open": 1,
-        "state_theta": 0.5,
+        "state_theta": 2,
         "buffer_pool_size": 1310720,
-        "src_scale_factor": 1.0,
-        "block_size": 500
+        "src_scale_factor": 0.9,
+        "block_size": 500,
+        "MB": 819200,
+        "RB": 819200,
+        "C": 30000
     },
     "remote_state_nodes": {
         "remote_ips": [
-            "10.77.110.144","10.77.110.147"
+            "127.0.0.1","127.0.0.1"
         ],
         "remote_ports": [
             12193,12193

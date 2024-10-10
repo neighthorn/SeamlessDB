@@ -47,7 +47,7 @@ public:
         checkpointed_tuple_num_ = 0;
         exec_type_ = ExecutionType::SORT;
         is_in_recovery_ = false;
-        ck_infos_.push_back(SortCheckpointInfo{.ck_timestamp_ = std::chrono::high_resolution_clock::now()});
+        ck_infos_.push_back(SortCheckpointInfo{.ck_timestamp_ = std::chrono::high_resolution_clock::now(), .left_rc_op_ = 0});
     }
 
     std::string getType() override { return "Sort"; }
@@ -57,7 +57,11 @@ public:
     const std::vector<ColMeta> &cols() const override { return prev_->cols(); }
 
     void beginTuple() override { 
+        std::cout << "SortExecutor: beginTuple" << std::endl;
+        if(is_in_recovery_ && finished_begin_tuple_)  return;
+
         if(is_in_recovery_ == false) prev_->beginTuple();
+
         if(prev_->is_end()) {
             is_sorted_ = true;
             finished_begin_tuple_ = true;
@@ -72,6 +76,8 @@ public:
             left_child_call_times_ ++;
             write_state_if_allow();
         } 
+
+        std::cout << "SortExecutor: beginTuple: num_records_=" << num_records_ << std::endl;
 
         sorted_index_ = new int[num_records_];
         for(int i = 0; i < unsorted_records_.size(); i++) {

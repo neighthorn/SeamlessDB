@@ -10,18 +10,18 @@
 void load_data(std::string workload, int record_num, SmManager* sm_mgr, IxManager* ix_mgr, MultiVersionManager *mvcc_mgr) {
     if(workload.compare("test") == 0) {
         TestWK* test_wk = new TestWK(sm_mgr, ix_mgr, record_num, mvcc_mgr);
-        test_wk->create_table();
-        test_wk->load_data();
+        if(test_wk->create_table())
+            test_wk->load_data();
     }
     else if(workload.compare("tpcc") == 0) {
         TPCCWK* tpcc_wk = new TPCCWK(sm_mgr, ix_mgr, record_num, mvcc_mgr);
-        tpcc_wk->create_table();
-        tpcc_wk->load_data();
+        if(tpcc_wk->create_table())
+            tpcc_wk->load_data();
     }
     else if(workload.compare("tpch") == 0) {
         TPCHWK *tpch_wk = new TPCHWK(sm_mgr, ix_mgr, record_num, mvcc_mgr);
-        tpch_wk->create_table();
-        tpch_wk->load_data();
+        if(tpch_wk->create_table())
+            tpch_wk->load_data();
     } 
     else {
         std::cerr << "workload not supported!\n";

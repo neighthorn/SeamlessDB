@@ -154,3 +154,4 @@ extern int      node_type_;
 extern int      MB_;
 extern int      RB_;
 extern int      C_;
+extern int      cost_model_;

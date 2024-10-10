@@ -32,5 +32,6 @@ void IxScan::next() {
         rid_.slot_no = 0;
         rid_.page_no = node->get_next_page();
     }
+    ih_->buffer_pool_manager_->unpin_page(node->get_page_id(), false);
     rid_.record_no ++;
 }

@@ -472,6 +472,7 @@ int node_type_ = 0; // rw_server default
 int MB_ = 1024;
 int RB_ = 1024;
 int C_ = 1000;
+int cost_model_ = 0;
 
 void ComparativeExp::normal_exec() {
     std::cout << "************************ normal_exec ************************" << std::endl;
@@ -555,7 +556,7 @@ int main(int argc, char** argv) {
     cJSON* cjson = parse_json_file(config_path);
     cJSON* comp_exp_config = cJSON_GetObjectItem(cjson, "comparative_exp");
     int join_num = cJSON_GetObjectItem(comp_exp_config, "join_num")->valueint;
-    std::string cost_model = cJSON_GetObjectItem(comp_exp_config, "cost_model")->valuestring;
+    std::string cost_model_type = cJSON_GetObjectItem(comp_exp_config, "cost_model")->valuestring;
     node_type_ = cJSON_GetObjectItem(comp_exp_config, "node_type")->valueint;
     int buffer_pool_size = cJSON_GetObjectItem(comp_exp_config, "buffer_pool_size")->valueint;
     int thread_num = cJSON_GetObjectItem(comp_exp_config, "thread_num")->valueint;
@@ -566,6 +567,13 @@ int main(int argc, char** argv) {
     state_theta_ = cJSON_GetObjectItem(comp_exp_config, "state_theta")->valuedouble;
     src_scale_factor_ = cJSON_GetObjectItem(comp_exp_config, "src_scale_factor")->valuedouble;
     block_size_ = cJSON_GetObjectItem(comp_exp_config, "block_size")->valueint;
+
+    if(cost_model_type.compare("SeamlessDB") == 0) {
+        cost_model_ = 0;
+    }
+    else if(cost_model_type.compare("PREDATOR") == 0) {
+        cost_model_ = 1;
+    }
 
     MetaManager::create_instance(config_path);
     RDMARegionAllocator::create_instance(MetaManager::get_instance(), 1);

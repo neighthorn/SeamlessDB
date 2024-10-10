@@ -2,7 +2,8 @@
 #include "tpch_table.h"
 #include "tpch_queries.h"
 
-void TPCHWK::create_table() {
+// return true if need to generate data, false if data already exists
+bool TPCHWK::create_table() {
     /*
         create database tpch
     */
@@ -12,7 +13,7 @@ void TPCHWK::create_table() {
         std::cout << "directory already exists, just load meta\n";
        chdir(db_name.c_str());
        load_meta();
-       return;
+       return false;
     }
     else {
         std::cout << "make new directory\n";
@@ -28,23 +29,32 @@ void TPCHWK::create_table() {
     /*
         create table
     */
-    TPCH_TABLE::Region *region = new TPCH_TABLE::Region();
+    std::unique_ptr<TPCH_TABLE::Region> region = std::make_unique<TPCH_TABLE::Region>();
     region->create_table(sm_mgr_);
-    TPCH_TABLE::Nation *nation = new TPCH_TABLE::Nation();
+
+    std::unique_ptr<TPCH_TABLE::Nation> nation = std::make_unique<TPCH_TABLE::Nation>();
     nation->create_table(sm_mgr_);
-    TPCH_TABLE::Part *part = new TPCH_TABLE::Part();
+
+    std::unique_ptr<TPCH_TABLE::Part> part = std::make_unique<TPCH_TABLE::Part>();
     part->create_table(sm_mgr_);
-    TPCH_TABLE::Customer *customer = new TPCH_TABLE::Customer();
+
+    std::unique_ptr<TPCH_TABLE::Customer> customer = std::make_unique<TPCH_TABLE::Customer>();
     customer->create_table(sm_mgr_);
-    TPCH_TABLE::Orders   *orders = new TPCH_TABLE::Orders();
+
+    std::unique_ptr<TPCH_TABLE::Orders> orders = std::make_unique<TPCH_TABLE::Orders>();
     orders->create_table(sm_mgr_);
-    TPCH_TABLE::Supplier    *supplier = new TPCH_TABLE::Supplier();
+
+    std::unique_ptr<TPCH_TABLE::Supplier> supplier = std::make_unique<TPCH_TABLE::Supplier>();
     supplier->create_table(sm_mgr_);
-    TPCH_TABLE::PartSupp    *part_supp = new TPCH_TABLE::PartSupp();
+
+    std::unique_ptr<TPCH_TABLE::PartSupp> part_supp = std::make_unique<TPCH_TABLE::PartSupp>();
     part_supp->create_table(sm_mgr_);
-    TPCH_TABLE::Lineitem    *lineitem = new TPCH_TABLE::Lineitem();
+
+    std::unique_ptr<TPCH_TABLE::Lineitem> lineitem = std::make_unique<TPCH_TABLE::Lineitem>();
     lineitem->create_table(sm_mgr_);
+    
     std::cout << "finish create table\n";
+    return true;
 }
 
 /*
@@ -52,7 +62,8 @@ void TPCHWK::create_table() {
 */
 #define tpch_load_table_data(table_name) \
     TPCH_TABLE::table_name* table_name##_tab = new TPCH_TABLE::table_name(); \
-    table_name##_tab->generate_table_data(sf_, txn, sm_mgr_, ix_mgr_);
+    table_name##_tab->generate_table_data(sf_, txn, sm_mgr_, ix_mgr_); \
+    delete table_name##_tab;
 
 #define tpch_flush_index(table_name) \
     auto table_name##_tab_meta = sm_mgr_->db_.get_table(#table_name); \
@@ -99,7 +110,7 @@ void TPCHWK::load_data() {
         flush index
     */
 
-   std::cout << "flush index:\n";
+    std::cout << "flush index:\n";
     tpch_flush_index(region);
     tpch_flush_index(nation);
     tpch_flush_index(part);
@@ -123,6 +134,7 @@ void TPCHWK::load_data() {
     tpch_reload_index(lineitem);
     std::cout << "tpch reload index done!\n";
 
+    delete txn;
 }
 
 #define load_index(table_name) \
@@ -157,7 +169,8 @@ void TPCHWK::load_meta() {
     load_index(partsupp);
     load_index(lineitem);
 
-    chdir("..");
+    // TODO？？ 是否需要chdir ..
+    // chdir("..");
 }
 
 void TPCHWK::init_transaction(int thread_num) {

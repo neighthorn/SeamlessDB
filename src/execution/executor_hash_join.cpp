@@ -8,6 +8,8 @@
 #include "debug_log.h"
 
 void HashJoinExecutor::beginTuple() {
+    if(is_in_recovery_ && finished_begin_tuple_) return;
+
     if(!initialized_) {
         std::unique_ptr<Record> left_rec;
         char* left_key = new char[join_key_size_];
@@ -21,6 +23,10 @@ void HashJoinExecutor::beginTuple() {
                 write_state_if_allow();
                 return;
             }
+        }
+        else {
+            left_->nextTuple();
+            std::cout << "HashJoinOp Recovery BeginTuple: left_child_call_times: " << left_child_call_times_ << ", hash_table_size: " << left_hash_table_curr_tuple_count_ << std::endl;
         }
 
         for(;!left_->is_end(); left_->nextTuple()) {
@@ -54,11 +60,13 @@ void HashJoinExecutor::beginTuple() {
             else write_state_if_allow();
         }
 
+        std::cout << "HashJoin HashTableSize: " << left_hash_table_curr_tuple_count_ << std::endl;
         initialized_ = true;
         delete[] left_key;
     }
 
-    right_->beginTuple();
+    if(is_in_recovery_ == false) right_->beginTuple();
+
     if(right_->is_end()) {
         is_end_ = true;
         return;
@@ -100,7 +108,9 @@ void HashJoinExecutor::append_tuple_to_hash_table_from_state(char* src, int left
         checkpointed_indexes_[key] = 0;
     }
     hash_table_[key].push_back(std::move(left_rec));
+    checkpointed_indexes_[key] ++;
     left_hash_table_curr_tuple_count_ ++;
+    left_hash_table_checkpointed_tuple_count_ ++;
 }
 
 void HashJoinExecutor::nextTuple(){
@@ -194,8 +204,8 @@ std::pair<bool, double> HashJoinExecutor::judge_state_reward(HashJoinCheckpointI
     // double new_src_op = src_op / src_scale_factor_;
     double new_src_op = src_op / MB_ + src_op / RB_ + C_;
     double rew_op = rc_op / new_src_op - state_theta_;
-    RwServerDebug::getInstance()->DEBUG_PRINT("[HashJoinExecutor][op_id: " + std::to_string(operator_id_) + "]: [delta_hash_table_tuple_count]: " + std::to_string(left_hash_table_curr_tuple_count_ - latest_ck_info->left_hash_table_curr_tuple_count_) \
-    + " [Rew_op]: " + std::to_string(rew_op) + " [state_size]: " + std::to_string(src_op) + " [Src_op]: " + std::to_string(new_src_op) + " [Rc_op]: " + std::to_string(rc_op) + " [State Theta]: " + std::to_string(state_theta_));
+    // RwServerDebug::getInstance()->DEBUG_PRINT("[HashJoinExecutor][op_id: " + std::to_string(operator_id_) + "]: [delta_hash_table_tuple_count]: " + std::to_string(left_hash_table_curr_tuple_count_ - latest_ck_info->left_hash_table_curr_tuple_count_) \
+    // + " [Rew_op]: " + std::to_string(rew_op) + " [state_size]: " + std::to_string(src_op) + " [Src_op]: " + std::to_string(new_src_op) + " [Rc_op]: " + std::to_string(rc_op) + " [State Theta]: " + std::to_string(state_theta_));
 
     if(rew_op > 0) {
         // if create checkpoint in current time, calculate the rc_op(curr_time) for left child and right child
@@ -208,6 +218,8 @@ std::pair<bool, double> HashJoinExecutor::judge_state_reward(HashJoinCheckpointI
         else if(auto x = dynamic_cast<ProjectionExecutor*>(left_.get())) {
             curr_ck_info->left_rc_op_ = x->getRCop(curr_ck_info->ck_timestamp_);
         }
+        // RwServerDebug::getInstance()->DEBUG_PRINT("[HashJoinExecutor][op_id: " + std::to_string(operator_id_) + "]: [delta_hash_table_tuple_count]: " + std::to_string(left_hash_table_curr_tuple_count_ - latest_ck_info->left_hash_table_curr_tuple_count_) \
+        // + " [Rew_op]: " + std::to_string(rew_op) + " [state_size]: " + std::to_string(src_op) + " [Src_op]: " + std::to_string(new_src_op) + " [Rc_op]: " + std::to_string(rc_op) + " [State Theta]: " + std::to_string(state_theta_));
         return {true, src_op};
     }
 
@@ -226,9 +238,9 @@ int64_t HashJoinExecutor::getRCop(std::chrono::time_point<std::chrono::system_cl
         std::cerr << "[Error]: HashJoinExecutor: No ck points found! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
     }
 
-    RwServerDebug::getInstance()->DEBUG_PRINT("[HashJoinExecutor][op_id: " + std::to_string(operator_id_) + "]: [Get RCop]: [curr_time] " + std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(curr_time.time_since_epoch()).count()) \
-     + " [latest_ck_info->ck_timestamp_]: " + std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(latest_ck_info->ck_timestamp_.time_since_epoch()).count()) \
-     + " [left_rc_op]: " + std::to_string(latest_ck_info->left_rc_op_));
+    // RwServerDebug::getInstance()->DEBUG_PRINT("[HashJoinExecutor][op_id: " + std::to_string(operator_id_) + "]: [Get RCop]: [curr_time] " + std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(curr_time.time_since_epoch()).count()) \
+    //  + " [latest_ck_info->ck_timestamp_]: " + std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(latest_ck_info->ck_timestamp_.time_since_epoch()).count()) \
+    //  + " [left_rc_op]: " + std::to_string(latest_ck_info->left_rc_op_));
 
     if(auto x =  dynamic_cast<HashJoinExecutor *>(left_.get())) {
         return std::chrono::duration_cast<std::chrono::microseconds>(curr_time - latest_ck_info->ck_timestamp_).count() + latest_ck_info->left_rc_op_;
@@ -245,13 +257,13 @@ int64_t HashJoinExecutor::getRCop(std::chrono::time_point<std::chrono::system_cl
 }
 
 void HashJoinExecutor::write_state_if_allow(int type) {
-    if(type == 1) return;
+    // if(type == 1) return;
     HashJoinCheckpointInfo curr_ckpt_info = {.ck_timestamp_ = std::chrono::high_resolution_clock::now(), .left_hash_table_curr_tuple_count_ = left_hash_table_curr_tuple_count_};
     if(state_open_) {
         auto [able_to_write, src_op] = judge_state_reward(&curr_ckpt_info);
         if(able_to_write) {
             auto [status, actual_size] = context_->op_state_mgr_->add_operator_state_to_buffer(this, src_op);
-            RwServerDebug::getInstance()->DEBUG_PRINT("[HashJoinExecutor][op_id: " + std::to_string(operator_id_) + "]: [Write State]: " + std::to_string(status) + " [Actual Size]: " + std::to_string(actual_size));
+            // RwServerDebug::getInstance()->DEBUG_PRINT("[HashJoinExecutor][op_id: " + std::to_string(operator_id_) + "]: [Write State]: " + std::to_string(status) + " [Actual Size]: " + std::to_string(actual_size));
             if(status) {
                 ck_infos_.push_back(curr_ckpt_info);
                 left_hash_table_checkpointed_tuple_count_ = left_hash_table_curr_tuple_count_;
@@ -271,18 +283,32 @@ void HashJoinExecutor::load_state_info(HashJoinOperatorState* state) {
     if(state->right_child_is_join_ == false) {
         if(auto x = dynamic_cast<IndexScanExecutor *>(right_.get())) {
             x->load_state_info(dynamic_cast<IndexScanOperatorState *>(state->right_child_state_));
+            if(x->finished_begin_tuple_ == false) {
+                std::cout << "HashJoinExecutor::load_state_info: IndexScanExecutor beginTuple\n";
+                x->beginTuple();
+            }
+            else {
+                x->nextTuple();
+            }
         }
         else if (auto x = dynamic_cast<ProjectionExecutor *>(right_.get())) {
             x->load_state_info(dynamic_cast<ProjectionOperatorState *>(state->right_child_state_));
+            if(x->finished_begin_tuple_ == false) {
+                x->beginTuple();
+            }
+            else {
+                x->nextTuple();
+            }
         }
     }
-
-    right_->nextTuple();
+    
 
     left_tuples_index_ = state->left_tuples_index_;
     left_child_call_times_ = state->left_child_call_times_;
     be_call_times_ = state->be_call_times_;
     is_end_ = false;
+    finished_begin_tuple_ = state->finish_begin_tuple_;
+    initialized_ = state->is_hash_table_built_;
 
     // 先build了哈希表，才能调用当前函数
     if(!initialized_) {
@@ -290,9 +316,21 @@ void HashJoinExecutor::load_state_info(HashJoinOperatorState* state) {
         if(state->left_child_is_join_ == false) {
             if(auto x = dynamic_cast<IndexScanExecutor *>(left_.get())) {
                 x->load_state_info(dynamic_cast<IndexScanOperatorState *>(state->left_child_state_));
+                if(x->finished_begin_tuple_ == false) {
+                    x->beginTuple();
+                }
+                else {
+                    x->nextTuple();
+                }
             }
             else if (auto x = dynamic_cast<ProjectionExecutor *>(left_.get())) {
                 x->load_state_info(dynamic_cast<ProjectionOperatorState *>(state->left_child_state_));
+                if(x->finished_begin_tuple_ == false) {
+                    x->beginTuple();
+                }
+                else {
+                    x->nextTuple();
+                }
             }
         }
     }

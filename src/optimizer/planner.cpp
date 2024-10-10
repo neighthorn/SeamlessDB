@@ -237,16 +237,21 @@ std::shared_ptr<Plan> Planner::make_one_rel(std::shared_ptr<Query> query)
             ++it;
         }
 
-        // table_join_executors = std::make_shared<JoinPlan>(T_NestLoop, 
-        //                                                 current_sql_id_, current_plan_id_++, 
-        //                                                 std::move(table_join_executors), 
-        //                                                 std::move(table_scan_executors[i]), 
-        //                                                 join_conds);
-        table_join_executors = std::make_shared<JoinPlan>(T_HashJoin, 
+        if(i == 1) {
+            table_join_executors = std::make_shared<JoinPlan>(T_NestLoop, 
+                                                            current_sql_id_, current_plan_id_++, 
+                                                            std::move(table_join_executors), 
+                                                            std::move(table_scan_executors[i]), 
+                                                            join_conds);
+        }
+        else {
+            table_join_executors = std::make_shared<JoinPlan>(T_HashJoin, 
                                                         current_sql_id_, current_plan_id_++, 
                                                         std::move(table_join_executors), 
                                                         std::move(table_scan_executors[i]), 
                                                         join_conds);
+        }
+        
     }
     
     // int scantbl[tables.size()]; // 标记是否已经被加入到了算子树中

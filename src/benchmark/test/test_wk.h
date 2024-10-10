@@ -10,7 +10,7 @@ public:
     TestWK(SmManager* sm_mgr, IxManager* ix_mgr, int record_num, MultiVersionManager *mvcc_mgr) 
         : sm_mgr_(sm_mgr), ix_mgr_(ix_mgr), record_num_(record_num), mvcc_mgr_(mvcc_mgr) {}
     // functions used for storage_pool
-    void create_table() override;
+    bool create_table() override;
     void load_data() override;
     std::string generate_name(int id);
     // fuctions used for compute_pool

@@ -169,8 +169,6 @@ bool BufferPool::unpin_page(PageId page_id, bool is_dirty) {
         std::cout << "system_error: " << e.code() << "meaning: " << e.what() << "\n";
     }
 
-    // std::cout << "[UNPIN][PageNo: " << page_id.page_no << "}" << std::endl;
-
     auto iter = page_table_.find(page_id);
     // 1 该page在页表中不存在
     if (iter == page_table_.end()) {
@@ -186,6 +184,8 @@ bool BufferPool::unpin_page(PageId page_id, bool is_dirty) {
     // 2.2 pin_count > 0
     // 只有pin_count>0才能进行pin_count--，如果pin_count=0之前就直接返回了
     page->pin_count_--;  // 这里特别注意，只有pin_count减到0的时候才让replacer进行unpin
+    // std::cout << "[UNPIN][PageNo: " << page_id.page_no << "}" << std::endl;
+    
     if (page->pin_count_ == 0) {
         replacer_->unpin(frame_id);
     }

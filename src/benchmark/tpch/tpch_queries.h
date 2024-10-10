@@ -72,7 +72,9 @@ public:
     void generate_new_txn() override {
 
         queries.push_back("begin;");
-        queries.push_back("select l_orderkey, o_orderkey, l_discount, l_extendedprice from orders, customer, lineitem where o_orderkey < 20000 and c_custkey < 20000 and l_orderkey < 10000 and c_custkey = o_custkey and l_orderkey = o_orderkey;");
+        // queries.push_back("select l_returnflag, l_linestatus, l_quantity, l_extendedprice, l_discount, l_tax from lineitem where l_orderkey < 7500000 and l_shipdate <='1998-09-01' order by l_returnflag;");
+        queries.push_back("select l_orderkey, l_extendedprice, l_discount, o_orderdate, o_shippriority from orders, customer, lineitem where c_custkey < 15000 and o_orderkey < 150000 and l_orderkey < 150000 and c_custkey = o_custkey and l_orderkey = o_orderkey and o_orderdate < '1995-03-01' and l_shipdate > '1996-06-01' order by l_orderkey;");
+        // queries.push_back("select l_orderkey, l_extendedprice, l_discount, o_orderdate, o_shippriority from customer, orders where c_custkey < 7500 and o_orderkey < 7500 and c_custkey = o_custkey and o_orderdate < '1995-03-01';");
         queries.push_back("commit;");
 
         return ;

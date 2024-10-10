@@ -180,6 +180,15 @@ class JoinPlan : public Plan
             right_ = std::move(right);
             conds_ = std::move(conds);
             type = INNER_JOIN;
+
+            if(Plan::tag == T_NestLoop)
+                std::cout << "BlockNestedLoopJoin: ";
+            else if(Plan::tag == T_HashJoin)
+                std::cout << "HashJoin: ";
+            for(const auto& cond: conds_) {
+                std::cout << cond.lhs_col.col_name << CompOpString[cond.op] << cond.rhs_col.col_name << ", ";
+            }
+            std::cout << "\n";
         }
         ~JoinPlan(){}
 

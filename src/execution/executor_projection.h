@@ -49,11 +49,12 @@ public:
         is_root_ = false;
         left_child_call_times_ = 0;
         context_ = context;
+        finished_begin_tuple_ = false;
     }
 
     void set_root() { 
         is_root_ = true; 
-        ck_infos_.push_back(ProjectionCheckpointInfo{.ck_timestamp_ = std::chrono::high_resolution_clock::now()});
+        ck_infos_.push_back(ProjectionCheckpointInfo{.ck_timestamp_ = std::chrono::high_resolution_clock::now(), .left_rc_op_ = 0});
     }
 
     std::string getType() override { return "Projection"; }
@@ -62,7 +63,10 @@ public:
 
     const std::vector<ColMeta> &cols() const override { return cols_; }
 
-    void beginTuple() override { prev_->beginTuple(); }
+    void beginTuple() override { 
+        // if(finished_begin_tuple_)  return;
+        prev_->beginTuple(); finished_begin_tuple_ = true; 
+    }
 
     void nextTuple() override {
         assert(!prev_->is_end());

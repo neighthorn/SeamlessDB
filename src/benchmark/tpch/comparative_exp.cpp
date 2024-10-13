@@ -382,6 +382,47 @@ FINAL_PROJ_PLAN:
     return std::make_shared<ProjectionPlan>(T_Projection, curr_sql_id, curr_plan_id ++, std::move(prev_plan), std::move(cols));
 }
 
+void get_tab_cols(int table_id, std::vector<TabCol>& tab_cols) {
+    switch(table_id) {
+        case 0: {
+            tab_cols.push_back(std::move(TabCol{.tab_name = "region", .col_name = "r_regionkey"}));
+            tab_cols.push_back(std::move(TabCol{.tab_name = "region", .col_name = "r_name"}));
+        } break;
+        case 1: {
+            tab_cols.push_back(std::move(TabCol{.tab_name = "nation", .col_name = "n_nationkey"}));
+            tab_cols.push_back(std::move(TabCol{.tab_name = "nation", .col_name = "n_regionkey"}));
+            tab_cols.push_back(std::move(TabCol{.tab_name = "nation", .col_name = "n_name"}));
+        } break;
+        case 2: {
+            tab_cols.push_back(std::move(TabCol{.tab_name = "customer", .col_name = "c_custkey"}));
+            tab_cols.push_back(std::move(TabCol{.tab_name = "customer", .col_name = "c_nationkey"}));
+        } break;
+        case 3: {
+            tab_cols.push_back(std::move(TabCol{.tab_name = "supplier", .col_name = "s_suppkey"}));
+            tab_cols.push_back(std::move(TabCol{.tab_name = "supplier", .col_name = "s_nationkey"}));
+        } break;
+        case 4: {
+            tab_cols.push_back(std::move(TabCol{.tab_name = "orders", .col_name = "o_orderkey"}));
+            tab_cols.push_back(std::move(TabCol{.tab_name = "orders", .col_name = "o_orderdate"}));
+            tab_cols.push_back(std::move(TabCol{.tab_name = "orders", .col_name = "o_custkey"}));
+        } break;
+        case 5: {
+            tab_cols.push_back(std::move(TabCol{.tab_name = "lineitem", .col_name = "l_suppkey"}));
+            tab_cols.push_back(std::move(TabCol{.tab_name = "lineitem", .col_name = "l_linenumber"}));
+            tab_cols.push_back(std::move(TabCol{.tab_name = "lineitem", .col_name = "l_orderkey"}));
+        } break;
+        case 6: {
+            tab_cols.push_back(std::move(TabCol{.tab_name = "partsupp", .col_name = "ps_partkey"}));
+            tab_cols.push_back(std::move(TabCol{.tab_name = "partsupp", .col_name = "ps_suppkey"}));
+        } break;
+        case 7: {
+            tab_cols.push_back(std::move(TabCol{.tab_name = "part", .col_name = "p_partkey"}));
+        } break;
+        default:
+        break;
+    }
+}
+
 std::shared_ptr<Plan> ComparativeExp::generate_query_tree(Context* context) {
     // assert(join_node_num + 1 >= max_table_num);
     node_num_ = 3 * (join_node_num_ + 1);
@@ -397,14 +438,16 @@ std::shared_ptr<Plan> ComparativeExp::generate_query_tree(Context* context) {
         std::vector<Condition> index_conds;
         std::vector<Condition> filter_conds;
         std::vector<Condition> join_conds;
+        std::vector<TabCol> tab_cols;
 
         // index_cond 和 filter cond 用generate_cond随机生成
-        get_table_cond(i, filter_conds, index_conds);
+        get_table_cond(i, filter_conds, index_conds);        
+        get_tab_cols(i, tab_cols);
 
         if(i == 0) {
             // 第一张表直接生成scan executor
-            auto scan_plan = std::make_shared<ScanPlan>(T_IndexScan, curr_sql_id_, curr_plan_id_ ++, sm_mgr_, tables[i], filter_conds, index_conds);
-            plan = generate_proj_plan(i, std::move(scan_plan), context, curr_sql_id_, curr_plan_id_);
+            auto scan_plan = std::make_shared<ScanPlan>(T_IndexScan, curr_sql_id_, curr_plan_id_ ++, sm_mgr_, tables[i], filter_conds, index_conds, tab_cols);
+            // plan = generate_proj_plan(i, std::move(scan_plan), context, curr_sql_id_, curr_plan_id_);
         }
         else {
             // 后面的表直接放到join executor里
@@ -413,11 +456,11 @@ std::shared_ptr<Plan> ComparativeExp::generate_query_tree(Context* context) {
             // get_join_cond(left_join_table_id, i, join_conds);
             int left_join_table_id = get_join_cond(i - 1, i, join_conds);
             
-            auto scan_plan = std::make_shared<ScanPlan>(T_IndexScan, curr_sql_id_, curr_plan_id_ ++, sm_mgr_, tables[i], filter_conds, index_conds);
-            auto proj_plan = generate_proj_plan(i, std::move(scan_plan), context, curr_sql_id_, curr_plan_id_);
+            auto scan_plan = std::make_shared<ScanPlan>(T_IndexScan, curr_sql_id_, curr_plan_id_ ++, sm_mgr_, tables[i], filter_conds, index_conds, tab_cols);
+            // auto proj_plan = generate_proj_plan(i, std::move(scan_plan), context, curr_sql_id_, curr_plan_id_);
             // 随机生成 hash join or nestedloop join
             // int rnd = RandomGenerator::generate_random_int(1, 2);
-            plan = std::make_shared<JoinPlan>(T_NestLoop, curr_sql_id_, curr_plan_id_ ++, std::move(plan), std::move(proj_plan), join_conds);
+            plan = std::make_shared<JoinPlan>(T_NestLoop, curr_sql_id_, curr_plan_id_ ++, std::move(plan), std::move(scan_plan), join_conds);
             // plan = std::make_shared<JoinPlan>(T_HashJoin, curr_sql_id_, curr_plan_id_ ++, std::move(plan), std::move(proj_plan), join_conds);
         }
     }
@@ -431,6 +474,7 @@ std::shared_ptr<Plan> ComparativeExp::generate_query_tree(Context* context) {
         std::vector<Condition> index_conds;
         std::vector<Condition> filter_conds;
         std::vector<Condition> join_conds;
+        std::vector<TabCol> tab_cols;
 
         // int right_tab_id = RandomGenerator::generate_random_int(0, max_table_num - 1);
         int right_tab_id = i % 8;
@@ -438,9 +482,11 @@ std::shared_ptr<Plan> ComparativeExp::generate_query_tree(Context* context) {
         int left_tab_id = get_join_cond(i, right_tab_id, join_conds);
 
         get_table_cond(right_tab_id, filter_conds, index_conds);
+        get_tab_cols(right_tab_id, tab_cols);
+        
         // get_join_cond(left_tab_id, right_tab_id, join_conds);
         
-        auto scan_plan = std::make_shared<ScanPlan>(T_IndexScan, curr_sql_id_, curr_plan_id_ ++, sm_mgr_, tables[right_tab_id], filter_conds, index_conds);
+        auto scan_plan = std::make_shared<ScanPlan>(T_IndexScan, curr_sql_id_, curr_plan_id_ ++, sm_mgr_, tables[right_tab_id], filter_conds, index_conds, tab_cols);
         auto proj_plan = generate_proj_plan(right_tab_id, std::move(scan_plan), context, curr_sql_id_, curr_plan_id_);
         // int rnd = RandomGenerator::generate_random_int(1, 2);
         // plan = std::make_shared<JoinPlan>(T_NestLoop, curr_sql_id_, curr_plan_id_ ++, std::move(plan), std::move(proj_plan), join_conds);

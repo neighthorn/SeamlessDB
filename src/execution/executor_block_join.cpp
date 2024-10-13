@@ -147,10 +147,12 @@ void JoinBlockExecutor::beginBlock() {
     join_block_->reset();
     current_block_id_ = 0;
 
+    std::cout << "left_block_id: " << current_block_id_ << std::endl;
     while(!executor_->is_end() && !join_block_->is_full()) {
         join_block_->push_back(std::move(executor_->Next()));
         executor_->nextTuple();
     }
+    // std::cout << "finish fill block: " << current_block_id_ << std::endl;
     
     // RwServerDebug::getInstance()->DEBUG_PRINT("[JoinBlockExecutor: " + std::to_string(father_exec_->operator_id_) +  "]: [BeginBlock]: [BlockId]: " + std::to_string(current_block_id_));
 }
@@ -170,6 +172,7 @@ void JoinBlockExecutor::load_block_info(BlockJoinOperatorState *block_op_state) 
     }
     else {
         // 代表join block已经消耗完了
+        join_block_->size_ = -1;
         nextBlock();
     }
     current_block_id_ = block_op_state->left_block_id_;
@@ -183,8 +186,9 @@ void JoinBlockExecutor::nextBlock() {
     while(!executor_->is_end() && !join_block_->is_full()) {
         join_block_->push_back(std::move(executor_->Next()));
         executor_->nextTuple();
-        std::cout << "BNLJ leftchild rid: " << executor_->rid().page_no << ", " << executor_->rid().slot_no << std::endl;
+        // std::cout << "BNLJ leftchild rid: " << executor_->rid().page_no << ", " << executor_->rid().slot_no << std::endl;
     }
+    // std::cout << "finish fill block: " << current_block_id_ << std::endl;
     
     // RwServerDebug::getInstance()->DEBUG_PRINT("[JoinBlockExecutor: " + std::to_string(father_exec_->operator_id_) + "]: [NextBlock]: [BlockId]: " + std::to_string(current_block_id_));
 }
@@ -194,8 +198,8 @@ JoinBlock* JoinBlockExecutor::Next() {
 }
 
 bool JoinBlockExecutor::is_end() {
-    // return join_block_->size_ == 0;
-    return executor_->is_end();
+    return join_block_->size_ == 0;
+    // return executor_->is_end();
 }
 
 /*
@@ -316,9 +320,12 @@ void BlockNestedLoopJoinExecutor::find_next_valid_tuple() {
             left_block++
         done
     */
+//    auto find_start = std::chrono::high_resolution_clock::now();
     while(!left_blocks_->is_end()) {
         while(!right_->is_end()) {
             auto right_record = right_->Next();
+            // auto right_check_start = std::chrono::high_resolution_clock::now();
+            // std::cout << "Begin check cond for the right tuple: right rid: " << right_->rid().page_no << ", " << right_->rid().slot_no << std::endl;
             while(!left_block_->is_end()) {
                 auto left_record = left_block_->get_record();
                 /*
@@ -350,10 +357,16 @@ void BlockNestedLoopJoinExecutor::find_next_valid_tuple() {
                 }
                 // 如果符合要求，则返回
                 if(is_fit) {
+                    // auto find_end = std::chrono::high_resolution_clock::now();
+                    // auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(find_end - find_start);
+                    // std::cout << "find_next_valid_tuple time: " << duration.count() << "ms" << std::endl;
                     return ;
                 }
                 left_block_->nextTuple();
             }
+            // auto right_check_end = std::chrono::high_resolution_clock::now();
+            // std::cout << "End check cond for the right tuple: right rid: " << right_->rid().page_no << ", " << right_->rid().slot_no << std::endl;
+            // std::cout << "Check time period is: " << std::chrono::duration_cast<std::chrono::microseconds>(right_check_end - right_check_start).count() << "us" << std::endl;
 
             right_->nextTuple();
 

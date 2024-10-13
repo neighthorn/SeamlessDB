@@ -66,7 +66,7 @@ TEST(PlanSerializeTest, SinglePlan_TEST_1) {
         Condition   condition_4 = {.lhs_col = {"test", "col4"}, .op = CompOp::OP_LE, .is_rhs_val = false, .rhs_col = {"test", "col5"}};
         scan_cond.push_back(condition_4);
         
-        auto scan_plan = std::make_shared<ScanPlan>(PlanTag::T_SeqScan, 0, 0, sm_manager_.get(), "test", scan_cond, std::vector<Condition>());
+        auto scan_plan = std::make_shared<ScanPlan>(PlanTag::T_SeqScan, 0, 0, sm_manager_.get(), "test", scan_cond, std::vector<Condition>(), std::vector<TabCol>());
         char *buf = new char[per_plan_size];
         int actual_size = scan_plan->serialize(buf);
 

@@ -33,6 +33,7 @@ friend class IndexScanOperatorState;
     IxIndexHandle* pindex_handle_;              // 只考虑primary索引
     MultiVersionFileHandle* old_version_handle_;    // old_version handle
     std::vector<ColMeta> cols_;                 // 需要读取的字段
+    std::vector<size_t> sel_idxs_;
     size_t len_;                                // 选取出来的一条记录的长度
     std::vector<Condition> filter_conds_;          // 扫描条件，和conds_字段相同
 
@@ -51,11 +52,13 @@ friend class IndexScanOperatorState;
     Rid lower_rid_;
     Rid upper_rid_;
 
+    bool is_seq_scan_;
+
     bool load_from_state_ = false;
     IndexScanOperatorState *index_scan_op_ = nullptr;
 
    public:
-    IndexScanExecutor(SmManager *sm_manager, std::string tab_name, std::vector<Condition> filter_conds, std::vector<Condition> index_conds, Context *context, int sql_id, int operator_id)
+    IndexScanExecutor(SmManager *sm_manager, std::string tab_name, std::vector<TabCol> proj_cols, std::vector<Condition> filter_conds, std::vector<Condition> index_conds, Context *context, int sql_id, int operator_id)
         : AbstractExecutor(sql_id, operator_id) {
         exec_type_ = ExecutionType::INDEX_SCAN;
         finished_begin_tuple_ = false;
@@ -65,16 +68,39 @@ friend class IndexScanOperatorState;
         tab_name_ = std::move(tab_name);
         tab_ = sm_manager_->db_.get_table(tab_name_);
         filter_conds_ = std::move(filter_conds);
+
         index_conds_ = std::move(index_conds);
-        // index_no_ = index_no;
-        // index_col_names_ = index_col_names; 
-        // index_meta_ = *(tab_.get_index_meta(index_col_names_));
+        if(index_conds_.size() == 0) {
+            is_seq_scan_ = true;
+        } else {
+            is_seq_scan_ = false;
+        }
+
         index_meta_ = *(tab_.get_primary_index_meta());
-        // fh_ = sm_manager_->fhs_.at(tab_name_).get();
         pindex_handle_ = sm_manager->primary_index_.at(tab_name_).get();
         old_version_handle_ = sm_manager->old_versions_.at(tab_name_).get();
-        cols_ = tab_.cols_;
+        // cols_ = tab_.cols_;
+        
+        size_t curr_offset = 0;
+        auto& tab_cols_ = tab_.cols_;
+        // std::cout << "Table Cols: " << tab_.name_ << std::endl;
+        // for(auto& col: tab_cols_) {
+        //     std::cout << col.name << " ";
+        // }
+
+        for(auto& proj_col: proj_cols) {
+            // std::cout << "proj_col: " << proj_col.col_name << ", ";
+            auto pos = get_col(tab_cols_, proj_col);
+            sel_idxs_.push_back(pos - tab_cols_.begin());    // 代表的是proj_col在原table的cols中位于第几个
+            // std::cout << "sel_idx: " << sel_idxs_.back() << std::endl;
+            cols_.push_back(*pos);
+            cols_.back().offset = curr_offset;      // cols_中每个字段的offset代表的是在完成投影后的record中的偏移
+            curr_offset += cols_.back().len;
+        }        
+
         len_ = cols_.back().offset + cols_.back().len;
+        assert(len_ == curr_offset);
+
         std::map<CompOp, CompOp> swap_op = {
             {OP_EQ, OP_EQ}, {OP_NE, OP_NE}, {OP_LT, OP_GT}, {OP_GT, OP_LT}, {OP_LE, OP_GE}, {OP_GE, OP_LE},
         };
@@ -88,6 +114,16 @@ friend class IndexScanOperatorState;
                 cond.op = swap_op.at(cond.op);
             }
         }
+        // std::cout << "IndexScanExecutor: " << tab_name_ << std::endl;
+        // std::cout << "filter conds: \n";
+        // for(auto& cond: filter_conds_) {
+        //     std::cout << cond.lhs_col.col_name << CompOpString[cond.op] << cond.rhs_val.int_val << std::endl;
+        // }
+        // std::cout << "index conds: \n";
+        // for(auto& cond: index_conds_) {
+        //     std::cout << cond.lhs_col.col_name << CompOpString[cond.op] << cond.rhs_val.int_val << std::endl;
+        // }
+        // std::cout << "is_seq_scan: " << is_seq_scan_ << std::endl;
         // fed_conds_ = conds_;
 
         // first request LOCK_IX on table
@@ -95,20 +131,27 @@ friend class IndexScanOperatorState;
 
         if(node_type_ == 1) goto NOTALBELOCK;
         if(context_ != nullptr) {
-            switch(context_->plan_tag_) {
-                case T_Update:
-                case T_Delete: {
-                    lock = context_->lock_mgr_->request_table_lock(tab_.table_id_, context_->txn_, LockMode::LOCK_IX, context_->coro_sched_->t_id_);
-                } break;
-                case T_select: {
-                    lock = context_->lock_mgr_->request_table_lock(tab_.table_id_, context_->txn_, LockMode::LOCK_IS, context_->coro_sched_->t_id_);
-                } break;
-                default:
-                    std::cout << "Invalid plan tag\n";
-                    break;
+            if(is_seq_scan_ == true) {
+                lock = context_->lock_mgr_->request_table_lock(tab_.table_id_, context_->txn_, LockMode::LOCK_S, context_->coro_sched_->t_id_);
+                assert(lock != nullptr);
+                context_->txn_->append_lock(lock);
             }
-            assert(lock != nullptr);
-            context_->txn_->append_lock(lock);
+            else {
+                switch(context_->plan_tag_) {
+                    case T_Update:
+                    case T_Delete: {
+                        lock = context_->lock_mgr_->request_table_lock(tab_.table_id_, context_->txn_, LockMode::LOCK_IX, context_->coro_sched_->t_id_);
+                    } break;
+                    case T_select: {
+                        lock = context_->lock_mgr_->request_table_lock(tab_.table_id_, context_->txn_, LockMode::LOCK_IS, context_->coro_sched_->t_id_);
+                    } break;
+                    default:
+                        std::cout << "Invalid plan tag\n";
+                        break;
+                }
+                assert(lock != nullptr);
+                context_->txn_->append_lock(lock);
+            }
         }
 NOTALBELOCK:
         be_call_times_ = 0;
@@ -159,6 +202,22 @@ NOTALBELOCK:
         // if(finished_begin_tuple_)  return;
         check_runtime_conds();
 
+        // if(is_seq_scan_) {
+        //     auto lower = pindex_handle_->leaf_begin();
+        //     auto upper = pindex_handle_->leaf_end();
+        //     scan_ = std::make_unique<IxScan>(pindex_handle_);
+        //     for(scan_->next(); !scan_->is_end(); scan_->next()) {
+        //         rid_ = scan_->rid();
+        //         auto record = pindex_handle_->get_record(rid_, context_);
+        //         if(eval_conds(cols_, filter_conds_, record.get()) && record->is_deleted() == false) {
+        //             current_record_ = std::move(record);
+        //             break;
+        //         }
+        //     }
+        //     finished_begin_tuple_ = true;
+        //     return;
+        // }
+
             // CompOp right_op = OP_EQ;
         CompOp op = OP_EQ;
         char* min_key = new char[index_meta_.col_tot_len];
@@ -170,7 +229,7 @@ NOTALBELOCK:
         auto upper = pindex_handle_->leaf_end();
         // 整张表的记录查询范围是[leaf_begin, leaf_end)
         // TODO: 现有逻辑只支持一个字段一个condition，不支持一个字段多个condition
-        int i;
+        int i = 0;
         for(i = 0; i < (int)index_conds_.size() && i < index_meta_.col_num; ++i) {
             auto& col = index_meta_.cols[i];
             auto& cond = index_conds_[i];
@@ -357,6 +416,9 @@ NOTALBELOCK:
         txn->append_lock(lock);
 
 NOLOCK1:
+        // std::cout << "lower_rid: {page_no=" << lower_rid_.page_no << ", slot_no=" << lower_rid_.slot_no << ", record_no" << lower_rid_.record_no << "}\n";
+        // std::cout << "upper_rid: {page_no=" << upper_rid_.page_no << ", slot_no=" << upper_rid_.slot_no << ", record_no" << upper_rid_.record_no << "}\n";
+        auto& tab_cols_ = tab_.cols_;
         while (!scan_->is_end()) {
             rid_ = scan_->rid();
             // auto [is_visible, rec] = mvcc_get_record(rid_);
@@ -369,7 +431,7 @@ NOLOCK1:
             //     current_record_ = std::move(rec);
             auto rec = pindex_handle_->get_record(rid_, context_);
 
-            if (rec->is_deleted() == false && eval_conds(cols_, filter_conds_, rec.get())) {
+            if (rec->is_deleted() == false && eval_conds(tab_cols_, filter_conds_, rec.get())) {
                 if(node_type_ == 0 && min_lock_ == false) {
                     lock = lock_mgr->request_record_lock(tab_.table_id_, rid_, txn, RECORD_LOCK_ORDINARY, get_lock_mode_for_plan(context_->plan_tag_), context_->coro_sched_->t_id_);
                     assert(lock != nullptr);
@@ -433,6 +495,7 @@ NOLOCK1:
         //     load_from_state_ = false;
         // }
         Lock* lock = nullptr;
+        auto& tab_cols_ = tab_.cols_;
         for (scan_->next(); !scan_->is_end(); scan_->next()) {
             rid_ = scan_->rid();
             // auto [is_visible, rec] = mvcc_get_record(rid_);
@@ -444,7 +507,7 @@ NOLOCK1:
             //     current_record_ = std::move(rec);
             auto rec = pindex_handle_->get_record(rid_, context_);
 
-            if (rec->is_deleted() == false && eval_conds(cols_, filter_conds_, rec.get())) {
+            if (rec->is_deleted() == false && eval_conds(tab_cols_, filter_conds_, rec.get())) {
                 if(node_type_ == 0) {
                     assert(context_ != nullptr);
                     lock = context_->lock_mgr_->request_record_lock(tab_.table_id_, rid_, context_->txn_, RECORD_LOCK_ORDINARY, get_lock_mode_for_plan(context_->plan_tag_), context_->coro_sched_->t_id_);
@@ -489,7 +552,18 @@ NOLOCK1:
         // return pindex_handle_->get_record(rid_, context_);
         // 如果使用std::move，调用一次Next，current_record就为空了
         // return std::move(current_record_);
-        return std::make_unique<Record>(*current_record_);   // 复制构造，代价稍微高一些
+        auto& tab_cols = tab_.cols_;
+        auto proj_sel_record = std::make_unique<Record>(len_);
+        for(size_t proj_idx = 0; proj_idx < cols_.size(); ++ proj_idx) {
+            // std::cout << "proj_col: " << cols_[proj_idx].name << ", ";
+            size_t prev_idx = sel_idxs_[proj_idx];
+            // std::cout << "prev_idx: " << prev_idx << std::endl;
+            auto& prev_col = tab_cols[prev_idx];
+            auto& proj_col = cols_[proj_idx];
+            memcpy(proj_sel_record->raw_data_ + proj_col.offset, current_record_->raw_data_ + prev_col.offset, proj_col.len);
+        }
+        return proj_sel_record;
+        // return std::make_unique<Record>(*current_record_);   // 复制构造，代价稍微高一些
     }
 
     Rid &rid() override { return rid_; }
@@ -584,6 +658,7 @@ NOLOCK1:
         */
         if(index_scan_op_state != nullptr) {
             load_from_state_ = true;
+            is_seq_scan_ = index_scan_op_state->is_seq_scan_;
             finished_begin_tuple_ = index_scan_op_state->finish_begin_tuple_;
             // finished_begin_tuple_ = true;
             index_scan_op_ = std::move(index_scan_op_state);

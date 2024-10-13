@@ -189,7 +189,7 @@ class Portal
                 return std::make_unique<SeqScanExecutor>(sm_manager_, x->tab_name_, x->filter_conds_, context);
             }
             else {
-                return std::make_unique<IndexScanExecutor>(sm_manager_, x->tab_name_, x->filter_conds_, x->index_conds_, context, x->sql_id_, x->plan_id_);
+                return std::make_unique<IndexScanExecutor>(sm_manager_, x->tab_name_, x->proj_cols_, x->filter_conds_, x->index_conds_, context, x->sql_id_, x->plan_id_);
             } 
         } else if(auto x = std::dynamic_pointer_cast<JoinPlan>(plan)) {
             std::unique_ptr<AbstractExecutor> left = convert_plan_executor(x->left_, context);

@@ -30,10 +30,13 @@ void HashJoinExecutor::beginTuple() {
         }
 
         for(;!left_->is_end(); left_->nextTuple()) {
+            // auto find_start = std::chrono::high_resolution_clock::now();
             left_rec = left_->Next();
             left_child_call_times_ ++;
             memset(left_key, 0, join_key_size_);
             offset = 0;
+            // auto find_end = std::chrono::high_resolution_clock::now();
+            // std::cout << "HashJoinFindHashOneTupel time: " << std::chrono::duration_cast<std::chrono::milliseconds>(find_end - find_start).count() << "ms" << std::endl;
 
             // make record key
             for(const auto& cond: fed_conds_) {
@@ -55,9 +58,13 @@ void HashJoinExecutor::beginTuple() {
             }
             hash_table_[key].push_back(std::move(left_rec));
             left_hash_table_curr_tuple_count_ ++;
+            // find_end = std::chrono::high_resolution_clock::now();
+            // std::cout << "HashJoinPushOneTupleIntoHashTable time: " << std::chrono::duration_cast<std::chrono::milliseconds>(find_end - find_start).count() << "ms" << std::endl;
 
             if(node_type_ == 1) write_state_if_allow(1);
             else write_state_if_allow();
+            // find_end = std::chrono::high_resolution_clock::now();
+            // std::cout << "HashJoinWriteCkpt time: " << std::chrono::duration_cast<std::chrono::milliseconds>(find_end - find_start).count() << "ms" << std::endl;
         }
 
         std::cout << "HashJoin HashTableSize: " << left_hash_table_curr_tuple_count_ << std::endl;

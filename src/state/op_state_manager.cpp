@@ -15,6 +15,7 @@
     初始化 write cnts;
 */
 int OperatorStateManager::write_cnts = 0;
+int64_t OperatorStateManager::write_tot_size = 0;
 
 OperatorStateManager::OperatorStateManager(int connection_id, CoroutineScheduler *coro_sched, MetaManager *meta_manager, QPManager *qp_manager) : connection_id_(connection_id),
     coro_sched_(coro_sched), meta_manager_(meta_manager), qp_manager_(qp_manager)
@@ -106,7 +107,7 @@ void OperatorStateManager::write_sql_to_state(int sql_id, char* sql, int len) {
         assert(0);
     }
 
-    RwServerDebug::getInstance()->DEBUG_PRINT("[WRITE SQL][THREAD ID: " + std::to_string(coro_sched_->t_id_)  + "][SQLID: " + std::to_string(sql_state.sql_id) + "][SQL SIZE: " + std::to_string(sql_state.sql_size) + "][SQL: " + sql_state.sql + "] write sql to state node.");
+    // RwServerDebug::getInstance()->DEBUG_PRINT("[WRITE SQL][THREAD ID: " + std::to_string(coro_sched_->t_id_)  + "][SQLID: " + std::to_string(sql_state.sql_id) + "][SQL SIZE: " + std::to_string(sql_state.sql_size) + "][SQL: " + sql_state.sql + "] write sql to state node.");
 }
 
 std::unique_ptr<SQLState> OperatorStateManager::read_sql_from_state() {
@@ -504,7 +505,7 @@ void OperatorStateManager::write_operator_state_to_state_node() {
     */
     op_checkpoint_buffer_allocator_->Free(op_checkpoint_block.size);
 
-    RwServerDebug::getInstance()->DEBUG_PRINT("[WRITE OP STATE INFO][T_ID: " + std::to_string(coro_sched_->t_id_) + " buffer: " + std::to_string(reinterpret_cast<uintptr_t>(op_checkpoint_block.buffer)) + ", remote offset: " + std::to_string(prev_offset) + ", size: " + std::to_string(op_checkpoint_block.size));
+    // RwServerDebug::getInstance()->DEBUG_PRINT("[WRITE OP STATE INFO][T_ID: " + std::to_string(coro_sched_->t_id_) + " buffer: " + std::to_string(reinterpret_cast<uintptr_t>(op_checkpoint_block.buffer)) + ", remote offset: " + std::to_string(prev_offset) + ", size: " + std::to_string(op_checkpoint_block.size));
     /*
         notify
     */
@@ -515,6 +516,7 @@ void OperatorStateManager::write_op_state_thread() {
     while(1) {
         write_operator_state_to_state_node();
         write_cnts++;
+        write_tot_size = ck_meta_->total_size;
         // std::cout << "write block " << cnt << "\n";
     }
 }
@@ -567,7 +569,7 @@ void OperatorStateManager::write_op_checkpoint_meta() {
     /*
         debug log
     */
-    RwServerDebug::getInstance()->DEBUG_PRINT("[WRITE OP META][T_ID: " + std::to_string(coro_sched_->t_id_) + "][CHECKPOINT NUM: " + std::to_string(ck_meta_->checkpoint_num) + "][TOTAL SIZE: " + std::to_string(ck_meta_->total_size) + "][total src op: " + std::to_string(total_src_op) + "]: write op meta to state node.");
+    // RwServerDebug::getInstance()->DEBUG_PRINT("[WRITE OP META][T_ID: " + std::to_string(coro_sched_->t_id_) + "][CHECKPOINT NUM: " + std::to_string(ck_meta_->checkpoint_num) + "][TOTAL SIZE: " + std::to_string(ck_meta_->total_size) + "][total src op: " + std::to_string(total_src_op) + "]: write op meta to state node.");
     
     return ;
 }

@@ -33,7 +33,7 @@ public:
 class ScanPlan : public Plan
 {
     public:
-        ScanPlan(PlanTag tag, int sql_id, int plan_id, SmManager *sm_manager, std::string tab_name, std::vector<Condition> filter_conds, std::vector<Condition> index_conds) :
+        ScanPlan(PlanTag tag, int sql_id, int plan_id, SmManager *sm_manager, std::string tab_name, std::vector<Condition> filter_conds, std::vector<Condition> index_conds, std::vector<TabCol> proj_cols) :
             Plan(sql_id, plan_id)
         {
             Plan::tag = tag;
@@ -43,7 +43,7 @@ class ScanPlan : public Plan
             cols_ = tab.cols_;
             len_ = cols_.back().offset + cols_.back().len;
             index_conds_ = std::move(index_conds);
-        
+            proj_cols_ = std::move(proj_cols);
         }
         ~ScanPlan(){}
 
@@ -157,7 +157,7 @@ class ScanPlan : public Plan
                 index_conds_.push_back(std::move(cond));
             }
 
-            return std::make_shared<ScanPlan>(tag, sql_id, plan_id, sm_manager, tab_name_, filter_conds_, index_conds_);
+            return std::make_shared<ScanPlan>(tag, sql_id, plan_id, sm_manager, tab_name_, filter_conds_, index_conds_, std::vector<TabCol>());
         }
 
         // 以下变量同ScanExecutor中的变量
@@ -166,7 +166,7 @@ class ScanPlan : public Plan
         std::vector<Condition> filter_conds_;             
         size_t len_;                               
         std::vector<Condition> index_conds_;
-    
+        std::vector<TabCol> proj_cols_;
 };
 
 class JoinPlan : public Plan

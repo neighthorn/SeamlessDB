@@ -18,7 +18,7 @@ constexpr int CheckPointMetaSize = 4096;
     预估计的state size最小值：非准确
 */
 constexpr int operator_size_min = sizeof(int) * 2 + sizeof(size_t) + sizeof(time_t) + sizeof(ExecutionType);
-constexpr int index_scan_state_size_min = operator_size_min + sizeof(Rid) * 3;
+constexpr int index_scan_state_size_min = operator_size_min + sizeof(Rid) * 3 + sizeof(bool);
 constexpr int projection_state_size_min = operator_size_min + sizeof(bool) + sizeof(int);
 constexpr int block_join_state_size_min = operator_size_min + projection_state_size_min + sizeof(int) * 7 + sizeof(bool) * 2 + sizeof(size_t) + index_scan_state_size_min;
 constexpr int hash_join_state_size_min = operator_size_min + projection_state_size_min + sizeof(int) * 5 + sizeof(bool) * 4 + index_scan_state_size_min;
@@ -102,7 +102,7 @@ public:
 
     size_t getSize() override {
         // std::cout << "IndexScanOperatorState getSize(): " << op_state_size_ << std::endl;
-        return OperatorState::getSize() + sizeof(Rid) * 3;
+        return OperatorState::getSize() + sizeof(Rid) * 3 + sizeof(bool);
     }
 
 public:
@@ -112,6 +112,7 @@ public:
     Rid lower_rid_;
     Rid upper_rid_;
     Rid current_rid_;
+    bool is_seq_scan_;
 private:
     IndexScanExecutor *index_scan_op_;
 };

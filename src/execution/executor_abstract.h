@@ -57,6 +57,7 @@ class AbstractExecutor {
             return col.tab_name == target.tab_name && col.name == target.col_name;
         });
         if (pos == rec_cols.end()) {
+            assert(0);
             throw ColumnNotFoundError(target.tab_name + '.' + target.col_name);
         }
         return pos;

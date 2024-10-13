@@ -106,6 +106,7 @@ IndexScanOperatorState::IndexScanOperatorState(IndexScanExecutor *index_scan_op)
     lower_rid_      = index_scan_op_->lower_rid_;
     upper_rid_      = index_scan_op_->upper_rid_;
     current_rid_    = index_scan_op_->rid_;
+    is_seq_scan_    = index_scan_op_->is_seq_scan_;
 
     op_state_size_ = getSize();
 }
@@ -119,6 +120,8 @@ size_t  IndexScanOperatorState::serialize(char *dest) {
     offset += sizeof(Rid);
     memcpy(dest + offset, (char *)&current_rid_, sizeof(Rid));
     offset += sizeof(Rid);
+    memcpy(dest + offset, (char *)&is_seq_scan_, sizeof(bool));
+    offset += sizeof(bool);
 
     // RwServerDebug::getInstance()->DEBUG_PRINT("lower_rid: " + std::to_string(lower_rid_.page_no) + ", " + std::to_string(lower_rid_.slot_no));
     // RwServerDebug::getInstance()->DEBUG_PRINT("upper_rid: " + std::to_string(upper_rid_.page_no) + ", " + std::to_string(upper_rid_.slot_no));
@@ -145,6 +148,8 @@ bool IndexScanOperatorState::deserialize(char *src, size_t size) {
     offset += sizeof(Rid);
     memcpy((char *)&current_rid_, src + offset, sizeof(Rid));
     offset += sizeof(Rid);
+    memcpy((char *)&is_seq_scan_, src + offset, sizeof(bool));
+    offset += sizeof(bool);
     // RwServerDebug::getInstance()->DEBUG_PRINT("lower_rid: " + std::to_string(lower_rid_.page_no) + ", " + std::to_string(lower_rid_.slot_no));
     // RwServerDebug::getInstance()->DEBUG_PRINT("upper_rid: " + std::to_string(upper_rid_.page_no) + ", " + std::to_string(upper_rid_.slot_no));
     // RwServerDebug::getInstance()->DEBUG_PRINT("current_rid: " + std::to_string(current_rid_.page_no) + ", " + std::to_string(current_rid_.slot_no));

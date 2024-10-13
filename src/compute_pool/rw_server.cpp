@@ -789,6 +789,7 @@ void RWNode::start_server() {
     std::cout << "commit_tot_cnt: " << tot_commit_txn << ", time: " << tot_duration << "\n";
     std::cout << "commit_tput: " << commit_tput * 1000.0 << ", abort_tput: " << abort_tput << "\n";
     std::cout << "write op checkpoints: " << OperatorStateManager::write_cnts << "\n";
+    std::cout << "write op checkpoint size(Bytes): " << OperatorStateManager::write_tot_size << "\n";
     RwServerDebug::getInstance()->DEBUG_PRINT("[commit_tot_cnt: " + std::to_string(tot_commit_txn) + "][time: " + std::to_string(tot_duration) + "]");
     RwServerDebug::getInstance()->DEBUG_PRINT("[commit_tput: " + std::to_string(commit_tput * 1000.0) + "][abort_tput: " + std::to_string(abort_tput) + "]");
     RwServerDebug::getInstance()->DEBUG_PRINT("[write op checkpoints: " + std::to_string(OperatorStateManager::write_cnts) + "]");

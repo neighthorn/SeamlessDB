@@ -59,7 +59,7 @@ void IxNodeHandle::internal_insert_pairs(int pos, const char* key, const char* c
     // 2 insert rids
     // Rid *rid_slot = get_rid(pos);
     char* child_slot = internal_value_at(pos);
-    memmove(child_slot + n, child_slot, (page_hdr_->num_key_ - pos) * sizeof(page_id_t));
+    memmove(child_slot + n * sizeof(page_id_t), child_slot, (page_hdr_->num_key_ - pos) * sizeof(page_id_t));
     memcpy(child_slot, children, n * sizeof(page_id_t));
 
     // 3 update num_key

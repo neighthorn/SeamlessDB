@@ -110,6 +110,7 @@ public:
         // std::cout << "sorted_index[be_call_times]: " << sorted_index_[be_call_times_] << ", be_call_times: " << be_call_times_ << std::endl;
         assert(sorted_index_[be_call_times_] < unsorted_records_.size());
         return std::move(unsorted_records_[sorted_index_[be_call_times_]]);
+        // TODO: remove the annotation below
         // write_state_if_allow();
     }
     

@@ -2,6 +2,7 @@
 #include <cstring>
 #include <string>
 #include <cassert>
+#include <iostream>
 
 int RandomGenerator::generate_random_int(int min, int max) {
     int rand_int;
@@ -28,7 +29,7 @@ void RandomGenerator::generate_random_str(char* str, int len) {
     static int alphabet_num = 61;
     for(int i = 0; i < len; ++i)
         str[i] = alphabets[generate_random_int(0, alphabet_num)];
-    str[len] = '\0';
+    // str[len] = '\0';
 }
 
 int RandomGenerator::get_region_key_from_nation(char* nation) {
@@ -143,7 +144,7 @@ void RandomGenerator::get_region_from_region_key(char* str, int len, int region_
 void RandomGenerator::generate_random_numer_str(char* str, int len) {
     for(int i = 0; i < len; ++i)
         str[i] = generate_random_int(0, 9) + '0';
-    str[len] = 0;
+    // str[len] = 0;
 }
 
 void RandomGenerator::generate_random_varchar(char* str, int min_len, int max_len) {
@@ -205,4 +206,32 @@ void RandomGenerator::generate_random_date(char* str) {
         date += std::to_string(month) + "-01";
     assert(date.length() == DATE_SIZE);
     memcpy(str, date.c_str(), DATE_SIZE);
+    str[DATE_SIZE] = '\0';
+}
+
+void RandomGenerator::generate_date_from_idx(char* str, int idx) {
+    memset(str, 0, DATE_SIZE);
+    int year_end = idx / 12 + 2;
+    std::string date = "199" + std::to_string(year_end) + "-";
+    int month = idx % 12 + 1;
+    if(month < 10)
+        date += "0" + std::to_string(month) + "-01";
+    else
+        date += std::to_string(month) + "-01";
+    assert(date.length() == DATE_SIZE);
+    memcpy(str, date.c_str(), DATE_SIZE);
+    date[DATE_SIZE] = '\0';
+}
+
+void RandomGenerator::generate_random_mktsegment(char* str) {
+    static std::string mktsegment[] = {"AUTOMOBILE", "BUILDINGBU", "FURNITUREF", "MACHINERYM", "HOUSEHOLDH"};
+    int idx = generate_random_int(0, 4);
+    strncpy(str, mktsegment[idx].c_str(), 10);
+    str[10] = '\0';
+}
+
+void RandomGenerator::generate_mktsegment_from_idx(char* str, int idx) {
+    static std::string mktsegment[] = {"AUTOMOBILE", "BUILDINGBU", "FURNITUREF", "MACHINERYM", "HOUSEHOLDH"};
+    strncpy(str, mktsegment[idx].c_str(), 10);
+    str[10] = '\0';
 }

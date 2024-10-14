@@ -173,7 +173,7 @@ void JoinBlockExecutor::load_block_info(BlockJoinOperatorState *block_op_state) 
     else {
         // 代表join block已经消耗完了
         join_block_->size_ = -1;
-        nextBlock();
+        // nextBlock();
     }
     current_block_id_ = block_op_state->left_block_id_;
 }
@@ -281,6 +281,10 @@ void BlockNestedLoopJoinExecutor::beginTuple() {
 void BlockNestedLoopJoinExecutor::nextTuple() {
     assert(!is_end());
 
+    if(left_block_->size_ == -1) {
+        left_blocks_->nextBlock();
+        left_block_ = left_blocks_->Next();
+    }
     left_block_->nextTuple();
     
     find_next_valid_tuple();

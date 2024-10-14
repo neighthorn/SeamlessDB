@@ -250,7 +250,8 @@ public:
     int left_record_len_;       // 哈希表中每个tuple的长度
     std::unordered_map<std::string, std::vector<std::unique_ptr<Record>>>* left_hash_table_; 
     std::unordered_map<std::string, size_t>* checkpointed_indexes_;
-
+    
+    std::string left_iter_key_;
     // 算子当前的cursor
     int left_tuples_index_;            // 哈希表中的vector的index, 同HashJoinExecutor中的left_tuples_index_
 };

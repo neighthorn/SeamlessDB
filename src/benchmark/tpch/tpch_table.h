@@ -17,6 +17,8 @@
 #define NATION_COND_RANGE 25     // 不超过25
 #define NORMAL_INT_COND_RANGE 5000
 #define DATE_COND_RANGE "1994-01-01"
+#define DATE_MAX_NUM 84
+#define MKTSEGMENT_MAX_NUM 5
 
 namespace TPCH_TABLE{
 
@@ -229,6 +231,106 @@ public:
     }
 };
 
+class Nation2 {
+
+public:
+    int     n_nationkey;    // int  primary key
+    char    n_name[25];     // varchar
+    int     n_regionkey;    // region key
+    char    n_comment[152];      // varchar
+
+    void create_table(SmManager* sm_mgr) {
+        std::string table_name = "nation2";
+        std::vector<ColDef> col_defs;
+        col_defs.emplace_back(ColDef("n2_nationkey", ColType::TYPE_INT, 4));
+        col_defs.emplace_back(ColDef("n2_name", ColType::TYPE_STRING, 25));
+        col_defs.emplace_back(ColDef("n2_regionkey", ColType::TYPE_INT, 4));
+        col_defs.emplace_back(ColDef("n2_comment", ColType::TYPE_STRING, 152));
+        std::vector<std::string> pkeys;
+        pkeys.emplace_back("n2_nationkey");
+        sm_mgr->create_table(table_name, col_defs, pkeys, nullptr);
+    }
+
+    Nation2() {}
+
+    void print_record() {
+        std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
+    }
+
+    void get_random_condition(int SF, std::vector<Condition>& index_conds, std::vector<Condition> filter_conds, bool is_index_scan) {
+        int nation_key;
+        if(is_index_scan) {
+            TabCol lhs_col = {.tab_name = "nation2", .col_name = "n2_nationkey"};
+            Value val;
+            // nation_key = RandomGenerator::generate_random_int(10, REGION_NUM * ONE_REGION_PER_NATION);
+            val.set_int(NATION_COND_RANGE);
+            val.init_raw(sizeof(int));
+            Condition cond = {.lhs_col = std::move(lhs_col), .op = OP_LT, .is_rhs_val = true, .rhs_col = TabCol{}, .rhs_val = val};
+            index_conds.push_back(std::move(cond));
+        }
+
+        TabCol lhs_col = {.tab_name = "nation2", .col_name = "n2_regionkey"};
+        Value val;
+        // val.set_int(RandomGenerator::generate_random_int(1, 5));
+        val.set_int(REGION_COND_RANGE);
+        val.init_raw(sizeof(int));
+        Condition cond = {.lhs_col = std::move(lhs_col), .op = OP_LT, .is_rhs_val = true, .rhs_col = TabCol{}, .rhs_val = val};
+        filter_conds.push_back(std::move(cond));
+    }
+
+    void generate_table_data(int sf, Transaction* txn, SmManager* sm_mgr, IxManager* ix_mgr) {
+        auto tab_meta = sm_mgr->db_.get_table("nation2");
+        auto index_handle = sm_mgr->primary_index_.at("nation2").get();
+        Record record(tab_meta.record_length_);
+
+        // int nationkey_max = REGION_NUM * ONE_REGION_PER_NATION;
+        n_nationkey = 0;
+        for(n_regionkey = 1; n_regionkey <= REGION_NUM; ++n_regionkey) {
+            for(int cnt = 1; cnt <= ONE_REGION_PER_NATION; ++cnt) {
+                n_nationkey ++;
+
+                /*
+                    random generate: n_name, n_comment
+                */
+               RandomGenerator::get_nation_from_region_nation_key(n_regionkey, cnt, n_name);
+                // RandomGenerator::generate_random_str(n_name, 25);
+                RandomGenerator::generate_random_str(n_comment, 152);
+
+                /*
+                    generate record content
+                */
+                memset(record.record_, 0, record.data_length_ + sizeof(RecordHdr));
+
+                int offset = 0;
+                
+                memcpy(record.raw_data_ + offset, (char *)&n_nationkey, sizeof(int));
+                offset += sizeof(int);
+                memcpy(record.raw_data_ + offset, n_name, 25);
+                offset += 25;
+                memcpy(record.raw_data_ + offset, (char *)&n_regionkey, sizeof(int));
+                offset += sizeof(int);
+                memcpy(record.raw_data_ + offset, n_comment, 152);
+                offset += 152;
+
+                assert(offset == tab_meta.record_length_);
+
+                /*
+                    insert data
+                */
+                index_handle->insert_entry(record.raw_data_, record.record_, txn);
+            }
+        }
+    }
+
+    void generate_data_csv(std::string file_name) {
+        std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
+    }
+
+    void write_data_into_file(std::string file_name) {
+        std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
+    }
+};
+
 
 /*
     table part
@@ -389,21 +491,22 @@ public:
     int     c_nationkey;
     char    c_phone[15];
     float   c_acctbal;
-    char    c_mktsegment[10];
+    char    c_mktsegment[11];
     char    c_comment[117];
 
     void create_table(SmManager* sm_mgr) {
         std::string table_name = "customer";
         std::vector<ColDef> col_defs;
+        col_defs.emplace_back(ColDef("c_mktsegment", ColType::TYPE_STRING, 10));
         col_defs.emplace_back(ColDef("c_custkey", ColType::TYPE_INT, 4));
         col_defs.emplace_back(ColDef("c_name", ColType::TYPE_STRING, 25));
         col_defs.emplace_back(ColDef("c_address", ColType::TYPE_STRING, 40));
         col_defs.emplace_back(ColDef("c_nationkey", ColType::TYPE_INT, 4));
         col_defs.emplace_back(ColDef("c_phone", ColType::TYPE_STRING, 15));
         col_defs.emplace_back(ColDef("c_acctbal", ColType::TYPE_FLOAT, 4));
-        col_defs.emplace_back(ColDef("c_mktsegment", ColType::TYPE_STRING, 10));
         col_defs.emplace_back(ColDef("c_comment", ColType::TYPE_STRING, 117));
         std::vector<std::string> pkeys;
+        pkeys.emplace_back("c_mktsegment");
         pkeys.emplace_back("c_custkey");
         sm_mgr->create_table(table_name, col_defs, pkeys, nullptr);
     }
@@ -440,57 +543,105 @@ public:
         /*
             1 <= c_nationkey <= 25
         */
-        for(c_custkey = 1; c_custkey <= c_custkey_max; ++c_custkey) {
-        
-            /*
-                col_defs.emplace_back(ColDef("c_custkey", ColType::TYPE_INT, 4));
-                col_defs.emplace_back(ColDef("c_name", ColType::TYPE_STRING, 25));
-                col_defs.emplace_back(ColDef("c_address", ColType::TYPE_STRING, 40));
-                col_defs.emplace_back(ColDef("c_nationkey", ColType::TYPE_INT, 4));
-                col_defs.emplace_back(ColDef("c_phone", ColType::TYPE_STRING, 15));
-                col_defs.emplace_back(ColDef("c_acctbal", ColType::TYPE_FLOAT, 4));
-                col_defs.emplace_back(ColDef("c_mktsegment", ColType::TYPE_STRING, 10));
-                col_defs.emplace_back(ColDef("c_comment", ColType::TYPE_STRING, 117));
-            */
-            RandomGenerator::generate_random_str(c_name, 25);
-            RandomGenerator::generate_random_str(c_address, 40);
-            c_nationkey = RandomGenerator::generate_random_int(1, REGION_NUM * ONE_REGION_PER_NATION);
-            RandomGenerator::generate_random_str(c_phone, 15);
-            c_acctbal = RandomGenerator::generate_random_float(1, 20000);
-            RandomGenerator::generate_random_str(c_mktsegment, 10);
-            RandomGenerator::generate_random_str(c_comment, 117);
+        int record_per_key = c_custkey_max / MKTSEGMENT_MAX_NUM;
+        c_custkey = 1;
 
-            /*
-                generate record content
-            */
-            memset(record.record_, 0, record.data_length_ + sizeof(RecordHdr));
+        for(int mktseg_idx = 0; mktseg_idx < MKTSEGMENT_MAX_NUM; ++ mktseg_idx) {
+            RandomGenerator::generate_mktsegment_from_idx(c_mktsegment, mktseg_idx);
+            std::cout << c_mktsegment << std::endl;
 
-            int offset = 0;
-            
-            memcpy(record.raw_data_ + offset, (char *)&c_custkey, sizeof(int));
-            offset += sizeof(int);
-            memcpy(record.raw_data_ + offset, c_name, 25);
-            offset += 25;
-            memcpy(record.raw_data_ + offset, c_address, 40);
-            offset += 40;
-            memcpy(record.raw_data_ + offset, (char *)&c_nationkey, sizeof(int));
-            offset += sizeof(int);
-            memcpy(record.raw_data_ + offset, c_phone, 15);
-            offset += 15;
-            memcpy(record.raw_data_ + offset, (char *)&c_acctbal, sizeof(float));
-            offset += sizeof(float);
-            memcpy(record.raw_data_ + offset, c_mktsegment, 10);
-            offset += 10;
-            memcpy(record.raw_data_ + offset, c_comment, 117);
-            offset += 117;
+            for(int record_idx = 0; record_idx < record_per_key && c_custkey <= c_custkey_max; ++record_idx) {
+                RandomGenerator::generate_random_str(c_name, 25);
+                RandomGenerator::generate_random_str(c_address, 40);
+                c_nationkey = RandomGenerator::generate_random_int(1, REGION_NUM * ONE_REGION_PER_NATION);
+                RandomGenerator::generate_random_str(c_phone, 15);
+                c_acctbal = RandomGenerator::generate_random_float(1, 20000);
+                // RandomGenerator::generate_random_str(c_mktsegment, 10);
+                RandomGenerator::generate_random_str(c_comment, 117);
 
-            assert(offset == tab_meta.record_length_);
+                memset(record.record_, 0, record.data_length_ + sizeof(RecordHdr));
+                
 
-            /*
-                insert data
-            */
-            index_handle->insert_entry(record.raw_data_, record.record_, txn);
+                int offset = 0;
+                memcpy(record.raw_data_ + offset, c_mktsegment, 10);
+                offset += 10;
+                memcpy(record.raw_data_ + offset, (char *)&c_custkey, sizeof(int));
+                offset += sizeof(int);
+                memcpy(record.raw_data_ + offset, c_name, 25);
+                offset += 25;
+                memcpy(record.raw_data_ + offset, c_address, 40);
+                offset += 40;
+                memcpy(record.raw_data_ + offset, (char *)&c_nationkey, sizeof(int));
+                offset += sizeof(int);
+                memcpy(record.raw_data_ + offset, c_phone, 15);
+                offset += 15;
+                memcpy(record.raw_data_ + offset, (char *)&c_acctbal, sizeof(float));
+                offset += sizeof(float);
+                memcpy(record.raw_data_ + offset, c_comment, 117);
+                offset += 117;
+
+                assert(offset == tab_meta.record_length_);
+
+                /*
+                    insert data
+                */
+                index_handle->insert_entry(record.raw_data_, record.record_, txn);
+                c_custkey ++;
+            }
+
         }
+        // for(c_custkey = 1; c_custkey <= c_custkey_max; ++c_custkey) {
+        
+        //     /*
+        //         col_defs.emplace_back(ColDef("c_custkey", ColType::TYPE_INT, 4));
+        //         col_defs.emplace_back(ColDef("c_name", ColType::TYPE_STRING, 25));
+        //         col_defs.emplace_back(ColDef("c_address", ColType::TYPE_STRING, 40));
+        //         col_defs.emplace_back(ColDef("c_nationkey", ColType::TYPE_INT, 4));
+        //         col_defs.emplace_back(ColDef("c_phone", ColType::TYPE_STRING, 15));
+        //         col_defs.emplace_back(ColDef("c_acctbal", ColType::TYPE_FLOAT, 4));
+        //         col_defs.emplace_back(ColDef("c_mktsegment", ColType::TYPE_STRING, 10));
+        //         col_defs.emplace_back(ColDef("c_comment", ColType::TYPE_STRING, 117));
+        //     */
+        //     RandomGenerator::generate_random_str(c_name, 25);
+        //     RandomGenerator::generate_random_str(c_address, 40);
+        //     c_nationkey = RandomGenerator::generate_random_int(1, REGION_NUM * ONE_REGION_PER_NATION);
+        //     RandomGenerator::generate_random_str(c_phone, 15);
+        //     c_acctbal = RandomGenerator::generate_random_float(1, 20000);
+        //     // RandomGenerator::generate_random_str(c_mktsegment, 10);
+        //     RandomGenerator::generate_random_mktsegment(c_mktsegment);
+        //     RandomGenerator::generate_random_str(c_comment, 117);
+
+        //     /*
+        //         generate record content
+        //     */
+        //     memset(record.record_, 0, record.data_length_ + sizeof(RecordHdr));
+
+        //     int offset = 0;
+            
+        //     memcpy(record.raw_data_ + offset, (char *)&c_custkey, sizeof(int));
+        //     offset += sizeof(int);
+        //     memcpy(record.raw_data_ + offset, c_name, 25);
+        //     offset += 25;
+        //     memcpy(record.raw_data_ + offset, c_address, 40);
+        //     offset += 40;
+        //     memcpy(record.raw_data_ + offset, (char *)&c_nationkey, sizeof(int));
+        //     offset += sizeof(int);
+        //     memcpy(record.raw_data_ + offset, c_phone, 15);
+        //     offset += 15;
+        //     memcpy(record.raw_data_ + offset, (char *)&c_acctbal, sizeof(float));
+        //     offset += sizeof(float);
+        //     memcpy(record.raw_data_ + offset, c_mktsegment, 10);
+        //     offset += 10;
+        //     memcpy(record.raw_data_ + offset, c_comment, 117);
+        //     offset += 117;
+
+        //     assert(offset == tab_meta.record_length_);
+
+        //     /*
+        //         insert data
+        //     */
+        //     index_handle->insert_entry(record.raw_data_, record.record_, txn);
+        // }
     }
 
     void generate_data_csv(std::string file_name) {
@@ -540,8 +691,8 @@ public:
     void create_table(SmManager* sm_mgr) {
         std::string table_name = "orders";
         std::vector<ColDef> col_defs;
+        col_defs.emplace_back(ColDef("o_orderdate", ColType::TYPE_STRING, RandomGenerator::DATE_SIZE));
         col_defs.emplace_back(ColDef("o_orderkey", ColType::TYPE_INT, 4));
-        col_defs.emplace_back(ColDef("o_orderdate", ColType::TYPE_STRING, RandomGenerator::DATE_SIZE + 1));
         col_defs.emplace_back(ColDef("o_custkey", ColType::TYPE_INT, 4));
         col_defs.emplace_back(ColDef("o_orderstatus", ColType::TYPE_STRING, 1));
         col_defs.emplace_back(ColDef("o_totalprice", ColType::TYPE_FLOAT, 4));
@@ -551,9 +702,11 @@ public:
         col_defs.emplace_back(ColDef("o_comment", ColType::TYPE_STRING, 79));
         
         std::vector<std::string> pkeys;
-        pkeys.emplace_back("o_orderkey");
+        // pkeys.emplace_back("o_orderkey");
+        // pkeys.emplace_back("o_orderdate");
+        // pkeys.emplace_back("o_custkey");
         pkeys.emplace_back("o_orderdate");
-        pkeys.emplace_back("o_custkey");
+        pkeys.emplace_back("o_orderkey");
         sm_mgr->create_table(table_name, col_defs, pkeys, nullptr);
     }
 
@@ -595,71 +748,123 @@ public:
         */
         int o_orderkey_max = SF * ONE_SF_PER_ORDER;
 
+        int record_per_key = o_orderkey_max / DATE_MAX_NUM;
+        o_orderkey = 1;
+
         /*
             1 <= o_custkey <= SF * ONE_SF_PER_CUSTOMER
         */
         int c_custkey_max = SF * ONE_SF_PER_CUSTOMER;
-        for(o_orderkey = 1; o_orderkey <= o_orderkey_max; ++o_orderkey) {
-        
-            /*
-                col_defs.emplace_back(ColDef("o_orderkey", ColType::TYPE_INT, 4));
-                col_defs.emplace_back(ColDef("o_custkey", ColType::TYPE_INT, 4));
-                col_defs.emplace_back(ColDef("o_orderstatus", ColType::TYPE_STRING, 1));
-                col_defs.emplace_back(ColDef("o_totalprice", ColType::TYPE_FLOAT, 4));
-                col_defs.emplace_back(ColDef("o_orderdate", ColType::TYPE_STRING, Clock::DATETIME_SIZE + 1));
-                col_defs.emplace_back(ColDef("o_orderpriority", ColType::TYPE_STRING, 15));
-                col_defs.emplace_back(ColDef("o_clerk", ColType::TYPE_STRING, 15));
-                col_defs.emplace_back(ColDef("o_shippriority", ColType::TYPE_INT, 4));
-                col_defs.emplace_back(ColDef("o_comment", ColType::TYPE_STRING, 79));
-            */
-        //    int rnd = RandomGenerator::generate_random_int(1, 2);
-        //    if(rnd == 1)
-        //         o_custkey = RandomGenerator::generate_random_int(1, c_custkey_max);
-        //     else 
-        //         o_custkey = o_orderkey;
-            o_custkey = RandomGenerator::generate_random_int(1, c_custkey_max);
-            RandomGenerator::generate_random_str(o_orderstatus, 1);
-            o_totalprice = RandomGenerator::generate_random_float(1, 20000);
-            // RandomGenerator::generate_random_str(o_orderdate, Clock::DATETIME_SIZE + 1);
-            RandomGenerator::generate_random_date(o_orderdate);
-            RandomGenerator::generate_random_str(o_orderpriority, 15);
-            RandomGenerator::generate_random_str(o_clerk, 15);
-            o_shippriority = RandomGenerator::generate_random_int(1, 20000);
-            RandomGenerator::generate_random_str(o_comment, 79);
 
-            /*
-                generate record content
-            */
-            memset(record.record_, 0, record.data_length_ + sizeof(RecordHdr));
+        for(int o_orderdate_idx = 0; o_orderdate_idx < DATE_MAX_NUM; ++o_orderdate_idx) {
+            RandomGenerator::generate_date_from_idx(o_orderdate, o_orderdate_idx);
 
-            int offset = 0;
-            
-            memcpy(record.raw_data_ + offset, (char *)&o_orderkey, sizeof(int));
-            offset += sizeof(int);
-            memcpy(record.raw_data_ + offset, o_orderdate, RandomGenerator::DATE_SIZE + 1);
-            offset += (RandomGenerator::DATE_SIZE + 1);
-            memcpy(record.raw_data_ + offset, (char *)&o_custkey, sizeof(int));
-            offset += sizeof(int);
-            memcpy(record.raw_data_ + offset, o_orderstatus, 1);
-            offset += 1;
-            memcpy(record.raw_data_ + offset, (char *)&o_totalprice, sizeof(float));
-            offset += sizeof(float);
-            memcpy(record.raw_data_ + offset, o_orderpriority, 15);
-            offset += 15;
-            memcpy(record.raw_data_ + offset, o_clerk, 15);
-            offset += 15;
-            memcpy(record.raw_data_ + offset, (char *)&o_shippriority, sizeof(int));
-            offset += sizeof(int);
-            memcpy(record.raw_data_ + offset, o_comment, 79);
-            offset += 79;
+            for(int record_idx = 0; record_idx < record_per_key && o_orderkey <= o_orderkey_max; ++record_idx) {
+                o_custkey = RandomGenerator::generate_random_int(1, c_custkey_max);
+                RandomGenerator::generate_random_str(o_orderstatus, 1);
+                o_totalprice = RandomGenerator::generate_random_float(1, 20000);
+                // RandomGenerator::generate_random_str(o_orderdate, Clock::DATETIME_SIZE + 1);
+                RandomGenerator::generate_random_str(o_orderpriority, 15);
+                RandomGenerator::generate_random_str(o_clerk, 15);
+                o_shippriority = RandomGenerator::generate_random_int(1, 20000);
+                RandomGenerator::generate_random_str(o_comment, 79);
 
-            assert(offset == tab_meta.record_length_);
+                /*
+                    generate record content
+                */
+                memset(record.record_, 0, record.data_length_ + sizeof(RecordHdr));
 
-            /*
-                insert data
-            */
-            index_handle->insert_entry(record.raw_data_, record.record_, txn);
+                int offset = 0;
+                memcpy(record.raw_data_ + offset, o_orderdate, RandomGenerator::DATE_SIZE);
+                offset += (RandomGenerator::DATE_SIZE);
+                memcpy(record.raw_data_ + offset, (char *)&o_orderkey, sizeof(int));
+                offset += sizeof(int);
+                memcpy(record.raw_data_ + offset, (char *)&o_custkey, sizeof(int));
+                offset += sizeof(int);
+                memcpy(record.raw_data_ + offset, o_orderstatus, 1);
+                offset += 1;
+                memcpy(record.raw_data_ + offset, (char *)&o_totalprice, sizeof(float));
+                offset += sizeof(float);
+                memcpy(record.raw_data_ + offset, o_orderpriority, 15);
+                offset += 15;
+                memcpy(record.raw_data_ + offset, o_clerk, 15);
+                offset += 15;
+                memcpy(record.raw_data_ + offset, (char *)&o_shippriority, sizeof(int));
+                offset += sizeof(int);
+                memcpy(record.raw_data_ + offset, o_comment, 79);
+                offset += 79;
+
+                assert(offset == tab_meta.record_length_);
+
+                /*
+                    insert data
+                */
+                index_handle->insert_entry(record.raw_data_, record.record_, txn);
+
+                o_orderkey ++;
+            }
         }
+
+        // for(o_orderkey = 1; o_orderkey <= o_orderkey_max; ++o_orderkey) {
+        
+        //     /*
+        //         col_defs.emplace_back(ColDef("o_orderkey", ColType::TYPE_INT, 4));
+        //         col_defs.emplace_back(ColDef("o_custkey", ColType::TYPE_INT, 4));
+        //         col_defs.emplace_back(ColDef("o_orderstatus", ColType::TYPE_STRING, 1));
+        //         col_defs.emplace_back(ColDef("o_totalprice", ColType::TYPE_FLOAT, 4));
+        //         col_defs.emplace_back(ColDef("o_orderdate", ColType::TYPE_STRING, Clock::DATETIME_SIZE + 1));
+        //         col_defs.emplace_back(ColDef("o_orderpriority", ColType::TYPE_STRING, 15));
+        //         col_defs.emplace_back(ColDef("o_clerk", ColType::TYPE_STRING, 15));
+        //         col_defs.emplace_back(ColDef("o_shippriority", ColType::TYPE_INT, 4));
+        //         col_defs.emplace_back(ColDef("o_comment", ColType::TYPE_STRING, 79));
+        //     */
+        // //    int rnd = RandomGenerator::generate_random_int(1, 2);
+        // //    if(rnd == 1)
+        // //         o_custkey = RandomGenerator::generate_random_int(1, c_custkey_max);
+        // //     else 
+        // //         o_custkey = o_orderkey;
+        //     o_custkey = RandomGenerator::generate_random_int(1, c_custkey_max);
+        //     RandomGenerator::generate_random_str(o_orderstatus, 1);
+        //     o_totalprice = RandomGenerator::generate_random_float(1, 20000);
+        //     // RandomGenerator::generate_random_str(o_orderdate, Clock::DATETIME_SIZE + 1);
+        //     RandomGenerator::generate_random_date(o_orderdate);
+        //     RandomGenerator::generate_random_str(o_orderpriority, 15);
+        //     RandomGenerator::generate_random_str(o_clerk, 15);
+        //     o_shippriority = RandomGenerator::generate_random_int(1, 20000);
+        //     RandomGenerator::generate_random_str(o_comment, 79);
+
+        //     /*
+        //         generate record content
+        //     */
+        //     memset(record.record_, 0, record.data_length_ + sizeof(RecordHdr));
+
+        //     int offset = 0;
+        //     memcpy(record.raw_data_ + offset, o_orderdate, RandomGenerator::DATE_SIZE + 1);
+        //     offset += (RandomGenerator::DATE_SIZE + 1);
+        //     memcpy(record.raw_data_ + offset, (char *)&o_orderkey, sizeof(int));
+        //     offset += sizeof(int);
+        //     memcpy(record.raw_data_ + offset, (char *)&o_custkey, sizeof(int));
+        //     offset += sizeof(int);
+        //     memcpy(record.raw_data_ + offset, o_orderstatus, 1);
+        //     offset += 1;
+        //     memcpy(record.raw_data_ + offset, (char *)&o_totalprice, sizeof(float));
+        //     offset += sizeof(float);
+        //     memcpy(record.raw_data_ + offset, o_orderpriority, 15);
+        //     offset += 15;
+        //     memcpy(record.raw_data_ + offset, o_clerk, 15);
+        //     offset += 15;
+        //     memcpy(record.raw_data_ + offset, (char *)&o_shippriority, sizeof(int));
+        //     offset += sizeof(int);
+        //     memcpy(record.raw_data_ + offset, o_comment, 79);
+        //     offset += 79;
+
+        //     assert(offset == tab_meta.record_length_);
+
+        //     /*
+        //         insert data
+        //     */
+        //     index_handle->insert_entry(record.raw_data_, record.record_, txn);
+        // }
     }
 
     void generate_data_csv(std::string file_name) {
@@ -1002,6 +1207,7 @@ public:
     void create_table(SmManager* sm_mgr) {
         std::string table_name = "lineitem";
         std::vector<ColDef> col_defs;
+        col_defs.emplace_back(ColDef("l_shipdate", ColType::TYPE_STRING, RandomGenerator::DATE_SIZE));
         col_defs.emplace_back(ColDef("l_orderkey", ColType::TYPE_INT, 4));
         col_defs.emplace_back(ColDef("l_linenumber", ColType::TYPE_INT, 4));
         col_defs.emplace_back(ColDef("l_partkey", ColType::TYPE_INT, 4));
@@ -1012,7 +1218,6 @@ public:
         col_defs.emplace_back(ColDef("l_tax", ColType::TYPE_FLOAT, 4));
         col_defs.emplace_back(ColDef("l_returnflag", ColType::TYPE_STRING, 1));
         col_defs.emplace_back(ColDef("l_linestatus", ColType::TYPE_STRING, 1));
-        col_defs.emplace_back(ColDef("l_shipdate", ColType::TYPE_STRING, RandomGenerator::DATE_SIZE + 1));
         col_defs.emplace_back(ColDef("l_commitdate", ColType::TYPE_STRING, RandomGenerator::DATE_SIZE + 1));
         col_defs.emplace_back(ColDef("l_receiptdate", ColType::TYPE_STRING, RandomGenerator::DATE_SIZE + 1));
         col_defs.emplace_back(ColDef("l_shipinstruct", ColType::TYPE_STRING, 25));
@@ -1020,6 +1225,9 @@ public:
         col_defs.emplace_back(ColDef("l_comment", ColType::TYPE_STRING, 4));
 
         std::vector<std::string> pkeys;
+        // pkeys.emplace_back("l_orderkey");
+        // pkeys.emplace_back("l_linenumber");
+        pkeys.emplace_back("l_shipdate");
         pkeys.emplace_back("l_orderkey");
         pkeys.emplace_back("l_linenumber");
         sm_mgr->create_table(table_name, col_defs, pkeys, nullptr);
@@ -1079,47 +1287,28 @@ public:
         */
         int l_linenumber_max = ONE_ORDER_PER_LINENUM; 
 
-        for(l_orderkey = 1; l_orderkey <= l_orderkey_max; ++l_orderkey) {
-            for(int l_linenumber = 1; l_linenumber <= l_linenumber_max; ++l_linenumber) {
-                /*
-                    col_defs.emplace_back(ColDef("l_orderkey", ColType::TYPE_INT, 4));
-                    col_defs.emplace_back(ColDef("l_partkey", ColType::TYPE_INT, 4));
-                    col_defs.emplace_back(ColDef("l_suppkey", ColType::TYPE_INT, 4));
-                    col_defs.emplace_back(ColDef("l_linenumber", ColType::TYPE_INT, 4));
-                    col_defs.emplace_back(ColDef("l_quantity", ColType::TYPE_FLOAT, 4));
-                    col_defs.emplace_back(ColDef("l_extendedprice", ColType::TYPE_FLOAT, 4));
-                    col_defs.emplace_back(ColDef("l_discount", ColType::TYPE_FLOAT, 4));
-                    col_defs.emplace_back(ColDef("l_tax", ColType::TYPE_FLOAT, 4));
-                    col_defs.emplace_back(ColDef("l_returnflag", ColType::TYPE_STRING, 1));
-                    col_defs.emplace_back(ColDef("l_linestatus", ColType::TYPE_STRING, 1));
-                    col_defs.emplace_back(ColDef("l_shipdate", ColType::TYPE_STRING, Clock::DATETIME_SIZE + 1));
-                    col_defs.emplace_back(ColDef("l_commitdate", ColType::TYPE_STRING, Clock::DATETIME_SIZE + 1));
-                    col_defs.emplace_back(ColDef("l_receiptdate", ColType::TYPE_STRING, Clock::DATETIME_SIZE + 1));
-                    col_defs.emplace_back(ColDef("l_shipinstruct", ColType::TYPE_STRING, 25));
-                    col_defs.emplace_back(ColDef("l_shipmode", ColType::TYPE_STRING, 10));
-                    col_defs.emplace_back(ColDef("l_comment", ColType::TYPE_STRING, 44));
-                */
-                // int rnd = RandomGenerator::generate_random_int(1, 2);
-                // if(rnd == 1) {
-                //     l_partkey = RandomGenerator::generate_random_int(1, l_partkey_max);
-                //     l_suppkey = RandomGenerator::generate_random_int(1, l_suppkey_max);
-                // }
-                // else {
-                //     l_partkey = l_orderkey;
-                //     l_suppkey = l_orderkey;
-                // }
-                
+        int record_per_key = l_orderkey_max * l_linenumber_max / DATE_MAX_NUM;
+        l_orderkey = 1;
+        l_linenumber = 1;
+
+        for(int l_shipdate_idx = 0; l_shipdate_idx < DATE_MAX_NUM; ++l_shipdate_idx) {
+            RandomGenerator::generate_date_from_idx(l_shipdate, l_shipdate_idx);
+
+            for(int record_idx = 0; record_idx < record_per_key; ++record_idx) {
+                // std::cout << "l_orderkey = " << l_orderkey << ", l_linenumber = " << l_linenumber << ", begin insert!"<< std::endl;
+                if(l_orderkey > l_orderkey_max) {
+                    break;
+                }
+
                 l_partkey = RandomGenerator::generate_random_int(1, l_partkey_max);
                 l_suppkey = RandomGenerator::generate_random_int(1, l_suppkey_max);
                 l_quantity = RandomGenerator::generate_random_float(1, 20000);
                 l_extendedprice = RandomGenerator::generate_random_float(1, 20000);
                 l_discount = RandomGenerator::generate_random_float(1, 20000);
                 l_tax = RandomGenerator::generate_random_float(1, 20000);
-                
                 RandomGenerator::generate_random_str(l_returnflag, 1);
                 RandomGenerator::generate_random_str(l_linestatus, 1);
                 // RandomGenerator::generate_random_str(l_shipdate, Clock::DATETIME_SIZE + 1);
-                RandomGenerator::generate_random_date(l_shipdate);
                 // RandomGenerator::generate_random_str(l_commitdate, Clock::DATETIME_SIZE + 1);
                 RandomGenerator::generate_random_date(l_commitdate);
                 // RandomGenerator::generate_random_str(l_receiptdate, Clock::DATETIME_SIZE + 1);
@@ -1128,13 +1317,12 @@ public:
                 RandomGenerator::generate_random_str(l_shipmode, 10);
                 RandomGenerator::generate_random_str(l_comment, 4);
 
-                /*
-                    generate record content
-                */
                 memset(record.record_, 0, record.data_length_ + sizeof(RecordHdr));
 
                 int offset = 0;
-                
+                memcpy(record.raw_data_ + offset, l_shipdate, RandomGenerator::DATE_SIZE);
+                // std::cout << l_shipdate << std::endl;
+                offset += RandomGenerator::DATE_SIZE;
                 memcpy(record.raw_data_ + offset, (char *)&l_orderkey, sizeof(int));
                 offset += sizeof(int);
                 memcpy(record.raw_data_ + offset, (char *)&l_linenumber, sizeof(int));
@@ -1155,8 +1343,6 @@ public:
                 offset += 1;
                 memcpy(record.raw_data_ + offset, l_linestatus, 1);
                 offset += 1;
-                memcpy(record.raw_data_ + offset, l_shipdate, RandomGenerator::DATE_SIZE + 1);
-                offset += RandomGenerator::DATE_SIZE + 1;
                 memcpy(record.raw_data_ + offset, l_commitdate, RandomGenerator::DATE_SIZE + 1);
                 offset += RandomGenerator::DATE_SIZE + 1;
                 memcpy(record.raw_data_ + offset, l_receiptdate, RandomGenerator::DATE_SIZE + 1);
@@ -1175,9 +1361,114 @@ public:
                     insert data
                 */
                 index_handle->insert_entry(record.raw_data_, record.record_, txn);
-                
+
+                l_linenumber ++;
+                if(l_linenumber > l_linenumber_max) {
+                    l_linenumber = 1;
+                    l_orderkey ++;
+                }
             }
         }
+
+        // for(l_orderkey = 1; l_orderkey <= l_orderkey_max; ++l_orderkey) {
+        //     for(int l_linenumber = 1; l_linenumber <= l_linenumber_max; ++l_linenumber) {
+        //         /*
+        //             col_defs.emplace_back(ColDef("l_orderkey", ColType::TYPE_INT, 4));
+        //             col_defs.emplace_back(ColDef("l_partkey", ColType::TYPE_INT, 4));
+        //             col_defs.emplace_back(ColDef("l_suppkey", ColType::TYPE_INT, 4));
+        //             col_defs.emplace_back(ColDef("l_linenumber", ColType::TYPE_INT, 4));
+        //             col_defs.emplace_back(ColDef("l_quantity", ColType::TYPE_FLOAT, 4));
+        //             col_defs.emplace_back(ColDef("l_extendedprice", ColType::TYPE_FLOAT, 4));
+        //             col_defs.emplace_back(ColDef("l_discount", ColType::TYPE_FLOAT, 4));
+        //             col_defs.emplace_back(ColDef("l_tax", ColType::TYPE_FLOAT, 4));
+        //             col_defs.emplace_back(ColDef("l_returnflag", ColType::TYPE_STRING, 1));
+        //             col_defs.emplace_back(ColDef("l_linestatus", ColType::TYPE_STRING, 1));
+        //             col_defs.emplace_back(ColDef("l_shipdate", ColType::TYPE_STRING, Clock::DATETIME_SIZE + 1));
+        //             col_defs.emplace_back(ColDef("l_commitdate", ColType::TYPE_STRING, Clock::DATETIME_SIZE + 1));
+        //             col_defs.emplace_back(ColDef("l_receiptdate", ColType::TYPE_STRING, Clock::DATETIME_SIZE + 1));
+        //             col_defs.emplace_back(ColDef("l_shipinstruct", ColType::TYPE_STRING, 25));
+        //             col_defs.emplace_back(ColDef("l_shipmode", ColType::TYPE_STRING, 10));
+        //             col_defs.emplace_back(ColDef("l_comment", ColType::TYPE_STRING, 44));
+        //         */
+        //         // int rnd = RandomGenerator::generate_random_int(1, 2);
+        //         // if(rnd == 1) {
+        //         //     l_partkey = RandomGenerator::generate_random_int(1, l_partkey_max);
+        //         //     l_suppkey = RandomGenerator::generate_random_int(1, l_suppkey_max);
+        //         // }
+        //         // else {
+        //         //     l_partkey = l_orderkey;
+        //         //     l_suppkey = l_orderkey;
+        //         // }
+                
+        //         l_partkey = RandomGenerator::generate_random_int(1, l_partkey_max);
+        //         l_suppkey = RandomGenerator::generate_random_int(1, l_suppkey_max);
+        //         l_quantity = RandomGenerator::generate_random_float(1, 20000);
+        //         l_extendedprice = RandomGenerator::generate_random_float(1, 20000);
+        //         l_discount = RandomGenerator::generate_random_float(1, 20000);
+        //         l_tax = RandomGenerator::generate_random_float(1, 20000);
+                
+        //         RandomGenerator::generate_random_str(l_returnflag, 1);
+        //         RandomGenerator::generate_random_str(l_linestatus, 1);
+        //         // RandomGenerator::generate_random_str(l_shipdate, Clock::DATETIME_SIZE + 1);
+        //         RandomGenerator::generate_random_date(l_shipdate);
+        //         // RandomGenerator::generate_random_str(l_commitdate, Clock::DATETIME_SIZE + 1);
+        //         RandomGenerator::generate_random_date(l_commitdate);
+        //         // RandomGenerator::generate_random_str(l_receiptdate, Clock::DATETIME_SIZE + 1);
+        //         RandomGenerator::generate_random_date(l_receiptdate);
+        //         RandomGenerator::generate_random_str(l_shipinstruct, 25);
+        //         RandomGenerator::generate_random_str(l_shipmode, 10);
+        //         RandomGenerator::generate_random_str(l_comment, 4);
+
+        //         /*
+        //             generate record content
+        //         */
+        //         memset(record.record_, 0, record.data_length_ + sizeof(RecordHdr));
+
+        //         int offset = 0;
+        //         memcpy(record.raw_data_ + offset, l_shipdate, RandomGenerator::DATE_SIZE + 1);
+        //         offset += RandomGenerator::DATE_SIZE + 1;
+        //         memcpy(record.raw_data_ + offset, (char *)&l_orderkey, sizeof(int));
+        //         offset += sizeof(int);
+        //         memcpy(record.raw_data_ + offset, (char *)&l_linenumber, sizeof(int));
+        //         offset += sizeof(int);
+        //         memcpy(record.raw_data_ + offset, (char *)&l_partkey, sizeof(int));
+        //         offset += sizeof(int);
+        //         memcpy(record.raw_data_ + offset, (char *)&l_suppkey, sizeof(int));
+        //         offset += sizeof(int);
+        //         memcpy(record.raw_data_ + offset, (char *)&l_quantity, sizeof(float));
+        //         offset += sizeof(float);
+        //         memcpy(record.raw_data_ + offset, (char *)&l_extendedprice, sizeof(float));
+        //         offset += sizeof(float);
+        //         memcpy(record.raw_data_ + offset, (char *)&l_discount, sizeof(float));
+        //         offset += sizeof(float);
+        //         memcpy(record.raw_data_ + offset, (char *)&l_tax, sizeof(float));
+        //         offset += sizeof(float);
+        //         memcpy(record.raw_data_ + offset, l_returnflag, 1);
+        //         offset += 1;
+        //         memcpy(record.raw_data_ + offset, l_linestatus, 1);
+        //         offset += 1;
+        //         memcpy(record.raw_data_ + offset, l_commitdate, RandomGenerator::DATE_SIZE + 1);
+        //         offset += RandomGenerator::DATE_SIZE + 1;
+        //         memcpy(record.raw_data_ + offset, l_receiptdate, RandomGenerator::DATE_SIZE + 1);
+        //         offset += RandomGenerator::DATE_SIZE + 1;
+        //         memcpy(record.raw_data_ + offset, l_shipinstruct, 25);
+        //         offset += 25;
+        //         memcpy(record.raw_data_ + offset, l_shipmode, 10);
+        //         offset += 10;
+        //         memcpy(record.raw_data_ + offset, l_comment, 4);
+        //         offset += 4;
+
+        //         assert(offset == tab_meta.record_length_);
+
+        //         // std::cout << "l_orderkey = " << l_orderkey << ", l_linenumber = " << l_linenumber << ", begin insert!"<< std::endl;
+        //         /*
+        //             insert data
+        //         */
+        //         index_handle->insert_entry(record.raw_data_, record.record_, txn);
+                
+        //     }
+        //     std::cout << "finish insert l_orderkey = " << l_orderkey << std::endl;
+        // }
     }
 
     void generate_data_csv(std::string file_name) {

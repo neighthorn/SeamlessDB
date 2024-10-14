@@ -115,6 +115,7 @@ void SortExecutor::load_state_info(SortOperatorState *sort_op_state) {
     if(sort_op_state->left_child_is_join_ == false) {
         if(auto x = dynamic_cast<ProjectionExecutor *>(prev_.get())) {
             x->load_state_info(dynamic_cast<ProjectionOperatorState *>(sort_op_state->left_child_state_));
+            
         }
         else if(auto x = dynamic_cast<IndexScanExecutor *>(prev_.get())) {
             x->load_state_info(dynamic_cast<IndexScanOperatorState *>(sort_op_state->left_child_state_));

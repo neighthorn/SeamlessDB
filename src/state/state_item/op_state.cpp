@@ -636,6 +636,11 @@ HashJoinOperatorState::HashJoinOperatorState(HashJoinExecutor* hash_join_op):
     left_record_len_ = hash_join_op_->left_->tupleLen();
     left_hash_table_size_ = hash_join_op_->left_hash_table_curr_tuple_count_ - hash_join_op_->left_hash_table_checkpointed_tuple_count_;
     left_tuples_index_ = hash_join_op_->left_tuples_index_;
+    if(left_tuples_index_ != -1) {
+        left_iter_key_ = hash_join_op_->left_iter_->first;
+        op_state_size_ += sizeof(int);
+        op_state_size_ += hash_join_op->join_key_size_;
+    }
     is_hash_table_built_ = hash_join_op_->initialized_;
     if(left_hash_table_size_ > 0) hash_table_contained_ = true;
     else hash_table_contained_ = false;
@@ -691,7 +696,7 @@ HashJoinOperatorState::HashJoinOperatorState(HashJoinExecutor* hash_join_op):
     checkpointed_indexes_ = &hash_join_op_->checkpointed_indexes_;
     op_state_size_ += left_hash_table_size_ * left_record_len_; // 不需要记录recordhdr  
 
-    op_state_size_ = getSize();
+    // op_state_size_ = getSize();
 }
 
 size_t HashJoinOperatorState::serialize(char *dest) {
@@ -751,6 +756,13 @@ size_t HashJoinOperatorState::serialize(char *dest) {
     if(right_child_is_join_ == false) {
         size_t right_index_scan_size = right_child_state_->serialize(dest + offset);
         offset += right_index_scan_size;
+    }
+
+    if(left_tuples_index_ != -1) {
+        memcpy(dest + offset, (char *)&hash_join_op_->join_key_size_, sizeof(int));
+        offset += sizeof(int);
+        memcpy(dest + offset, left_iter_key_.c_str(), hash_join_op_->join_key_size_);
+        offset += hash_join_op_->join_key_size_;
     }
 
     assert(offset == op_state_size_);
@@ -819,6 +831,13 @@ bool HashJoinOperatorState::deserialize(char* src, size_t size) {
             std::cerr << "right child node type: " << child_exec_type << std::endl;
             std::cerr << "[Error]: Unexpected right child node type for HashJoinExecutor! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
         }
+    }
+
+    if(left_tuples_index_ != -1) {
+        int join_key_size = *reinterpret_cast<int*>(src + offset);
+        offset += sizeof(int);
+        left_iter_key_ = std::string(src + offset, join_key_size);
+        offset += join_key_size;
     }
 
     assert(offset == op_state_size_);

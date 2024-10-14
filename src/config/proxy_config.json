@@ -16,7 +16,7 @@
         "port": 12197,
         "thread_num": 1,
         "workload": "tpch",
-        "record_num": 30,
+        "record_num": 10,
         "resumption_open": 1
     },
     "back_ro_node": {

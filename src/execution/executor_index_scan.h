@@ -68,15 +68,18 @@ friend class IndexScanOperatorState;
         tab_name_ = std::move(tab_name);
         tab_ = sm_manager_->db_.get_table(tab_name_);
         filter_conds_ = std::move(filter_conds);
-
         index_conds_ = std::move(index_conds);
+        index_meta_ = *(tab_.get_primary_index_meta());
+        auto& index_cols = index_meta_.cols;
+        // for()
+
         if(index_conds_.size() == 0) {
             is_seq_scan_ = true;
         } else {
             is_seq_scan_ = false;
         }
 
-        index_meta_ = *(tab_.get_primary_index_meta());
+        
         pindex_handle_ = sm_manager->primary_index_.at(tab_name_).get();
         old_version_handle_ = sm_manager->old_versions_.at(tab_name_).get();
         // cols_ = tab_.cols_;
@@ -124,7 +127,6 @@ friend class IndexScanOperatorState;
         //     std::cout << cond.lhs_col.col_name << CompOpString[cond.op] << cond.rhs_val.int_val << std::endl;
         // }
         // std::cout << "is_seq_scan: " << is_seq_scan_ << std::endl;
-        // fed_conds_ = conds_;
 
         // first request LOCK_IX on table
         Lock* lock = nullptr;
@@ -327,6 +329,9 @@ NOTALBELOCK:
         */
         lower_rid_ = lower;
         upper_rid_ = upper;
+
+        std::cout << "lower_rid: {page_no=" << lower_rid_.page_no << ", slot_no=" << lower_rid_.slot_no << ", record_no" << lower_rid_.record_no << "}\n";
+        std::cout << "upper_rid: {page_no=" << upper_rid_.page_no << ", slot_no=" << upper_rid_.slot_no << ", record_no" << upper_rid_.record_no << "}\n";
 
         scan_ = std::make_unique<IxScan>(pindex_handle_, lower, upper);
 

@@ -21,7 +21,7 @@
         "local_rdma_port": 12200,
         "thread_num": 2,
         "workload": "tpch",
-        "record_num": 30,
+        "record_num": 10,
         "state_open": 1,
         "state_theta": 2,
         "buffer_pool_size": 1310720,

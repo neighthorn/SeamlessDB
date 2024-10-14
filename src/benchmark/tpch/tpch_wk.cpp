@@ -35,6 +35,9 @@ bool TPCHWK::create_table() {
     std::unique_ptr<TPCH_TABLE::Nation> nation = std::make_unique<TPCH_TABLE::Nation>();
     nation->create_table(sm_mgr_);
 
+    std::unique_ptr<TPCH_TABLE::Nation2> nation2 = std::make_unique<TPCH_TABLE::Nation2>();
+    nation2->create_table(sm_mgr_);
+
     std::unique_ptr<TPCH_TABLE::Part> part = std::make_unique<TPCH_TABLE::Part>();
     part->create_table(sm_mgr_);
 
@@ -80,6 +83,9 @@ void TPCHWK::load_data() {
     /*
         load table data
     */
+   tpch_load_table_data(Customer);
+    std::cout << "finish load customer\n";
+
     tpch_load_table_data(Lineitem)
     std::cout << "finish load lineitem\n";
 
@@ -89,11 +95,11 @@ void TPCHWK::load_data() {
     tpch_load_table_data(Nation);
     std::cout << "finish load nation\n";
 
+    tpch_load_table_data(Nation2);
+    std::cout << "finish load nation2";
+
     tpch_load_table_data(Part);
     std::cout << "finish load part\n";
-
-    tpch_load_table_data(Customer);
-    std::cout << "finish load customer\n";
 
     tpch_load_table_data(Orders);
     std::cout << "finish load orders\n";
@@ -113,6 +119,7 @@ void TPCHWK::load_data() {
     std::cout << "flush index:\n";
     tpch_flush_index(region);
     tpch_flush_index(nation);
+    tpch_flush_index(nation2);
     tpch_flush_index(part);
     tpch_flush_index(customer);
     tpch_flush_index(orders);
@@ -125,6 +132,7 @@ void TPCHWK::load_data() {
 
     tpch_reload_index(region);
     tpch_reload_index(nation);
+    tpch_reload_index(nation2);
     tpch_reload_index(part);
     tpch_reload_index(customer);
     std::cout << "tpch begin reload orders\n";
@@ -162,6 +170,7 @@ void TPCHWK::load_meta() {
     std::cout << "load region index\n";
     load_index(region);
     load_index(nation);
+    load_index(nation2);
     load_index(part);
     load_index(customer);
     load_index(orders);

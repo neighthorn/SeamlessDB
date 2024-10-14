@@ -19,6 +19,9 @@ public:
     static void generate_random_varchar(char* str, int min_len, int max_len);
     static void generate_randome_address(char* street_1, char* street_2, char* city, char* state, char* zip);
     static void generate_random_date(char* str);
+    static void generate_date_from_idx(char* str, int idx);
+    static void generate_random_mktsegment(char* str);
+    static void generate_mktsegment_from_idx(char* str, int idx);
     static int NURand(int A, int x, int y);
     static void generate_random_lastname(int num, char* name);
 

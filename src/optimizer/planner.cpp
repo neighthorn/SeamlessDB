@@ -76,14 +76,19 @@ bool Planner::check_primary_index_match(std::string tab_name, std::vector<Condit
     IndexMeta pindex_meta = *(tab.get_primary_index_meta());
     std::vector<std::string> index_cols;
     bool is_op_eq = true;
+    bool find_col = false;
 
     for(auto& index_col: pindex_meta.cols) {
+        
         for(size_t i = 0; i < curr_conds.size(); ++i) {
             if(curr_conds[i].lhs_col.col_name.compare(index_col.name) == 0) {
+                find_col = true;
                 index_conds.emplace_back(curr_conds[i]);
                 if(curr_conds[i].op != OP_EQ) is_op_eq = false;
             }
         }
+        if(find_col == false) return false;
+
         index_cols.emplace_back(index_col.name);
         if(is_op_eq == false) break;
     }
@@ -280,7 +285,7 @@ std::shared_ptr<Plan> Planner::make_one_rel(std::shared_ptr<Query> query)
             ++it;
         }
 
-        if(i <= 2) {
+        if(i <= 0) {
             table_join_executors = std::make_shared<JoinPlan>(T_NestLoop, 
                                                             current_sql_id_, current_plan_id_++, 
                                                             std::move(table_join_executors), 

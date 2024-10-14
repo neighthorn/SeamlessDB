@@ -14,8 +14,12 @@ static int ix_compare(const char *a, const char *b, ColType type, int col_len) {
             float fb = *(float *)b;
             return (fa < fb) ? -1 : ((fa > fb) ? 1 : 0);
         }
-        case TYPE_STRING:
+        case TYPE_STRING: {
+            std::string a_str(a, col_len);
+            std::string b_str(b, col_len);
+            // std::cout << "ix_compare: a_str: " << a_str << ", b_str: "  << b_str << "\n";
             return memcmp(a, b, col_len);
+        }
         default:
             throw InternalError("Unexpected data type");
     }
@@ -25,6 +29,7 @@ static int ix_compare(const char *a, const char *b, ColType type, int col_len) {
     int offset = 0;
     for(size_t i = 0; i < col_types.size(); ++i) {
         int res = ix_compare(a + offset, b + offset, col_types[i], col_lens[i]);
+        // std::cout << "ix_compare_result: " << res << "\n";
         if(res != 0) return res;
         offset += col_lens[i];
     }

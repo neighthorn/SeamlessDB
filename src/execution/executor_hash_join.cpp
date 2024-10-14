@@ -160,7 +160,7 @@ std::unique_ptr<Record> HashJoinExecutor::Next() {
 
     be_call_times_ ++;
 
-    // write_state_if_allow();
+    write_state_if_allow();
     
     return res;
 }
@@ -182,7 +182,8 @@ std::unordered_map<std::string, std::vector<std::unique_ptr<Record>>>::const_ite
 
     left_iter_ = hash_table_.find(std::string(key, join_key_size_));
     left_tuples_index_ = 0;
-    
+
+    delete[] key;
     return left_iter_;
 }
 
@@ -316,6 +317,9 @@ void HashJoinExecutor::load_state_info(HashJoinOperatorState* state) {
     is_end_ = false;
     finished_begin_tuple_ = state->finish_begin_tuple_;
     initialized_ = state->is_hash_table_built_;
+    if(left_tuples_index_ != -1) {
+        left_iter_ = hash_table_.find(state->left_iter_key_);
+    }
 
     // 先build了哈希表，才能调用当前函数
     if(!initialized_) {

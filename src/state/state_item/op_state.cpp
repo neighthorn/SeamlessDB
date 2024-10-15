@@ -652,9 +652,11 @@ HashJoinOperatorState::HashJoinOperatorState(HashJoinExecutor* hash_join_op):
     op_state_size_ += sizeof(bool);
     if(auto x = dynamic_cast<IndexScanExecutor *>(hash_join_op_->left_.get())) {
         left_child_is_join_ = false;
-        // left_index_scan_state_ = IndexScanOperatorState(x);
-        left_child_state_ = new IndexScanOperatorState(x);
-        op_state_size_ += left_child_state_->getSize();
+        if(left_hash_table_size_ > 0) {
+            // left_index_scan_state_ = IndexScanOperatorState(x);
+            left_child_state_ = new IndexScanOperatorState(x);
+            op_state_size_ += left_child_state_->getSize();
+        }
     } else if(auto x = dynamic_cast<BlockNestedLoopJoinExecutor *>(hash_join_op_->left_.get())) {
         left_child_is_join_ = true;
         // left_index_scan_state_ = IndexScanOperatorState();
@@ -663,8 +665,10 @@ HashJoinOperatorState::HashJoinOperatorState(HashJoinExecutor* hash_join_op):
         // left_index_scan_state_ = IndexScanOperatorState();
     } else if (auto x = dynamic_cast<ProjectionExecutor *>(hash_join_op_->left_.get())) {
         left_child_is_join_ = false;
-        left_child_state_ = new ProjectionOperatorState(x);
-        op_state_size_ += left_child_state_->getSize();
+        if(left_hash_table_size_ > 0) {
+            left_child_state_ = new ProjectionOperatorState(x);
+            op_state_size_ += left_child_state_->getSize();
+        }
     } else {
         std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
     }
@@ -695,6 +699,8 @@ HashJoinOperatorState::HashJoinOperatorState(HashJoinExecutor* hash_join_op):
     left_hash_table_ = &hash_join_op_->hash_table_;
     checkpointed_indexes_ = &hash_join_op_->checkpointed_indexes_;
     op_state_size_ += left_hash_table_size_ * left_record_len_; // 不需要记录recordhdr  
+
+    // std::cout << "HashJoinOperatorState::HashJoinOperatorState: left_hash_table_num_: " << left_hash_table_size_ << ", size: " << left_hash_table_size_ * left_record_len_ << std::endl;
 
     // op_state_size_ = getSize();
 }

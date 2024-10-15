@@ -185,7 +185,7 @@ IxNodeHandle *IxIndexHandle::split(IxNodeHandle *node) {
     if(node->get_next_page() != IX_NO_PAGE) {
         IxNodeHandle *next = fetch_node(node->get_next_page());
         next->page_hdr_->prev_page_ = bro->get_page_no();
-        assert(buffer_pool_manager_->unpin_page(next->get_page_id(), true));
+        buffer_pool_manager_->unpin_page(next->get_page_id(), true);
         delete next;
     }
 

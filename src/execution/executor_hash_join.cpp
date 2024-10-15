@@ -20,6 +20,7 @@ void HashJoinExecutor::beginTuple() {
             if(left_->is_end()) {
                 is_end_ = true;
                 finished_begin_tuple_ = true;
+                state_change_time_ ++;
                 write_state_if_allow();
                 return;
             }
@@ -61,6 +62,7 @@ void HashJoinExecutor::beginTuple() {
             // find_end = std::chrono::high_resolution_clock::now();
             // std::cout << "HashJoinPushOneTupleIntoHashTable time: " << std::chrono::duration_cast<std::chrono::milliseconds>(find_end - find_start).count() << "ms" << std::endl;
 
+            state_change_time_ ++;
             if(node_type_ == 1) write_state_if_allow(1);
             else write_state_if_allow();
             // find_end = std::chrono::high_resolution_clock::now();
@@ -159,6 +161,7 @@ std::unique_ptr<Record> HashJoinExecutor::Next() {
     memcpy(res->raw_data_ + left_rec->data_length_, right_rec->raw_data_, right_rec->data_length_);
 
     be_call_times_ ++;
+    state_change_time_ ++;
 
     write_state_if_allow();
     
@@ -226,6 +229,7 @@ std::pair<bool, double> HashJoinExecutor::judge_state_reward(HashJoinCheckpointI
         else if(auto x = dynamic_cast<ProjectionExecutor*>(left_.get())) {
             curr_ck_info->left_rc_op_ = x->getRCop(curr_ck_info->ck_timestamp_);
         }
+        curr_ck_info->state_change_time_ = state_change_time_;
         // RwServerDebug::getInstance()->DEBUG_PRINT("[HashJoinExecutor][op_id: " + std::to_string(operator_id_) + "]: [delta_hash_table_tuple_count]: " + std::to_string(left_hash_table_curr_tuple_count_ - latest_ck_info->left_hash_table_curr_tuple_count_) \
         // + " [Rew_op]: " + std::to_string(rew_op) + " [state_size]: " + std::to_string(src_op) + " [Src_op]: " + std::to_string(new_src_op) + " [Rc_op]: " + std::to_string(rc_op) + " [State Theta]: " + std::to_string(state_theta_));
         return {true, src_op};
@@ -251,16 +255,16 @@ int64_t HashJoinExecutor::getRCop(std::chrono::time_point<std::chrono::system_cl
     //  + " [left_rc_op]: " + std::to_string(latest_ck_info->left_rc_op_));
 
     if(auto x =  dynamic_cast<HashJoinExecutor *>(left_.get())) {
-        return std::chrono::duration_cast<std::chrono::microseconds>(curr_time - latest_ck_info->ck_timestamp_).count() + latest_ck_info->left_rc_op_;
+        return (std::chrono::duration_cast<std::chrono::microseconds>(curr_time - latest_ck_info->ck_timestamp_).count() + latest_ck_info->left_rc_op_) / ((state_change_time_ - latest_ck_info->state_change_time_) < 5 ? 10 : 1);
     } 
     else if(auto x = dynamic_cast<BlockNestedLoopJoinExecutor*>(left_.get())) {
-        return std::chrono::duration_cast<std::chrono::microseconds>(curr_time - latest_ck_info->ck_timestamp_).count() + latest_ck_info->left_rc_op_;
+        return (std::chrono::duration_cast<std::chrono::microseconds>(curr_time - latest_ck_info->ck_timestamp_).count() + latest_ck_info->left_rc_op_) / ((state_change_time_ - latest_ck_info->state_change_time_) < 5 ? 10 : 1);
     }
     else if(auto x = dynamic_cast<ProjectionExecutor*>(left_.get())) {
-        return std::chrono::duration_cast<std::chrono::microseconds>(curr_time - latest_ck_info->ck_timestamp_).count() + latest_ck_info->left_rc_op_;
+        return (std::chrono::duration_cast<std::chrono::microseconds>(curr_time - latest_ck_info->ck_timestamp_).count() + latest_ck_info->left_rc_op_) / ((state_change_time_ - latest_ck_info->state_change_time_) < 5 ? 10 : 1);
     }
     else {
-        return std::chrono::duration_cast<std::chrono::microseconds>(curr_time - latest_ck_info->ck_timestamp_).count();
+        return (std::chrono::duration_cast<std::chrono::microseconds>(curr_time - latest_ck_info->ck_timestamp_).count()) / ((state_change_time_ - latest_ck_info->state_change_time_) < 5 ? 10 : 1);
     }
 }
 
@@ -271,6 +275,7 @@ void HashJoinExecutor::write_state_if_allow(int type) {
         auto [able_to_write, src_op] = judge_state_reward(&curr_ckpt_info);
         if(able_to_write) {
             auto [status, actual_size] = context_->op_state_mgr_->add_operator_state_to_buffer(this, src_op);
+            // bool status = true;
             // RwServerDebug::getInstance()->DEBUG_PRINT("[HashJoinExecutor][op_id: " + std::to_string(operator_id_) + "]: [Write State]: " + std::to_string(status) + " [Actual Size]: " + std::to_string(actual_size));
             if(status) {
                 ck_infos_.push_back(curr_ckpt_info);

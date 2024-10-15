@@ -193,6 +193,7 @@ int IxNodeHandle::leaf_directory_upper_bound(const char* target) {
 int IxNodeHandle::leaf_insert_key_record(const char* key, const char* record_value) {
     // get the first dir >= key
     int insert_index = leaf_directory_lower_bound(key);
+    // std::cout << "insert index: " << insert_index << std::endl;
     int dir_entry_len = file_hdr_->col_tot_len_ + sizeof(int32_t);  // key + offset
     char* insert_dir_entry_slot = leaf_get_directory_entry_at(insert_index);
     
@@ -203,11 +204,14 @@ int IxNodeHandle::leaf_insert_key_record(const char* key, const char* record_val
     if(insert_index < page_hdr_->tot_num_records_ &&
         ix_compare(insert_dir_entry_slot, key, file_hdr_->col_types_, file_hdr_->col_lens_) == 0) {
         // if()
+        std::cout << "Error: the key has already existed in the leaf node!\n";
+        assert(0);
         return page_hdr_->tot_num_records_;
     }
 
     // insert a dir_entry
-    memmove(insert_dir_entry_slot + dir_entry_len, insert_dir_entry_slot, dir_entry_len);
+    // memmove(insert_dir_entry_slot + dir_entry_len, insert_dir_entry_slot, dir_entry_len);
+    memmove(insert_dir_entry_slot + dir_entry_len, insert_dir_entry_slot, dir_entry_len * (page_hdr_->tot_num_records_ - insert_index));
     memcpy(insert_dir_entry_slot, key, file_hdr_->col_tot_len_);
 
     // insert the record data

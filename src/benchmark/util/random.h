@@ -3,6 +3,10 @@
 
 #include <ctime>
 #include <cstdlib>
+#include <vector>
+#include <random>
+#include <algorithm>
+#include <assert.h>
 
 class RandomGenerator {
 public:
@@ -28,6 +32,25 @@ public:
     static int get_region_key_from_nation(char* nation);
     static void get_region_from_region_key(char* str, int len, int region_key);
     static void get_nation_from_region_nation_key(int region_key, int nation_key, char* nation);
+};
+
+class RandomMapping {
+public:
+    RandomMapping(int n) {
+        for(int i = 1; i <= n; ++i) mapping.push_back(i);
+        std::random_device rd;
+        std::mt19937 g(rd());
+        std::shuffle(mapping.begin(), mapping.end(), g);
+    }
+
+    int f(int x) const {
+        if(x < 1 || x > mapping.size()) {
+            assert(0);
+        }
+        return mapping[x-1];
+    }
+
+    std::vector<int> mapping;
 };
 
 #endif

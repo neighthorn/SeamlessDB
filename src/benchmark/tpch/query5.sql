@@ -46,4 +46,6 @@ where c_custkey = o_custkey
     and r_name = 'ASIA' 
     and o_orderdate >= '1995-01-01' 
     and o_orderdate < '1996-01-01' 
+    and l_shipdate >= '1994-01-01'
+    and l_shipdate < '1996-01-01' 
     order by l_extendedprice desc;

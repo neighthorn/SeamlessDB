@@ -22,14 +22,14 @@
         "thread_num": 1,
         "workload": "tpch",
         "record_num": 10,
-        "state_open": 0,
+        "state_open": 1,
         "state_theta": 2,
         "buffer_pool_size": 1310720,
         "src_scale_factor": 0.9,
         "block_size": 1000,
         "MB": 819200,
         "RB": 819200,
-        "C": 30000
+        "C": 500000
     },
     "remote_state_nodes": {
         "remote_ips": [

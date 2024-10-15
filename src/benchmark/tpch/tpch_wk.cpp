@@ -83,7 +83,8 @@ void TPCHWK::load_data() {
     /*
         load table data
     */
-   tpch_load_table_data(Customer);
+
+    tpch_load_table_data(Customer);
     std::cout << "finish load customer\n";
 
     tpch_load_table_data(Lineitem)

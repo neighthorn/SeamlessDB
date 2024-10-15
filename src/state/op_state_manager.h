@@ -97,6 +97,7 @@ class OperatorStateManager {
 public:
     static  int     write_cnts;
     static  int64_t write_tot_size;
+    static  int     add_cktp_cnts;
 
 public:
 

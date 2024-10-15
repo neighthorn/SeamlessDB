@@ -12,6 +12,7 @@ struct HashJoinCheckpointInfo {
     std::chrono::time_point<std::chrono::system_clock> ck_timestamp_;
     int left_hash_table_curr_tuple_count_;
     double left_rc_op_;
+    int state_change_time_;
 };
 
 class HashJoinExecutor : public AbstractExecutor {
@@ -33,8 +34,7 @@ public:
     int left_hash_table_curr_tuple_count_;
 
     bool is_end_;
-
-    
+    int state_change_time_;
 
 public:
     std::vector<HashJoinCheckpointInfo> ck_infos_;      // 记录建立检查点时的信息
@@ -68,7 +68,7 @@ public:
         left_iter_ = hash_table_.end();
         left_tuples_index_ = -1;
 
-        ck_infos_.push_back(HashJoinCheckpointInfo{.ck_timestamp_ = std::chrono::high_resolution_clock::now(), .left_hash_table_curr_tuple_count_ = 0, .left_rc_op_ = 0});
+        ck_infos_.push_back(HashJoinCheckpointInfo{.ck_timestamp_ = std::chrono::high_resolution_clock::now(), .left_hash_table_curr_tuple_count_ = 0, .left_rc_op_ = 0, .state_change_time_ = 0});
         exec_type_ = ExecutionType::HASH_JOIN;
 
         be_call_times_ = 0;
@@ -78,6 +78,7 @@ public:
         is_in_recovery_ = false;
 
         context_ = context;
+        state_change_time_ = 0;
     }
 
     bool is_hash_table_built() const {

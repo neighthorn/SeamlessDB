@@ -16,6 +16,7 @@
 */
 int OperatorStateManager::write_cnts = 0;
 int64_t OperatorStateManager::write_tot_size = 0;
+int OperatorStateManager::add_cktp_cnts = 0;
 
 OperatorStateManager::OperatorStateManager(int connection_id, CoroutineScheduler *coro_sched, MetaManager *meta_manager, QPManager *qp_manager) : connection_id_(connection_id),
     coro_sched_(coro_sched), meta_manager_(meta_manager), qp_manager_(qp_manager)
@@ -289,6 +290,8 @@ std::pair<bool, size_t> OperatorStateManager::add_operator_state_to_buffer(Abstr
         IndexScanOperatorState index_scan_state(scan_op);
         size_t index_scan_state_size = index_scan_state.getSize();
 
+        // if(add_cktp_cnts == 13) std::cout << "IndexScanOperatorState size: " << index_scan_state_size << std::endl;
+
         /*
             分配buffer
         */
@@ -330,6 +333,8 @@ std::pair<bool, size_t> OperatorStateManager::add_operator_state_to_buffer(Abstr
         BlockJoinOperatorState block_join_state(block_join_op);
         size_t block_join_checkpoint_size = block_join_state.getSize();
 
+        // if(add_cktp_cnts == 13) std::cout << "BlockJoinOperatorState size: " << block_join_checkpoint_size << std::endl;
+
         /*
             分配buffer
         */
@@ -370,6 +375,11 @@ std::pair<bool, size_t> OperatorStateManager::add_operator_state_to_buffer(Abstr
         HashJoinOperatorState hash_join_state(hash_join_op);
         size_t hash_join_checkpoint_size = hash_join_state.getSize();
 
+        // if(add_cktp_cnts == 13) {
+        //     std::cout << "HashJoinOperatorState size: " << hash_join_checkpoint_size << std::endl;
+            
+        // }
+
         char* alloc_buffer;
         do {
             auto [status, buffer] = op_checkpoint_buffer_allocator_->Alloc(hash_join_checkpoint_size);
@@ -383,7 +393,15 @@ std::pair<bool, size_t> OperatorStateManager::add_operator_state_to_buffer(Abstr
         }while(true);
 
         actual_size = hash_join_state.serialize(alloc_buffer);
-        assert(actual_size == hash_join_checkpoint_size);
+        // if(add_cktp_cnts == 13) {
+        //     std::cout << "HashJoinOperatorState actual size: " << actual_size << std::endl;
+        //     assert(0);
+        // }
+        if(actual_size != hash_join_checkpoint_size) {
+            std::cout << "actual_size: " << actual_size << ", hash_join_checkpoint_size: " << hash_join_checkpoint_size << std::endl;
+            assert(0);
+        }
+        // assert(actual_size == hash_join_checkpoint_size);
         write_status = true;
 
         op_checkpoint_queue_.push(OpCheckpointBlock{.buffer = alloc_buffer, .size = actual_size});
@@ -392,6 +410,8 @@ std::pair<bool, size_t> OperatorStateManager::add_operator_state_to_buffer(Abstr
     else if(auto sort_op = dynamic_cast<SortExecutor *>(abstract_executor)) {
         SortOperatorState sort_join_state(sort_op);
         size_t sort_join_checkpoint_size = sort_join_state.getSize();
+
+        // if(add_cktp_cnts == 13) std::cout << "SortOperatorState size: " << sort_join_checkpoint_size << std::endl;
 
         char* alloc_buffer;
         do {
@@ -417,6 +437,8 @@ std::pair<bool, size_t> OperatorStateManager::add_operator_state_to_buffer(Abstr
         ProjectionOperatorState projection_state(projection_op);
         size_t projection_checkpoint_size = projection_state.getSize();
 
+        // if(add_cktp_cnts == 13) std::cout << "ProjectionOperatorState size: " << projection_checkpoint_size << std::endl;
+
         char* alloc_buffer;
         do {
             auto [status, buffer] = op_checkpoint_buffer_allocator_->Alloc(projection_checkpoint_size);
@@ -441,6 +463,8 @@ std::pair<bool, size_t> OperatorStateManager::add_operator_state_to_buffer(Abstr
 
         return {false, 0};
     }
+
+    // add_cktp_cnts++;
 
     return {write_status, actual_size};
     

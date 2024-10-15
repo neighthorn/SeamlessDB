@@ -498,6 +498,7 @@ public:
         std::string table_name = "customer";
         std::vector<ColDef> col_defs;
         col_defs.emplace_back(ColDef("c_mktsegment", ColType::TYPE_STRING, 10));
+        col_defs.emplace_back(ColDef("c_id", ColType::TYPE_INT, 4));
         col_defs.emplace_back(ColDef("c_custkey", ColType::TYPE_INT, 4));
         col_defs.emplace_back(ColDef("c_name", ColType::TYPE_STRING, 25));
         col_defs.emplace_back(ColDef("c_address", ColType::TYPE_STRING, 40));
@@ -507,7 +508,8 @@ public:
         col_defs.emplace_back(ColDef("c_comment", ColType::TYPE_STRING, 117));
         std::vector<std::string> pkeys;
         pkeys.emplace_back("c_mktsegment");
-        pkeys.emplace_back("c_custkey");
+        pkeys.emplace_back("c_id");
+        // pkeys.emplace_back("c_custkey");
         sm_mgr->create_table(table_name, col_defs, pkeys, nullptr);
     }
 
@@ -546,6 +548,8 @@ public:
         int record_per_key = c_custkey_max / MKTSEGMENT_MAX_NUM;
         c_custkey = 1;
 
+        RandomMapping random_mapping(c_custkey_max);
+
         for(int mktseg_idx = 0; mktseg_idx < MKTSEGMENT_MAX_NUM; ++ mktseg_idx) {
             RandomGenerator::generate_mktsegment_from_idx(c_mktsegment, mktseg_idx);
             std::cout << c_mktsegment << std::endl;
@@ -566,6 +570,10 @@ public:
                 memcpy(record.raw_data_ + offset, c_mktsegment, 10);
                 offset += 10;
                 memcpy(record.raw_data_ + offset, (char *)&c_custkey, sizeof(int));
+                offset += sizeof(int);
+                int actual_custkey = random_mapping.f(c_custkey);
+                // std::cout << "c_custkey: " << c_custkey << " actual_custkey: " << actual_custkey << std::endl;
+                memcpy(record.raw_data_ + offset, (char *)&actual_custkey, sizeof(int));
                 offset += sizeof(int);
                 memcpy(record.raw_data_ + offset, c_name, 25);
                 offset += 25;
@@ -692,6 +700,7 @@ public:
         std::string table_name = "orders";
         std::vector<ColDef> col_defs;
         col_defs.emplace_back(ColDef("o_orderdate", ColType::TYPE_STRING, RandomGenerator::DATE_SIZE));
+        col_defs.emplace_back(ColDef("o_id", ColType::TYPE_INT, 4));
         col_defs.emplace_back(ColDef("o_orderkey", ColType::TYPE_INT, 4));
         col_defs.emplace_back(ColDef("o_custkey", ColType::TYPE_INT, 4));
         col_defs.emplace_back(ColDef("o_orderstatus", ColType::TYPE_STRING, 1));
@@ -706,7 +715,8 @@ public:
         // pkeys.emplace_back("o_orderdate");
         // pkeys.emplace_back("o_custkey");
         pkeys.emplace_back("o_orderdate");
-        pkeys.emplace_back("o_orderkey");
+        pkeys.emplace_back("o_id");
+        // pkeys.emplace_back("o_orderkey");
         sm_mgr->create_table(table_name, col_defs, pkeys, nullptr);
     }
 
@@ -756,6 +766,8 @@ public:
         */
         int c_custkey_max = SF * ONE_SF_PER_CUSTOMER;
 
+        RandomMapping random_mapping(o_orderkey_max);
+
         for(int o_orderdate_idx = 0; o_orderdate_idx < DATE_MAX_NUM; ++o_orderdate_idx) {
             RandomGenerator::generate_date_from_idx(o_orderdate, o_orderdate_idx);
 
@@ -778,6 +790,9 @@ public:
                 memcpy(record.raw_data_ + offset, o_orderdate, RandomGenerator::DATE_SIZE);
                 offset += (RandomGenerator::DATE_SIZE);
                 memcpy(record.raw_data_ + offset, (char *)&o_orderkey, sizeof(int));
+                offset += sizeof(int);
+                int actual_orderkey = random_mapping.f(o_orderkey);
+                memcpy(record.raw_data_ + offset, (char *)&actual_orderkey, sizeof(int));
                 offset += sizeof(int);
                 memcpy(record.raw_data_ + offset, (char *)&o_custkey, sizeof(int));
                 offset += sizeof(int);
@@ -1208,6 +1223,7 @@ public:
         std::string table_name = "lineitem";
         std::vector<ColDef> col_defs;
         col_defs.emplace_back(ColDef("l_shipdate", ColType::TYPE_STRING, RandomGenerator::DATE_SIZE));
+        col_defs.emplace_back(ColDef("l_id", ColType::TYPE_INT, 4));
         col_defs.emplace_back(ColDef("l_orderkey", ColType::TYPE_INT, 4));
         col_defs.emplace_back(ColDef("l_linenumber", ColType::TYPE_INT, 4));
         col_defs.emplace_back(ColDef("l_partkey", ColType::TYPE_INT, 4));
@@ -1228,8 +1244,9 @@ public:
         // pkeys.emplace_back("l_orderkey");
         // pkeys.emplace_back("l_linenumber");
         pkeys.emplace_back("l_shipdate");
-        pkeys.emplace_back("l_orderkey");
-        pkeys.emplace_back("l_linenumber");
+        pkeys.emplace_back("l_id");
+        // pkeys.emplace_back("l_orderkey");
+        // pkeys.emplace_back("l_linenumber");
         sm_mgr->create_table(table_name, col_defs, pkeys, nullptr);
         // print_name = true;
     }
@@ -1290,6 +1307,9 @@ public:
         int record_per_key = l_orderkey_max * l_linenumber_max / DATE_MAX_NUM;
         l_orderkey = 1;
         l_linenumber = 1;
+        int l_id = 1;
+
+        RandomMapping random_mapping(l_orderkey_max);
 
         for(int l_shipdate_idx = 0; l_shipdate_idx < DATE_MAX_NUM; ++l_shipdate_idx) {
             RandomGenerator::generate_date_from_idx(l_shipdate, l_shipdate_idx);
@@ -1321,9 +1341,11 @@ public:
 
                 int offset = 0;
                 memcpy(record.raw_data_ + offset, l_shipdate, RandomGenerator::DATE_SIZE);
-                // std::cout << l_shipdate << std::endl;
                 offset += RandomGenerator::DATE_SIZE;
-                memcpy(record.raw_data_ + offset, (char *)&l_orderkey, sizeof(int));
+                memcpy(record.raw_data_ + offset, (char *)&l_id, sizeof(int));
+                offset += sizeof(int);
+                int actual_orderkey = random_mapping.f(l_orderkey);
+                memcpy(record.raw_data_ + offset, (char *)&actual_orderkey, sizeof(int));
                 offset += sizeof(int);
                 memcpy(record.raw_data_ + offset, (char *)&l_linenumber, sizeof(int));
                 offset += sizeof(int);
@@ -1361,6 +1383,7 @@ public:
                     insert data
                 */
                 index_handle->insert_entry(record.raw_data_, record.record_, txn);
+                l_id ++;
 
                 l_linenumber ++;
                 if(l_linenumber > l_linenumber_max) {

@@ -7,7 +7,7 @@
 static constexpr int REDO_LOG_BUFFER_SIZE = (10 * PAGE_SIZE); 
 
 // redo log file name
-static constexpr char* REDO_LOG_FILE_NAME = "redo_log.log";
+static constexpr char REDO_LOG_FILE_NAME[] = "redo_log.log";
 
 // static constexpr std::chrono::duration<int64_t> FLUSH_TIMEOUT = std::chrono::seconds(3);
 // LOG TYPE

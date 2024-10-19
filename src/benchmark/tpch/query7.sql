@@ -30,4 +30,19 @@ ORDER BY
     n2.n_name,          -- 顾客国家
     EXTRACT(YEAR FROM l_shipdate); -- 年度
 
-select n_name, n2_name, l_shipdate, l_extendedprice, l_discount from lineitem, orders, customer, supplier, nation, nation2 where l_orderkey < 1500000 and c_custkey < 150000 and o_orderkey < 1500000 and c_custkey < 150000 and s_suppkey = l_suppkey and o_orderkey = l_orderkey and c_custkey = o_custkey and s_nationkey = n_nationkey and c_nationkey = n2_nationkey and n_name = '[NATION1]' and n2_name = '[NATION2]' and l_shipdate between date '1995-01-01' and date '1996-12-31' order by l_shipdate;
+select 
+n_name, n2_name, l_shipdate, l_extendedprice, l_discount 
+from 
+nation, supplier, lineitem, orders, nation2, customer 
+where s_suppkey = l_suppkey 
+    and o_orderkey = l_orderkey 
+    and c_custkey = o_custkey 
+    and s_nationkey = n_nationkey 
+    and c_nationkey = n2_nationkey 
+    and n_name = 'PERU' 
+    and n2_name = 'FRANCE' 
+    and c_nationkey = 16
+    and s_nationkey = 9
+    and l_shipdate <= '1992-12-01' order by l_shipdate;
+
+select n_name, l_shipdate, l_extendedprice, l_discount from nation, supplier, lineitem, orders, customer where s_suppkey = l_suppkey and o_orderkey = l_orderkey and c_custkey = o_custkey and s_nationkey = n_nationkey and n_name = 'PERU' and c_nationkey = 16 and s_nationkey = 9 and l_shipdate <= '1992-12-01' order by l_shipdate;

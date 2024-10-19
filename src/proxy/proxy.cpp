@@ -196,9 +196,16 @@ void run_client(BenchMark* benchmark, std::string remote_ip, int remote_port, in
     auto ro_end = std::chrono::high_resolution_clock::now();
     std::cout << "ro latency: " << std::chrono::duration<double, std::milli>(ro_end - ro_start).count() << "\n";
 
+    std::this_thread::sleep_for(std::chrono::seconds(5));
+    std::cout << "finish\n";
+    std::cout << "finish\n";
+    std::cout << "finish\n";
+    std::cout << "finish\n";
+    std::cout << "finish\n";
     // print_char_array(recv_buf, MAX_MEM_BUFFER_SIZE);
 
     close(sockfd);
+    exit(0);
     // longtxnfile.close();
 
     // std::ofstream outfile("../result/latency/configthread_" +  std::to_string(client_num) + "_" + std::to_string(thread_index) + "_latency.txt", std::ios::trunc);
@@ -494,6 +501,7 @@ void run_proxy(Proxy* proxy) {
     std::cout << "total throughput:\n";
     std::cout << "commit_tot_cnt: " << tot_commit_txn << ", time: " << tot_duration << "\n";
     std::cout << "commit_tput: " << commit_tput * 1000.0 << ", abort_tput: " << abort_tput << "\n";
+    exit(0);
 }
 
 int main(int argc, char** argv) {

@@ -30,22 +30,22 @@ where c_custkey = o_custkey
     and r_name = 'ASIA' 
     and o_orderdate >= '1995-01-01' 
     and o_orderdate < '1996-01-01' 
-    and o_orderkey < 1500000 
-    and c_custkey < 15000 
-    and l_orderkey < 1500000 
-    and s_suppkey < 1000 order by l_extendedprice desc;
+    order by l_extendedprice desc;
 
 select n_name, l_extendedprice, l_discount 
-from region, nation, supplier, customer, orders, lineitem 
+from region, nation, customer, orders, lineitem, supplier
 where c_custkey = o_custkey 
     and l_orderkey = o_orderkey 
     and l_suppkey = s_suppkey 
-    and c_nationkey = s_nationkey 
+    and c_nationkey = n_nationkey 
     and s_nationkey = n_nationkey 
     and n_regionkey = r_regionkey 
     and r_name = 'ASIA' 
+    and c_mktsegment = 'AUTOMOBILE' 
     and o_orderdate >= '1995-01-01' 
     and o_orderdate < '1996-01-01' 
     and l_shipdate >= '1994-01-01'
     and l_shipdate < '1996-01-01' 
     order by l_extendedprice desc;
+
+select n_name, l_extendedprice, l_discount from region, nation, customer, orders, lineitem, supplier where c_custkey = o_custkey and l_orderkey = o_orderkey and l_suppkey = s_suppkey and c_nationkey = n_nationkey and s_nationkey = n_nationkey and n_regionkey = r_regionkey and r_name = 'ASIA' and o_orderdate <= '1992-12-01' order by l_extendedprice desc;

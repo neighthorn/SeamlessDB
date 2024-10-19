@@ -46,7 +46,9 @@ public:
         col_defs.emplace_back(ColDef("r_name", ColType::TYPE_STRING, 25));
         col_defs.emplace_back(ColDef("r_comment", ColType::TYPE_STRING, 152));
         std::vector<std::string> pkeys;
+        /*** pkeys for Q5 ***/
         pkeys.emplace_back("r_regionkey");
+        /*** pkeys for Q5 ***/
         sm_mgr->create_table(table_name, col_defs, pkeys, nullptr);
     }
     
@@ -147,7 +149,9 @@ public:
         col_defs.emplace_back(ColDef("n_regionkey", ColType::TYPE_INT, 4));
         col_defs.emplace_back(ColDef("n_comment", ColType::TYPE_STRING, 152));
         std::vector<std::string> pkeys;
+        /*** pkeys for Q5 ***/
         pkeys.emplace_back("n_nationkey");
+        /*** pkeys for Q5 ***/
         sm_mgr->create_table(table_name, col_defs, pkeys, nullptr);
     }
 
@@ -247,7 +251,9 @@ public:
         col_defs.emplace_back(ColDef("n2_regionkey", ColType::TYPE_INT, 4));
         col_defs.emplace_back(ColDef("n2_comment", ColType::TYPE_STRING, 152));
         std::vector<std::string> pkeys;
+        /*** pkeys for Q5 ***/
         pkeys.emplace_back("n2_nationkey");
+        /*** pkeys for Q5 ***/
         sm_mgr->create_table(table_name, col_defs, pkeys, nullptr);
     }
 
@@ -375,7 +381,9 @@ public:
         col_defs.emplace_back(ColDef("p_retailprice", ColType::TYPE_FLOAT, 4));
         col_defs.emplace_back(ColDef("p_comment", ColType::TYPE_STRING, 23));
         std::vector<std::string> pkeys;
+        /*** pkeys for Q5 ***/
         pkeys.emplace_back("p_partkey");
+        /*** pkeys for Q5 ***/
         sm_mgr->create_table(table_name, col_defs, pkeys, nullptr);
     }
 
@@ -497,18 +505,26 @@ public:
     void create_table(SmManager* sm_mgr) {
         std::string table_name = "customer";
         std::vector<ColDef> col_defs;
-        col_defs.emplace_back(ColDef("c_mktsegment", ColType::TYPE_STRING, 10));
+
+        col_defs.emplace_back(ColDef("c_nationkey", ColType::TYPE_INT, 4));
         col_defs.emplace_back(ColDef("c_id", ColType::TYPE_INT, 4));
+        col_defs.emplace_back(ColDef("c_mktsegment", ColType::TYPE_STRING, 10));
         col_defs.emplace_back(ColDef("c_custkey", ColType::TYPE_INT, 4));
         col_defs.emplace_back(ColDef("c_name", ColType::TYPE_STRING, 25));
         col_defs.emplace_back(ColDef("c_address", ColType::TYPE_STRING, 40));
-        col_defs.emplace_back(ColDef("c_nationkey", ColType::TYPE_INT, 4));
         col_defs.emplace_back(ColDef("c_phone", ColType::TYPE_STRING, 15));
         col_defs.emplace_back(ColDef("c_acctbal", ColType::TYPE_FLOAT, 4));
         col_defs.emplace_back(ColDef("c_comment", ColType::TYPE_STRING, 117));
         std::vector<std::string> pkeys;
-        pkeys.emplace_back("c_mktsegment");
+        /*** pkeys for Q3 ***/
+        // pkeys.emplace_back("c_mktsegment");
+        // pkeys.emplace_back("c_id");
+        /*** pkeys for Q3 ***/
+
+        /*** pkeys for Q7 ***/
+        pkeys.emplace_back("c_nationkey");
         pkeys.emplace_back("c_id");
+        /*** pkeys for Q7 ***/
         // pkeys.emplace_back("c_custkey");
         sm_mgr->create_table(table_name, col_defs, pkeys, nullptr);
     }
@@ -567,10 +583,12 @@ public:
                 
 
                 int offset = 0;
-                memcpy(record.raw_data_ + offset, c_mktsegment, 10);
-                offset += 10;
+                memcpy(record.raw_data_ + offset, (char *)&c_nationkey, sizeof(int));
+                offset += sizeof(int);
                 memcpy(record.raw_data_ + offset, (char *)&c_custkey, sizeof(int));
                 offset += sizeof(int);
+                memcpy(record.raw_data_ + offset, c_mktsegment, 10);
+                offset += 10;
                 int actual_custkey = random_mapping.f(c_custkey);
                 // std::cout << "c_custkey: " << c_custkey << " actual_custkey: " << actual_custkey << std::endl;
                 memcpy(record.raw_data_ + offset, (char *)&actual_custkey, sizeof(int));
@@ -579,8 +597,6 @@ public:
                 offset += 25;
                 memcpy(record.raw_data_ + offset, c_address, 40);
                 offset += 40;
-                memcpy(record.raw_data_ + offset, (char *)&c_nationkey, sizeof(int));
-                offset += sizeof(int);
                 memcpy(record.raw_data_ + offset, c_phone, 15);
                 offset += 15;
                 memcpy(record.raw_data_ + offset, (char *)&c_acctbal, sizeof(float));
@@ -714,8 +730,10 @@ public:
         // pkeys.emplace_back("o_orderkey");
         // pkeys.emplace_back("o_orderdate");
         // pkeys.emplace_back("o_custkey");
+        /*** pkeys for Q5 ***/
         pkeys.emplace_back("o_orderdate");
         pkeys.emplace_back("o_id");
+        /*** pkeys for Q5 ***/
         // pkeys.emplace_back("o_orderkey");
         sm_mgr->create_table(table_name, col_defs, pkeys, nullptr);
     }
@@ -926,15 +944,22 @@ public:
         std::string table_name = "supplier";
         std::vector<ColDef> col_defs;
         col_defs.emplace_back(ColDef("s_suppkey", ColType::TYPE_INT, 4));
+        col_defs.emplace_back(ColDef("s_nationkey", ColType::TYPE_INT, 4));
         col_defs.emplace_back(ColDef("s_name", ColType::TYPE_STRING, 25));
         col_defs.emplace_back(ColDef("s_address", ColType::TYPE_STRING, 40));
-        col_defs.emplace_back(ColDef("s_nationkey", ColType::TYPE_INT, 4));
         col_defs.emplace_back(ColDef("s_phone", ColType::TYPE_STRING, 15));
         col_defs.emplace_back(ColDef("s_acctbal", ColType::TYPE_FLOAT, 4));
         col_defs.emplace_back(ColDef("s_comment", ColType::TYPE_STRING, 101));
 
         std::vector<std::string> pkeys;
+        /*** pkeys for Q5 ***/
         pkeys.emplace_back("s_suppkey");
+        /*** pkeys for Q5 ***/
+
+        /*** pkeys for Q7 ***/
+        // pkeys.emplace_back("s_nationkey");
+        // pkeys.emplace_back("s_suppkey");
+        /*** pkeys for Q7 ***/
         sm_mgr->create_table(table_name, col_defs, pkeys, nullptr);
     }
 
@@ -998,12 +1023,12 @@ public:
             
             memcpy(record.raw_data_ + offset, (char *)&s_suppkey, sizeof(int));
             offset += sizeof(int);
+            memcpy(record.raw_data_ + offset, (char *)&s_nationkey, sizeof(int));
+            offset += sizeof(int);
             memcpy(record.raw_data_ + offset, s_name, 25);
             offset += 25;
             memcpy(record.raw_data_ + offset, s_address, 40);
             offset += 40;
-            memcpy(record.raw_data_ + offset, (char *)&s_nationkey, sizeof(int));
-            offset += sizeof(int);
             memcpy(record.raw_data_ + offset, s_phone, 15);
             offset += 15;            
             memcpy(record.raw_data_ + offset, (char *)&s_acctbal, sizeof(float));
@@ -1243,8 +1268,10 @@ public:
         std::vector<std::string> pkeys;
         // pkeys.emplace_back("l_orderkey");
         // pkeys.emplace_back("l_linenumber");
+        /*** pkeys for Q5 ***/
         pkeys.emplace_back("l_shipdate");
         pkeys.emplace_back("l_id");
+        /*** pkeys for Q5 ***/
         // pkeys.emplace_back("l_orderkey");
         // pkeys.emplace_back("l_linenumber");
         sm_mgr->create_table(table_name, col_defs, pkeys, nullptr);

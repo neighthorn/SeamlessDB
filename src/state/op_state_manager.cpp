@@ -661,7 +661,8 @@ std::vector<std::unique_ptr<OperatorState>> OperatorStateManager::read_op_checkp
         read all op states
     */
     if(!coro_sched_->RDMAReadSync(0, op_checkpoint_qp_, buffer, remote_offset + CheckPointMetaSize, ck_meta->total_size)) {
-        RDMA_LOG(ERROR) << "Failed to read operator state meta from state_node.";
+        std::cout << "try to read total_size: " << ck_meta->total_size << "\n";
+        RDMA_LOG(ERROR) << "Failed to read operator states from state_node.";
         assert(0);
     }
 

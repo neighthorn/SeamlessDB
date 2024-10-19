@@ -271,14 +271,14 @@ std::shared_ptr<Plan> Planner::make_one_rel(std::shared_ptr<Query> query)
                     join_conds.push_back(*it);
                 
                     it = conds.erase(it);
-                    break;
+                    continue;
                 }
             } 
             else if(it->rhs_col.tab_name == tables[i]) {
                 if(std::find(tables.begin(), tables.begin() + i, it->lhs_col.tab_name) != tables.begin() + i) {
                     join_conds.push_back(*it);
                     it = conds.erase(it);
-                    break;
+                    continue;
                 }
             }
 

@@ -302,6 +302,7 @@ std::unique_ptr<Record> BlockNestedLoopJoinExecutor::Next() {
     auto ret = std::make_unique<Record>(len_);
     memcpy(ret->raw_data_, left_record->raw_data_, left_record->data_length_);
     memcpy(ret->raw_data_ + left_record->data_length_, right_record->raw_data_, right_record->data_length_);
+    // std::cout << "Op_id: " << operator_id_ << ", BNLJ Next record: " << std::string(ret->raw_data_, len_) << std::endl;
     
     be_call_times_ ++;
     // write_state_if_allow();
@@ -585,22 +586,22 @@ void BlockNestedLoopJoinExecutor::load_state_info(BlockJoinOperatorState *block_
         */
         if(block_join_op->left_child_is_join_ == false) {
             if(auto x = dynamic_cast<IndexScanExecutor *>(left_.get())) {
-                x->load_state_info(dynamic_cast<IndexScanOperatorState *>(block_join_op->left_child_state_));
-                if(x->finished_begin_tuple_ == false) {
+                if(block_join_op->left_child_state_->finish_begin_tuple_ == false) {
                     std::cout << "BlockNestedLoopJoinExecutor::load_state_info: IndexScanExecutor beginTuple\n";
                     x->beginTuple();
                 }
                 else {
+                    x->load_state_info(dynamic_cast<IndexScanOperatorState *>(block_join_op->left_child_state_));
                     std::cout << "BlockNestedLoopJoinExecutor::load_state_info: IndexScanExecutor NextTuple\n";
                     x->nextTuple();
                 }
             }
             else if(auto x = dynamic_cast<ProjectionExecutor *>(left_.get())) {
-                x->load_state_info(dynamic_cast<ProjectionOperatorState *>(block_join_op->left_child_state_));
-                if(x->finished_begin_tuple_ == false) {
+                if(block_join_op->left_child_state_->finish_begin_tuple_ == false) {
                     x->beginTuple();
                 }
                 else {
+                    x->load_state_info(dynamic_cast<ProjectionOperatorState *>(block_join_op->left_child_state_));
                     x->nextTuple();
                 }
             }
@@ -610,20 +611,20 @@ void BlockNestedLoopJoinExecutor::load_state_info(BlockJoinOperatorState *block_
         }
         if(block_join_op->right_child_is_join_ == false) {
             if(auto x = dynamic_cast<IndexScanExecutor *>(right_.get())) {
-                x->load_state_info(dynamic_cast<IndexScanOperatorState *>(block_join_op->right_child_state_));
-                if(x->finished_begin_tuple_ == false) {
+                if(block_join_op->right_child_state_->finish_begin_tuple_ == false) {
                     x->beginTuple();
                 }
                 else {
+                    x->load_state_info(dynamic_cast<IndexScanOperatorState *>(block_join_op->right_child_state_));
                     x->nextTuple();
                 }
             }
             else if(auto x = dynamic_cast<ProjectionExecutor *>(right_.get())) {
-                x->load_state_info(dynamic_cast<ProjectionOperatorState *>(block_join_op->right_child_state_));
-                if(x->finished_begin_tuple_ == false) {
+                if(block_join_op->right_child_state_->finish_begin_tuple_ == false) {
                     x->beginTuple();
                 }
                 else {
+                    x->load_state_info(dynamic_cast<ProjectionOperatorState *>(block_join_op->right_child_state_));
                     x->nextTuple();
                 }
             }

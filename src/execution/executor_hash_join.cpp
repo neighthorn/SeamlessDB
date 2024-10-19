@@ -203,13 +203,18 @@ std::pair<bool, double> HashJoinExecutor::judge_state_reward(HashJoinCheckpointI
     double src_op = hash_join_state_size_min;
     double rc_op = -1;
     
-    src_op = (double)left_->tupleLen() * (left_hash_table_curr_tuple_count_ - latest_ck_info->left_hash_table_curr_tuple_count_);
+    src_op += (double)left_->tupleLen() * (left_hash_table_curr_tuple_count_ - latest_ck_info->left_hash_table_curr_tuple_count_);
 
     rc_op = getRCop(curr_ck_info->ck_timestamp_);
     // curr_ck_info->left_rc_op_ = rc_op;
 
     if(rc_op == 0) {
         return {false, -1};
+    }
+
+    // TODO: 如果是在left_hash_table_size=0（也就是只有游标在变化的时候），srcop应该等于提供给父亲节点的中间结果的大小
+    if(left_hash_table_curr_tuple_count_ == latest_ck_info->left_hash_table_curr_tuple_count_) {
+        src_op += (double)len_ * (state_change_time_ - latest_ck_info->state_change_time_);
     }
 
     // double new_src_op = src_op / src_scale_factor_;
@@ -220,18 +225,21 @@ std::pair<bool, double> HashJoinExecutor::judge_state_reward(HashJoinCheckpointI
 
     if(rew_op > 0) {
         // if create checkpoint in current time, calculate the rc_op(curr_time) for left child and right child
-        if(auto x = dynamic_cast<HashJoinExecutor* >(left_.get())) {
-            curr_ck_info->left_rc_op_ = x->getRCop(curr_ck_info->ck_timestamp_);
-        }
-        else if(auto x = dynamic_cast<BlockNestedLoopJoinExecutor*>(left_.get())) {
-            curr_ck_info->left_rc_op_ = x->getRCop(curr_ck_info->ck_timestamp_);
-        }
-        else if(auto x = dynamic_cast<ProjectionExecutor*>(left_.get())) {
-            curr_ck_info->left_rc_op_ = x->getRCop(curr_ck_info->ck_timestamp_);
+        if(!initialized_) {
+            if(auto x = dynamic_cast<HashJoinExecutor* >(left_.get())) {
+                curr_ck_info->left_rc_op_ = x->getRCop(curr_ck_info->ck_timestamp_);
+            }
+            else if(auto x = dynamic_cast<BlockNestedLoopJoinExecutor*>(left_.get())) {
+                curr_ck_info->left_rc_op_ = x->getRCop(curr_ck_info->ck_timestamp_);
+            }
+            else if(auto x = dynamic_cast<ProjectionExecutor*>(left_.get())) {
+                curr_ck_info->left_rc_op_ = x->getRCop(curr_ck_info->ck_timestamp_);
+            }
         }
         curr_ck_info->state_change_time_ = state_change_time_;
-        // RwServerDebug::getInstance()->DEBUG_PRINT("[HashJoinExecutor][op_id: " + std::to_string(operator_id_) + "]: [delta_hash_table_tuple_count]: " + std::to_string(left_hash_table_curr_tuple_count_ - latest_ck_info->left_hash_table_curr_tuple_count_) \
-        // + " [Rew_op]: " + std::to_string(rew_op) + " [state_size]: " + std::to_string(src_op) + " [Src_op]: " + std::to_string(new_src_op) + " [Rc_op]: " + std::to_string(rc_op) + " [State Theta]: " + std::to_string(state_theta_));
+        RwServerDebug::getInstance()->DEBUG_PRINT("[HashJoinExecutor][op_id: " + std::to_string(operator_id_) + "]: [delta_hash_table_tuple_count]: " + std::to_string(left_hash_table_curr_tuple_count_ - latest_ck_info->left_hash_table_curr_tuple_count_) \
+        + " [Rew_op]: " + std::to_string(rew_op) + " [state_size]: " + std::to_string(src_op) + " [Src_op]: " + std::to_string(new_src_op) + " [Rc_op]: " + std::to_string(rc_op) + " [State Theta]: " + std::to_string(state_theta_));
+        
         return {true, src_op};
     }
 
@@ -253,18 +261,21 @@ int64_t HashJoinExecutor::getRCop(std::chrono::time_point<std::chrono::system_cl
     // RwServerDebug::getInstance()->DEBUG_PRINT("[HashJoinExecutor][op_id: " + std::to_string(operator_id_) + "]: [Get RCop]: [curr_time] " + std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(curr_time.time_since_epoch()).count()) \
     //  + " [latest_ck_info->ck_timestamp_]: " + std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(latest_ck_info->ck_timestamp_.time_since_epoch()).count()) \
     //  + " [left_rc_op]: " + std::to_string(latest_ck_info->left_rc_op_));
+    if(initialized_ == true) {
+        return std::chrono::duration_cast<std::chrono::microseconds>(curr_time - latest_ck_info->ck_timestamp_).count();
+    }
 
     if(auto x =  dynamic_cast<HashJoinExecutor *>(left_.get())) {
-        return (std::chrono::duration_cast<std::chrono::microseconds>(curr_time - latest_ck_info->ck_timestamp_).count() + latest_ck_info->left_rc_op_) / ((state_change_time_ - latest_ck_info->state_change_time_) < 5 ? 10 : 1);
+        return std::chrono::duration_cast<std::chrono::microseconds>(curr_time - latest_ck_info->ck_timestamp_).count() + latest_ck_info->left_rc_op_;
     } 
     else if(auto x = dynamic_cast<BlockNestedLoopJoinExecutor*>(left_.get())) {
-        return (std::chrono::duration_cast<std::chrono::microseconds>(curr_time - latest_ck_info->ck_timestamp_).count() + latest_ck_info->left_rc_op_) / ((state_change_time_ - latest_ck_info->state_change_time_) < 5 ? 10 : 1);
+        return std::chrono::duration_cast<std::chrono::microseconds>(curr_time - latest_ck_info->ck_timestamp_).count() + latest_ck_info->left_rc_op_;
     }
     else if(auto x = dynamic_cast<ProjectionExecutor*>(left_.get())) {
-        return (std::chrono::duration_cast<std::chrono::microseconds>(curr_time - latest_ck_info->ck_timestamp_).count() + latest_ck_info->left_rc_op_) / ((state_change_time_ - latest_ck_info->state_change_time_) < 5 ? 10 : 1);
+        return std::chrono::duration_cast<std::chrono::microseconds>(curr_time - latest_ck_info->ck_timestamp_).count() + latest_ck_info->left_rc_op_;
     }
     else {
-        return (std::chrono::duration_cast<std::chrono::microseconds>(curr_time - latest_ck_info->ck_timestamp_).count()) / ((state_change_time_ - latest_ck_info->state_change_time_) < 5 ? 10 : 1);
+        return std::chrono::duration_cast<std::chrono::microseconds>(curr_time - latest_ck_info->ck_timestamp_).count();
     }
 }
 
@@ -274,10 +285,12 @@ void HashJoinExecutor::write_state_if_allow(int type) {
     if(state_open_) {
         auto [able_to_write, src_op] = judge_state_reward(&curr_ckpt_info);
         if(able_to_write) {
+            // std::cout << "curr_ckpt_info.state_change_time_: " << state_change_time_ << std::endl;
             auto [status, actual_size] = context_->op_state_mgr_->add_operator_state_to_buffer(this, src_op);
             // bool status = true;
             // RwServerDebug::getInstance()->DEBUG_PRINT("[HashJoinExecutor][op_id: " + std::to_string(operator_id_) + "]: [Write State]: " + std::to_string(status) + " [Actual Size]: " + std::to_string(actual_size));
             if(status) {
+                curr_ckpt_info.ck_timestamp_ = std::chrono::high_resolution_clock::now();
                 ck_infos_.push_back(curr_ckpt_info);
                 left_hash_table_checkpointed_tuple_count_ = left_hash_table_curr_tuple_count_;
             }
@@ -295,21 +308,23 @@ void HashJoinExecutor::load_state_info(HashJoinOperatorState* state) {
     // }
     if(state->right_child_is_join_ == false) {
         if(auto x = dynamic_cast<IndexScanExecutor *>(right_.get())) {
-            x->load_state_info(dynamic_cast<IndexScanOperatorState *>(state->right_child_state_));
-            if(x->finished_begin_tuple_ == false) {
+            // x->load_state_info(dynamic_cast<IndexScanOperatorState *>(state->right_child_state_));
+            if(state->right_child_state_->finish_begin_tuple_ == false) {
                 std::cout << "HashJoinExecutor::load_state_info: IndexScanExecutor beginTuple\n";
                 x->beginTuple();
             }
             else {
+                x->load_state_info(dynamic_cast<IndexScanOperatorState *>(state->right_child_state_));
                 x->nextTuple();
             }
         }
         else if (auto x = dynamic_cast<ProjectionExecutor *>(right_.get())) {
-            x->load_state_info(dynamic_cast<ProjectionOperatorState *>(state->right_child_state_));
-            if(x->finished_begin_tuple_ == false) {
+            if(state->right_child_state_->finish_begin_tuple_ == false) {
                 x->beginTuple();
             }
             else {
+                // TODO!!!!!!!!!
+                x->load_state_info(dynamic_cast<ProjectionOperatorState *>(state->right_child_state_));
                 x->nextTuple();
             }
         }
@@ -326,25 +341,28 @@ void HashJoinExecutor::load_state_info(HashJoinOperatorState* state) {
         left_iter_ = hash_table_.find(state->left_iter_key_);
     }
 
+    HashJoinCheckpointInfo curr_ckpt_info = {.ck_timestamp_ = std::chrono::high_resolution_clock::now(), .left_hash_table_curr_tuple_count_ = left_hash_table_curr_tuple_count_, .left_rc_op_ = 0, .state_change_time_ = left_hash_table_checkpointed_tuple_count_ + be_call_times_};
+    ck_infos_.push_back(curr_ckpt_info);
+
     // 先build了哈希表，才能调用当前函数
     if(!initialized_) {
         // 如果哈希表没有构建完全，需要首先恢复左算子状态，哈希表在后面begintuple的时候再构建
         if(state->left_child_is_join_ == false) {
             if(auto x = dynamic_cast<IndexScanExecutor *>(left_.get())) {
-                x->load_state_info(dynamic_cast<IndexScanOperatorState *>(state->left_child_state_));
-                if(x->finished_begin_tuple_ == false) {
+                if(state->left_child_state_->finish_begin_tuple_ == false) {
                     x->beginTuple();
                 }
                 else {
+                    x->load_state_info(dynamic_cast<IndexScanOperatorState *>(state->left_child_state_));
                     x->nextTuple();
                 }
             }
             else if (auto x = dynamic_cast<ProjectionExecutor *>(left_.get())) {
-                x->load_state_info(dynamic_cast<ProjectionOperatorState *>(state->left_child_state_));
-                if(x->finished_begin_tuple_ == false) {
+                if(state->left_child_state_->finish_begin_tuple_ == false) {
                     x->beginTuple();
                 }
                 else {
+                    x->load_state_info(dynamic_cast<ProjectionOperatorState *>(state->left_child_state_));
                     x->nextTuple();
                 }
             }

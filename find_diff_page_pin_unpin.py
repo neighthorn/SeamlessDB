@@ -31,4 +31,4 @@ def analyze_pin_unpin(file_path):
         print("所有页面的 pin 和 unpin 次数相等。")
 
 # 使用示例，假设文件路径为 'pin_unpin_log.txt'
-analyze_pin_unpin('build/storage_server_val.log')
+analyze_pin_unpin('build/page_pin_unpin.log')

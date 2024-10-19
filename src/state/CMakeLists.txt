@@ -8,6 +8,7 @@ set(RDMA_SRC
     op_state_manager.cpp
     state_manager.cpp
     resume_util.cpp
+    comp_ckpt_mgr.cpp
 )
 
 add_library(rdma_util STATIC ${RDMA_SRC})

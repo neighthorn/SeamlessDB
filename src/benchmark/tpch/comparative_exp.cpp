@@ -5,6 +5,7 @@
 #include "optimizer/planner.h"
 #include "util/json_util.h"
 #include "state/resume_util.h"
+#include "execution/comp_ckpt_mgr.h"
 
 DEFINE_string(protocol, "baidu_std", "Protocol type");
 DEFINE_string(connection_type, "", "Connection type. Available values: single, pooled, short");
@@ -320,6 +321,7 @@ std::shared_ptr<Plan> ComparativeExp::generate_proj_plan(int tab_id, std::shared
         } break;
         case 4: {
             std::vector<TabCol> cols;
+            
             cols.push_back(std::move(TabCol{.tab_name = "orders", .col_name = "o_orderkey"}));
             cols.push_back(std::move(TabCol{.tab_name = "orders", .col_name = "o_orderdate"}));
             cols.push_back(std::move(TabCol{.tab_name = "orders", .col_name = "o_custkey"}));
@@ -359,16 +361,20 @@ std::shared_ptr<Plan> ComparativeExp::generate_total_proj_plan(int table_num, st
     cols.push_back(std::move(TabCol{.tab_name = "nation", .col_name = "n_regionkey"}));
     cols.push_back(std::move(TabCol{.tab_name = "nation", .col_name = "n_name"}));
     if(table_num == 2) goto FINAL_PROJ_PLAN;
+    cols.push_back(std::move(TabCol{.tab_name = "customer", .col_name = "c_id"}));
     cols.push_back(std::move(TabCol{.tab_name = "customer", .col_name = "c_custkey"}));
     cols.push_back(std::move(TabCol{.tab_name = "customer", .col_name = "c_nationkey"}));
     if(table_num == 3) goto FINAL_PROJ_PLAN;
     cols.push_back(std::move(TabCol{.tab_name = "supplier", .col_name = "s_suppkey"}));
     cols.push_back(std::move(TabCol{.tab_name = "supplier", .col_name = "s_nationkey"}));
     if(table_num == 4) goto FINAL_PROJ_PLAN;
+    cols.push_back(std::move(TabCol{.tab_name = "orders", .col_name = "o_id"}));
     cols.push_back(std::move(TabCol{.tab_name = "orders", .col_name = "o_orderkey"}));
     cols.push_back(std::move(TabCol{.tab_name = "orders", .col_name = "o_orderdate"}));
     cols.push_back(std::move(TabCol{.tab_name = "orders", .col_name = "o_custkey"}));
     if(table_num == 5) goto FINAL_PROJ_PLAN;
+    cols.push_back(std::move(TabCol{.tab_name = "lineitem", .col_name = "l_id"}));
+    cols.push_back(std::move(TabCol{.tab_name = "lineitem", .col_name = "l_shipdate"}));
     cols.push_back(std::move(TabCol{.tab_name = "lineitem", .col_name = "l_suppkey"}));
     cols.push_back(std::move(TabCol{.tab_name = "lineitem", .col_name = "l_linenumber"}));
     cols.push_back(std::move(TabCol{.tab_name = "lineitem", .col_name = "l_orderkey"}));
@@ -394,6 +400,7 @@ void get_tab_cols(int table_id, std::vector<TabCol>& tab_cols) {
             tab_cols.push_back(std::move(TabCol{.tab_name = "nation", .col_name = "n_name"}));
         } break;
         case 2: {
+            tab_cols.push_back(std::move(TabCol{.tab_name = "customer", .col_name = "c_id"}));
             tab_cols.push_back(std::move(TabCol{.tab_name = "customer", .col_name = "c_custkey"}));
             tab_cols.push_back(std::move(TabCol{.tab_name = "customer", .col_name = "c_nationkey"}));
         } break;
@@ -402,11 +409,14 @@ void get_tab_cols(int table_id, std::vector<TabCol>& tab_cols) {
             tab_cols.push_back(std::move(TabCol{.tab_name = "supplier", .col_name = "s_nationkey"}));
         } break;
         case 4: {
+            tab_cols.push_back(std::move(TabCol{.tab_name = "orders", .col_name = "o_id"}));
             tab_cols.push_back(std::move(TabCol{.tab_name = "orders", .col_name = "o_orderkey"}));
             tab_cols.push_back(std::move(TabCol{.tab_name = "orders", .col_name = "o_orderdate"}));
             tab_cols.push_back(std::move(TabCol{.tab_name = "orders", .col_name = "o_custkey"}));
         } break;
         case 5: {
+            tab_cols.push_back(std::move(TabCol{.tab_name = "lineitem", .col_name = "l_id"}));
+            tab_cols.push_back(std::move(TabCol{.tab_name = "lineitem", .col_name = "l_shipdate"}));
             tab_cols.push_back(std::move(TabCol{.tab_name = "lineitem", .col_name = "l_suppkey"}));
             tab_cols.push_back(std::move(TabCol{.tab_name = "lineitem", .col_name = "l_linenumber"}));
             tab_cols.push_back(std::move(TabCol{.tab_name = "lineitem", .col_name = "l_orderkey"}));
@@ -447,9 +457,12 @@ std::shared_ptr<Plan> ComparativeExp::generate_query_tree(Context* context) {
         if(i == 0) {
             // 第一张表直接生成scan executor
             auto scan_plan = std::make_shared<ScanPlan>(T_IndexScan, curr_sql_id_, curr_plan_id_ ++, sm_mgr_, tables[i], filter_conds, index_conds, tab_cols);
+            assert(scan_plan != nullptr);
+            plan = std::move(scan_plan);
             // plan = generate_proj_plan(i, std::move(scan_plan), context, curr_sql_id_, curr_plan_id_);
         }
         else {
+            assert(plan != nullptr);
             // 后面的表直接放到join executor里
             //join_cond为当前表和随机选取前面已经join的表的固定join条件
             // int left_join_table_id = RandomGenerator::generate_random_int(0, i - 1);
@@ -457,11 +470,12 @@ std::shared_ptr<Plan> ComparativeExp::generate_query_tree(Context* context) {
             int left_join_table_id = get_join_cond(i - 1, i, join_conds);
             
             auto scan_plan = std::make_shared<ScanPlan>(T_IndexScan, curr_sql_id_, curr_plan_id_ ++, sm_mgr_, tables[i], filter_conds, index_conds, tab_cols);
+            assert(scan_plan != nullptr);
             // auto proj_plan = generate_proj_plan(i, std::move(scan_plan), context, curr_sql_id_, curr_plan_id_);
             // 随机生成 hash join or nestedloop join
             // int rnd = RandomGenerator::generate_random_int(1, 2);
-            plan = std::make_shared<JoinPlan>(T_NestLoop, curr_sql_id_, curr_plan_id_ ++, std::move(plan), std::move(scan_plan), join_conds);
-            // plan = std::make_shared<JoinPlan>(T_HashJoin, curr_sql_id_, curr_plan_id_ ++, std::move(plan), std::move(proj_plan), join_conds);
+            // plan = std::make_shared<JoinPlan>(T_NestLoop, curr_sql_id_, curr_plan_id_ ++, std::move(plan), std::move(scan_plan), join_conds);
+            plan = std::make_shared<JoinPlan>(T_HashJoin, curr_sql_id_, curr_plan_id_ ++, std::move(plan), std::move(scan_plan), join_conds);
         }
     }
 
@@ -471,6 +485,7 @@ std::shared_ptr<Plan> ComparativeExp::generate_query_tree(Context* context) {
             // 每7个join算子进行一次projection，防止tuple长度无限扩张
             plan = generate_total_proj_plan(join_node_num_ + 1, std::move(plan), context, curr_sql_id_, curr_plan_id_);
         }
+        assert(plan != nullptr);
         std::vector<Condition> index_conds;
         std::vector<Condition> filter_conds;
         std::vector<Condition> join_conds;
@@ -487,10 +502,11 @@ std::shared_ptr<Plan> ComparativeExp::generate_query_tree(Context* context) {
         // get_join_cond(left_tab_id, right_tab_id, join_conds);
         
         auto scan_plan = std::make_shared<ScanPlan>(T_IndexScan, curr_sql_id_, curr_plan_id_ ++, sm_mgr_, tables[right_tab_id], filter_conds, index_conds, tab_cols);
-        auto proj_plan = generate_proj_plan(right_tab_id, std::move(scan_plan), context, curr_sql_id_, curr_plan_id_);
+        assert(scan_plan != nullptr);
+        // auto proj_plan = generate_proj_plan(right_tab_id, std::move(scan_plan), context, curr_sql_id_, curr_plan_id_);
         // int rnd = RandomGenerator::generate_random_int(1, 2);
         // plan = std::make_shared<JoinPlan>(T_NestLoop, curr_sql_id_, curr_plan_id_ ++, std::move(plan), std::move(proj_plan), join_conds);
-        plan = std::make_shared<JoinPlan>(T_HashJoin, curr_sql_id_, curr_plan_id_ ++, std::move(plan), std::move(proj_plan), join_conds);
+        plan = std::make_shared<JoinPlan>(T_HashJoin, curr_sql_id_, curr_plan_id_ ++, std::move(plan), std::move(scan_plan), join_conds);
     }
 
     TabCol order_col;
@@ -519,6 +535,8 @@ int MB_ = 1024;
 int RB_ = 1024;
 int C_ = 1000;
 int cost_model_ = 0;
+int interval_ = 0;
+bool write_ckpt_ = true;
 
 void ComparativeExp::normal_exec() {
     std::cout << "************************ normal_exec ************************" << std::endl;
@@ -539,13 +557,32 @@ void ComparativeExp::normal_exec() {
 
     std::shared_ptr<Plan> plan = generate_query_tree(context);
     std::shared_ptr<PortalStmt> portal_stmt = portal_->start(plan, context);
+    if(portal_stmt != nullptr) {
+        CompCkptManager::get_instance()->add_new_query_tree(portal_stmt->root);
+    }
+    else {
+        std::cerr << "query tree is nullptr\n";
+    }
     portal_->run(portal_stmt, ql_mgr_, context);
 
     auto normal_end = std::chrono::high_resolution_clock::now();
-    auto normal_duration = std::chrono::duration_cast<std::chrono::duration<double>>(normal_end - normal_start);
-    std::cout << "time for normal exec: " << normal_duration.count() << "s" << std::endl;
+    // while(!op_state_manager->finish_write()) {
+    //     normal_end = std::chrono::high_resolution_clock::now();
+    // }
+    if(op_state_manager->finish_write()) {
+        std::cout << "finish\n";
+    }
+    else {
+        std::cout << "nofinish\n";
+    }
 
-    print_char_array(result_str, offset);
+    auto normal_duration = std::chrono::duration_cast<std::chrono::duration<double>>(normal_end - normal_start);
+
+    // print_char_array(result_str, offset);
+
+    std::cout << "time for normal exec: " << normal_duration.count() << "s" << std::endl;
+    std::cout << "write op checkpoints: " << OperatorStateManager::write_cnts << "\n";
+    std::cout << "write op checkpoint size(Bytes): " << OperatorStateManager::write_tot_size << "\n";
     delete rdma_buffer_allocator;
     delete[] result_str;
     delete context;
@@ -569,6 +606,12 @@ void ComparativeExp::re_exec() {
 
     std::shared_ptr<Plan> plan = generate_query_tree(context);
     std::shared_ptr<PortalStmt> portal_stmt = portal_->start(plan, context);
+    if(portal_stmt != nullptr) {
+        CompCkptManager::get_instance()->add_new_query_tree(portal_stmt->root);
+    }
+    else {
+        std::cerr << "query tree is nullptr\n";
+    }
     
     // begin to 
     auto op_ck_meta = context->op_state_mgr_->read_op_checkpoint_meta();
@@ -613,6 +656,10 @@ int main(int argc, char** argv) {
     state_theta_ = cJSON_GetObjectItem(comp_exp_config, "state_theta")->valuedouble;
     src_scale_factor_ = cJSON_GetObjectItem(comp_exp_config, "src_scale_factor")->valuedouble;
     block_size_ = cJSON_GetObjectItem(comp_exp_config, "block_size")->valueint;
+    interval_ = cJSON_GetObjectItem(comp_exp_config, "interval")->valueint;
+    int write_ckpt_num = cJSON_GetObjectItem(comp_exp_config, "write_ckpt")->valueint;
+    if(write_ckpt_num == 1) write_ckpt_ = true;
+    else write_ckpt_ = false;
 
     if(cost_model_type.compare("SeamlessDB") == 0) {
         cost_model_ = 0;
@@ -620,12 +667,16 @@ int main(int argc, char** argv) {
     else if(cost_model_type.compare("PREDATOR") == 0) {
         cost_model_ = 1;
     }
+    else if(cost_model_type.compare("IntervalCkpt") == 0) {
+        cost_model_ = 2;
+    }
 
     MetaManager::create_instance(config_path);
     RDMARegionAllocator::create_instance(MetaManager::get_instance(), 1);
     QPManager::create_instance(1);
     QPManager::BuildALLQPConnection(MetaManager::get_instance());
     ContextManager::create_instance(1);
+    CompCkptManager::create_instance();
     ComparativeExp* comparative_exp = new ComparativeExp(join_num, buffer_pool_size, thread_num);
 
     std::thread normal_thread(&ComparativeExp::normal_exec, comparative_exp);

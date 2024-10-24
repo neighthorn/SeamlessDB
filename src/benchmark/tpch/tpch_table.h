@@ -15,8 +15,8 @@
 
 #define REGION_COND_RANGE 5     // 不超过5
 #define NATION_COND_RANGE 25     // 不超过25
-#define NORMAL_INT_COND_RANGE 5000
-#define DATE_COND_RANGE "1994-01-01"
+#define NORMAL_INT_COND_RANGE 10000
+#define DATE_COND_RANGE "1992-01-01"
 #define DATE_MAX_NUM 84
 #define MKTSEGMENT_MAX_NUM 5
 
@@ -506,9 +506,9 @@ public:
         std::string table_name = "customer";
         std::vector<ColDef> col_defs;
 
-        col_defs.emplace_back(ColDef("c_nationkey", ColType::TYPE_INT, 4));
-        col_defs.emplace_back(ColDef("c_id", ColType::TYPE_INT, 4));
         col_defs.emplace_back(ColDef("c_mktsegment", ColType::TYPE_STRING, 10));
+        col_defs.emplace_back(ColDef("c_id", ColType::TYPE_INT, 4));
+        col_defs.emplace_back(ColDef("c_nationkey", ColType::TYPE_INT, 4));
         col_defs.emplace_back(ColDef("c_custkey", ColType::TYPE_INT, 4));
         col_defs.emplace_back(ColDef("c_name", ColType::TYPE_STRING, 25));
         col_defs.emplace_back(ColDef("c_address", ColType::TYPE_STRING, 40));
@@ -517,13 +517,13 @@ public:
         col_defs.emplace_back(ColDef("c_comment", ColType::TYPE_STRING, 117));
         std::vector<std::string> pkeys;
         /*** pkeys for Q3 ***/
-        // pkeys.emplace_back("c_mktsegment");
-        // pkeys.emplace_back("c_id");
+        pkeys.emplace_back("c_mktsegment");
+        pkeys.emplace_back("c_id");
         /*** pkeys for Q3 ***/
 
         /*** pkeys for Q7 ***/
-        pkeys.emplace_back("c_nationkey");
-        pkeys.emplace_back("c_id");
+        // pkeys.emplace_back("c_nationkey");
+        // pkeys.emplace_back("c_id");
         /*** pkeys for Q7 ***/
         // pkeys.emplace_back("c_custkey");
         sm_mgr->create_table(table_name, col_defs, pkeys, nullptr);
@@ -538,13 +538,19 @@ public:
     void get_random_condition(int SF, std::vector<Condition>& index_conds, std::vector<Condition> filter_conds, bool is_index_scan) {
         assert(is_index_scan == true);
         
-        TabCol lhs_col = {.tab_name = "customer", .col_name = "c_custkey"};
+        // TabCol lhs_col = {.tab_name = "customer", .col_name = "c_custkey"};
+        // Value val;
+        // // val.set_int(RandomGenerator::generate_random_int(1, SF * ONE_SF_PER_CUSTOMER));
+        // // val.set_int(RandomGenerator::generate_random_int(1, MAX_COND_RANGE));
+        // val.set_int(NORMAL_INT_COND_RANGE);
+        // val.init_raw(sizeof(int));
+        // Condition cond = {.lhs_col = std::move(lhs_col), .op = OP_LT, .is_rhs_val = true, .rhs_col = TabCol{}, .rhs_val = val};
+        // index_conds.push_back(std::move(cond));
+        TabCol lhs_col = {.tab_name = "customer", .col_name = "c_nationkey"};
         Value val;
-        // val.set_int(RandomGenerator::generate_random_int(1, SF * ONE_SF_PER_CUSTOMER));
-        // val.set_int(RandomGenerator::generate_random_int(1, MAX_COND_RANGE));
-        val.set_int(NORMAL_INT_COND_RANGE);
+        val.set_int(1);
         val.init_raw(sizeof(int));
-        Condition cond = {.lhs_col = std::move(lhs_col), .op = OP_LT, .is_rhs_val = true, .rhs_col = TabCol{}, .rhs_val = val};
+        Condition cond = {.lhs_col = std::move(lhs_col), .op = OP_EQ, .is_rhs_val = true, .rhs_col = TabCol{}, .rhs_val = val};
         index_conds.push_back(std::move(cond));
     }
 
@@ -562,6 +568,7 @@ public:
             1 <= c_nationkey <= 25
         */
         int record_per_key = c_custkey_max / MKTSEGMENT_MAX_NUM;
+        // int record_per_key = c_custkey_max / (REGION_NUM * ONE_REGION_PER_NATION);
         c_custkey = 1;
 
         RandomMapping random_mapping(c_custkey_max);
@@ -569,11 +576,13 @@ public:
         for(int mktseg_idx = 0; mktseg_idx < MKTSEGMENT_MAX_NUM; ++ mktseg_idx) {
             RandomGenerator::generate_mktsegment_from_idx(c_mktsegment, mktseg_idx);
             std::cout << c_mktsegment << std::endl;
+        // for(int c_nationkey = 1; c_nationkey <= REGION_NUM * ONE_ORDER_PER_LINENUM; ++c_nationkey) {
 
             for(int record_idx = 0; record_idx < record_per_key && c_custkey <= c_custkey_max; ++record_idx) {
                 RandomGenerator::generate_random_str(c_name, 25);
                 RandomGenerator::generate_random_str(c_address, 40);
-                c_nationkey = RandomGenerator::generate_random_int(1, REGION_NUM * ONE_REGION_PER_NATION);
+                // c_nationkey = RandomGenerator::generate_random_int(1, REGION_NUM * ONE_REGION_PER_NATION);
+                RandomGenerator::generate_random_mktsegment(c_mktsegment);
                 RandomGenerator::generate_random_str(c_phone, 15);
                 c_acctbal = RandomGenerator::generate_random_float(1, 20000);
                 // RandomGenerator::generate_random_str(c_mktsegment, 10);
@@ -583,12 +592,12 @@ public:
                 
 
                 int offset = 0;
-                memcpy(record.raw_data_ + offset, (char *)&c_nationkey, sizeof(int));
-                offset += sizeof(int);
-                memcpy(record.raw_data_ + offset, (char *)&c_custkey, sizeof(int));
-                offset += sizeof(int);
                 memcpy(record.raw_data_ + offset, c_mktsegment, 10);
                 offset += 10;
+                memcpy(record.raw_data_ + offset, (char *)&c_custkey, sizeof(int));
+                offset += sizeof(int);
+                memcpy(record.raw_data_ + offset, (char *)&c_nationkey, sizeof(int));
+                offset += sizeof(int);
                 int actual_custkey = random_mapping.f(c_custkey);
                 // std::cout << "c_custkey: " << c_custkey << " actual_custkey: " << actual_custkey << std::endl;
                 memcpy(record.raw_data_ + offset, (char *)&actual_custkey, sizeof(int));
@@ -734,6 +743,11 @@ public:
         pkeys.emplace_back("o_orderdate");
         pkeys.emplace_back("o_id");
         /*** pkeys for Q5 ***/
+
+        /*** pkeys for Q10 ***/
+        // pkeys.emplace_back("o_id");
+        // pkeys.emplace_back("o_orderdate");
+        /*** pkeys for Q10 ***/
         // pkeys.emplace_back("o_orderkey");
         sm_mgr->create_table(table_name, col_defs, pkeys, nullptr);
     }
@@ -747,14 +761,14 @@ public:
     void get_random_condition(int SF, std::vector<Condition>& index_conds, std::vector<Condition> filter_conds, bool is_index_scan) {
         assert(is_index_scan == true);
         
-        TabCol lhs_col = {.tab_name = "orders", .col_name = "o_orderkey"};
-        Value val;
-        // val.set_int(RandomGenerator::generate_random_int(1, SF * ONE_SF_PER_ORDER));
-        // val.set_int(RandomGenerator::generate_random_int(1, MAX_COND_RANGE));
-        val.set_int(NORMAL_INT_COND_RANGE);
-        val.init_raw(sizeof(int));
-        Condition cond = {.lhs_col = std::move(lhs_col), .op = OP_LE, .is_rhs_val = true, .rhs_col = TabCol{}, .rhs_val = val};
-        index_conds.push_back(std::move(cond));
+        // TabCol lhs_col = {.tab_name = "orders", .col_name = "o_orderkey"};
+        // Value val;
+        // // val.set_int(RandomGenerator::generate_random_int(1, SF * ONE_SF_PER_ORDER));
+        // // val.set_int(RandomGenerator::generate_random_int(1, MAX_COND_RANGE));
+        // val.set_int(NORMAL_INT_COND_RANGE);
+        // val.init_raw(sizeof(int));
+        // Condition cond = {.lhs_col = std::move(lhs_col), .op = OP_LE, .is_rhs_val = true, .rhs_col = TabCol{}, .rhs_val = val};
+        // index_conds.push_back(std::move(cond));
 
         TabCol lhs_col2 = {.tab_name = "orders", .col_name = "o_orderdate"};
         Value val2;
@@ -762,8 +776,17 @@ public:
         // val2.set_str(std::string(o_orderdate, RandomGenerator::DATE_SIZE));
         val2.set_str(DATE_COND_RANGE);
         val2.init_raw(RandomGenerator::DATE_SIZE);
-        Condition cond2 = {.lhs_col = std::move(lhs_col2), .op = OP_LE, .is_rhs_val = true, .rhs_col = TabCol{}, .rhs_val = val2};
-        filter_conds.push_back(std::move(cond2));
+        Condition cond2 = {.lhs_col = std::move(lhs_col2), .op = OP_EQ, .is_rhs_val = true, .rhs_col = TabCol{}, .rhs_val = val2};
+        index_conds.push_back(std::move(cond2));
+        
+        TabCol lhs_col = {.tab_name = "orders", .col_name = "o_id"};
+        Value val;
+        // val.set_int(RandomGenerator::generate_random_int(1, SF * ONE_SF_PER_ORDER));
+        // val.set_int(RandomGenerator::generate_random_int(1, MAX_COND_RANGE));
+        val.set_int(NORMAL_INT_COND_RANGE);
+        val.init_raw(sizeof(int));
+        Condition cond = {.lhs_col = std::move(lhs_col), .op = OP_LE, .is_rhs_val = true, .rhs_col = TabCol{}, .rhs_val = val};
+        index_conds.push_back(std::move(cond));
     }
 
     void generate_table_data(int SF, Transaction* txn, SmManager* sm_mgr, IxManager* ix_mgr) {
@@ -1114,14 +1137,14 @@ public:
         Condition cond = {.lhs_col = std::move(lhs_col), .op = OP_LT, .is_rhs_val = true, .rhs_col = TabCol{}, .rhs_val = val};
         index_conds.push_back(std::move(cond));
 
-        TabCol col2 = {.tab_name = "partsupp", .col_name = "ps_suppkey"};
-        Value val2;
-        // val2.set_int(RandomGenerator::generate_random_int(1, SF * ONE_SF_PER_SUPPLIER));
-        // val2.set_int(RandomGenerator::generate_random_int(1, MAX_COND_RANGE));
-        val2.set_int(NORMAL_INT_COND_RANGE);
-        val2.init_raw(sizeof(int));
-        Condition cond2 = {.lhs_col = std::move(col2), .op = OP_LT, .is_rhs_val = true, .rhs_col = TabCol{}, .rhs_val = val2};
-        filter_conds.push_back(std::move(cond2));
+        // TabCol col2 = {.tab_name = "partsupp", .col_name = "ps_suppkey"};
+        // Value val2;
+        // // val2.set_int(RandomGenerator::generate_random_int(1, SF * ONE_SF_PER_SUPPLIER));
+        // // val2.set_int(RandomGenerator::generate_random_int(1, MAX_COND_RANGE));
+        // val2.set_int(NORMAL_INT_COND_RANGE);
+        // val2.init_raw(sizeof(int));
+        // Condition cond2 = {.lhs_col = std::move(col2), .op = OP_LT, .is_rhs_val = true, .rhs_col = TabCol{}, .rhs_val = val2};
+        // filter_conds.push_back(std::move(cond2));
     }
 
     void generate_table_data(int SF, Transaction* txn, SmManager* sm_mgr, IxManager* ix_mgr) {
@@ -1272,6 +1295,11 @@ public:
         pkeys.emplace_back("l_shipdate");
         pkeys.emplace_back("l_id");
         /*** pkeys for Q5 ***/
+
+        /*** pkeys for Q10 ***/
+        // pkeys.emplace_back("l_id");
+        // pkeys.emplace_back("l_shipdate");
+        /*** pkeys for Q10 ***/
         // pkeys.emplace_back("l_orderkey");
         // pkeys.emplace_back("l_linenumber");
         sm_mgr->create_table(table_name, col_defs, pkeys, nullptr);
@@ -1287,23 +1315,43 @@ public:
     void get_random_condition(int SF, std::vector<Condition>& index_conds, std::vector<Condition> filter_conds, bool is_index_scan) {
         assert(is_index_scan == true);
         
-        TabCol lhs_col = {.tab_name = "lineitem", .col_name = "l_orderkey"};
+        // TabCol lhs_col = {.tab_name = "lineitem", .col_name = "l_orderkey"};
+        // Value val;
+        // // val.set_int(RandomGenerator::generate_random_int(1, SF * ONE_SF_PER_ORDER));
+        // // val.set_int(RandomGenerator::generate_random_int(1, MAX_COND_RANGE));
+        // val.set_int(NORMAL_INT_COND_RANGE);
+        // val.init_raw(sizeof(int));
+        // Condition cond = {.lhs_col = std::move(lhs_col), .op = OP_LT, .is_rhs_val = true, .rhs_col = TabCol{}, .rhs_val = val};
+        // index_conds.push_back(std::move(cond));
+
+        // TabCol col2 = {.tab_name = "lineitem", .col_name = "l_linenumber"};
+        // Value val2;
+        // // val2.set_int(RandomGenerator::generate_random_int(1, ONE_ORDER_PER_LINENUM));
+        // val2.set_int(ONE_ORDER_PER_LINENUM);
+        // // val2.set_int(NORMAL_INT_COND_RANGE);
+        // val2.init_raw(sizeof(int));
+        // Condition cond2 = {.lhs_col = std::move(col2), .op = OP_LT, .is_rhs_val = true, .rhs_col = TabCol{}, .rhs_val = val2};
+        // filter_conds.push_back(std::move(cond2));
+
+        TabCol lhs_col = {.tab_name = "lineitem", .col_name = "l_shipdate"};
         Value val;
         // val.set_int(RandomGenerator::generate_random_int(1, SF * ONE_SF_PER_ORDER));
         // val.set_int(RandomGenerator::generate_random_int(1, MAX_COND_RANGE));
-        val.set_int(NORMAL_INT_COND_RANGE);
-        val.init_raw(sizeof(int));
-        Condition cond = {.lhs_col = std::move(lhs_col), .op = OP_LT, .is_rhs_val = true, .rhs_col = TabCol{}, .rhs_val = val};
+        // val.set_int(NORMAL_INT_COND_RANGE);
+        val.set_str(DATE_COND_RANGE);
+        val.init_raw(RandomGenerator::DATE_SIZE);
+        Condition cond = {.lhs_col = std::move(lhs_col), .op = OP_EQ, .is_rhs_val = true, .rhs_col = TabCol{}, .rhs_val = val};
         index_conds.push_back(std::move(cond));
 
-        TabCol col2 = {.tab_name = "lineitem", .col_name = "l_linenumber"};
+        TabCol col2 = {.tab_name = "lineitem", .col_name = "l_id"};
         Value val2;
         // val2.set_int(RandomGenerator::generate_random_int(1, ONE_ORDER_PER_LINENUM));
-        val2.set_int(ONE_ORDER_PER_LINENUM);
+        // val2.set_int(ONE_ORDER_PER_LINENUM);
         // val2.set_int(NORMAL_INT_COND_RANGE);
+        val2.set_int(NORMAL_INT_COND_RANGE);
         val2.init_raw(sizeof(int));
-        Condition cond2 = {.lhs_col = std::move(col2), .op = OP_LT, .is_rhs_val = true, .rhs_col = TabCol{}, .rhs_val = val2};
-        filter_conds.push_back(std::move(cond2));
+        Condition cond2 = {.lhs_col = std::move(col2), .op = OP_LE, .is_rhs_val = true, .rhs_col = TabCol{}, .rhs_val = val2};
+        index_conds.push_back(std::move(cond2));
     }
 
     void generate_table_data(int SF, Transaction* txn, SmManager* sm_mgr, IxManager* ix_mgr) {

@@ -19,6 +19,7 @@
 #include "storage/storage_service.pb.h"
 #include "state/state_item/op_state.h"
 #include "state/resume_util.h"
+#include "execution/comp_ckpt_mgr.h"
 
 #include "debug_log.h"
 
@@ -40,6 +41,8 @@ int MB_ = 8192;
 int RB_ = 8192;
 int C_ = 1000;
 int cost_model_ = 0;
+int interval_ = 0;
+bool write_ckpt_ = true;
 
 int back_up_resumption_ = 0;
 
@@ -152,6 +155,7 @@ RWNode::RWNode(int local_rpc_port, std::string workload, int record_num, int thr
     QPManager::BuildALLQPConnection(MetaManager::get_instance());
     ContextManager::create_instance(thread_num);
     std::cout << "finishi create state manager\n";
+    CompCkptManager::create_instance();
     
     // /*
     //     RDMA asyn write thread pool
@@ -592,6 +596,8 @@ void client_handler(int* sock_fd, RWNode* node) {
                     // auto start_start = std::chrono::high_resolution_clock::now();
                     // #endif
                     std::shared_ptr<PortalStmt> portalStmt = node->portal_->start(plan, context);
+                    if(portalStmt->root != nullptr)
+                        CompCkptManager::get_instance()->add_new_query_tree(portalStmt->root);
                     // #ifdef TIME_OPEN
                     // auto start_end = std::chrono::high_resolution_clock::now();
                     // auto start_duration = std::chrono::duration_cast<std::chrono::microseconds>(start_end - start_start).count();
@@ -843,6 +849,25 @@ int main(int argc, char** argv) {
     MB_ = cJSON_GetObjectItem(node, "MB")->valueint;
     RB_ = cJSON_GetObjectItem(node, "RB")->valueint;
     C_ = cJSON_GetObjectItem(node, "C")->valueint;
+    interval_ = cJSON_GetObjectItem(node, "interval")->valueint;
+    int write_ckpt_num = cJSON_GetObjectItem(node, "write_ckpt")->valueint;
+    if(write_ckpt_num == 1) write_ckpt_ = true;
+    else write_ckpt_ = false;
+    std::string cost_model_str = cJSON_GetObjectItem(node, "cost_model")->valuestring;
+    if(cost_model_str.compare("SeamlessDB") == 0) {
+        std::cout << "seamlessdb\n";
+        cost_model_ = 0;
+    }
+    else if(cost_model_str.compare("PREDATOR") == 0) {
+        std::cout << "predator\n";
+        cost_model_ = 1;
+    }
+    else if(cost_model_str.compare("IntervalCkpt") == 0) {
+        std::cout << "interval ckpt\n";
+        cost_model_ = 2;
+    }
+
+    std::cout << "cost_model: " << cost_model_ << ", interval: " << interval_ << "\n";
     
     client_num = thread_num;
     commit_txns = new int[client_num];

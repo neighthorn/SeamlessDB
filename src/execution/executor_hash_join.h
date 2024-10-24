@@ -18,8 +18,8 @@ struct HashJoinCheckpointInfo {
 class HashJoinExecutor : public AbstractExecutor {
     
 public:
-    std::unique_ptr<AbstractExecutor> left_;
-    std::unique_ptr<AbstractExecutor> right_;
+    std::shared_ptr<AbstractExecutor> left_;
+    std::shared_ptr<AbstractExecutor> right_;
     size_t len_;                                // join后获得的每条记录的长度
     std::vector<ColMeta> cols_;                 // join后获得的记录的字段
 
@@ -41,10 +41,10 @@ public:
     // int left_child_call_times_;     // 左儿子调用次数
     // int be_call_times_;             // 被调用次数
 
-    HashJoinExecutor(std::unique_ptr<AbstractExecutor> left, std::unique_ptr<AbstractExecutor> right, std::vector<Condition> conds, Context* context, int sql_id, int operator_id) 
+    HashJoinExecutor(std::shared_ptr<AbstractExecutor> left, std::shared_ptr<AbstractExecutor> right, std::vector<Condition> conds, Context* context, int sql_id, int operator_id) 
         : AbstractExecutor(sql_id, operator_id) {
-        left_ = std::move(left);
-        right_ = std::move(right);
+        left_ = left;
+        right_ = right;
         len_ = left_->tupleLen() + right_->tupleLen();
         cols_ = left_->cols();
 
@@ -114,4 +114,7 @@ public:
     void write_state_if_allow(int type = 0);
     void load_state_info(HashJoinOperatorState* hash_join_op);
     void append_tuple_to_hash_table_from_state(char* src, int left_rec_len, char* join_key);
+    std::chrono::time_point<std::chrono::system_clock> get_latest_ckpt_time() override;
+    double get_curr_suspend_cost() override;
+    void write_state();
 };

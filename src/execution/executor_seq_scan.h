@@ -173,5 +173,13 @@ class SeqScanExecutor : public AbstractExecutor {
         
         return offset;
     }
+    std::chrono::time_point<std::chrono::system_clock> get_latest_ckpt_time() override {
+        assert(0);
+        return std::chrono::high_resolution_clock::now();
+    }
     
+    double get_curr_suspend_cost() override {
+        assert(0);
+        return 0;
+    }
 };

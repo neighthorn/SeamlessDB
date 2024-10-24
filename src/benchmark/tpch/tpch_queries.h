@@ -64,7 +64,7 @@ where
 
 // class
 
-
+// select r_name, n_name, l_linenumber from region, nation, customer, supplier, orders, lineitem, partsupp, part where r_regionkey < 5 and n_nationkey < 5 and c_nationkey = 1 and s_suppkey < 10000 and o_orderdate = '1992-01-01' and o_id <= 10000 and l_shipdate = '1992-01-01' and l_id <= 10000 and ps_partkey < 10000 and p_partkey < 10000 and r_regionkey = n_regionkey and n_nationkey=c_nationkey and n_nationkey=s_nationkey and c_custkey=o_custkey and s_suppkey=l_suppkey and s_suppkey=ps_suppkey and ps_partkey=p_partkey;
 
 class QueryExample : public NativeTransaction {
 public:
@@ -79,7 +79,13 @@ public:
         // queries.push_back("select n_name, l_extendedprice, l_discount from region, nation, customer, orders, lineitem, supplier where c_custkey = o_custkey and l_orderkey = o_orderkey and l_suppkey = s_suppkey and c_nationkey = n_nationkey and s_nationkey = n_nationkey and n_regionkey = r_regionkey and r_name = 'ASIA' and o_orderdate <= '1992-12-01' order by l_extendedprice desc;");
         // queries.push_back("select n_name, l_shipdate, l_extendedprice, l_discount from nation, supplier, lineitem, orders, customer where s_suppkey = l_suppkey and o_orderkey = l_orderkey and c_custkey = o_custkey and s_nationkey = n_nationkey and n_nationkey = 4 and c_nationkey = 16 and s_nationkey = 4 and l_shipdate >= '1998-01-01' order by l_shipdate;");
         // queries.push_back("select l_orderkey, l_extendedprice, l_discount, o_orderdate, o_shippriority from orders, customer, lineitem where c_custkey = o_custkey and l_orderkey = o_orderkey and o_orderdate < '1995-03-01' and l_shipdate > '1996-06-01' order by l_orderkey;");
-        queries.push_back("select l_extendedprice, l_discount from lineitem where l_shipdate < '1992-11-01';");
+        // queries.push_back("select l_extendedprice, l_discount from lineitem where l_shipdate < '1992-11-01';");
+        // queries.push_back("select c_custkey, c_name, l_discount, o_orderkey from customer, orders, lineitem where o_orderdate = '1992-01-01' and l_shipdate = '1992-01-01' and c_nationkey = 1 and c_custkey = o_custkey and l_orderkey = o_orderkey order by l_shipdate;");
+        // queries.push_back("select c_custkey, c_name, l_extendedprice, l_discount, c_acctbal, n_name, c_address, c_phone, c_comment from customer, nation, orders, lineitem where c_nationkey = 1 and c_id <= 60000  and c_nationkey = n_nationkey and o_id <= 50000 and o_orderdate <= '1992-03-01' and l_id <= 150000 and c_custkey = o_custkey and l_orderkey = o_orderkey order by c_custkey desc;");
+        // queries.push_back("select n_name, l_shipdate, l_extendedprice, l_discount from nation, supplier, lineitem, orders, customer where s_suppkey = l_suppkey and o_orderkey = l_orderkey and c_custkey = o_custkey and s_nationkey = n_nationkey and n_nationkey = 4 and c_nationkey = 16 and s_nationkey = 4 and l_shipdate >= '1998-01-01' and o_orderdate <= '1994-12-01' order by l_shipdate;");
+        // queries.push_back("select l_orderkey, l_extendedprice, l_discount, o_orderdate, o_shippriority from customer, orders, lineitem where c_mktsegment = 'AUTOMOBILE' and c_custkey = o_custkey and l_orderkey = o_orderkey and o_orderdate < '1993-03-01' and l_shipdate > '1997-06-01' order by l_orderkey;");
+        // queries.push_back("select l_orderkey, l_extendedprice, l_discount, o_orderdate, o_shippriority from customer, orders, lineitem where c_mktsegment = 'AUTOMOBILE' and c_custkey = o_custkey and l_orderkey = o_orderkey and o_orderdate < '1995-03-01' and l_shipdate > '1995-03-01' order by l_orderkey;");
+        queries.push_back("select r_name, n_name, l_linenumber from region, nation, customer, supplier, orders, lineitem, partsupp, part where r_regionkey < 5 and n_nationkey < 5 and c_nationkey = 1 and s_suppkey < 10000 and o_orderdate = '1992-01-01' and o_id <= 10000 and l_shipdate = '1992-01-01' and l_id <= 10000 and ps_partkey < 10000 and p_partkey < 10000 and r_regionkey = n_regionkey and n_nationkey=c_nationkey and n_nationkey=s_nationkey and c_custkey=o_custkey and s_suppkey=l_suppkey and s_suppkey=ps_suppkey and ps_partkey=p_partkey;");
         queries.push_back("commit;");
 
         return ;

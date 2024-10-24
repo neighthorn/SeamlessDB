@@ -2,20 +2,22 @@
     "comparative_exp": {
         "machine_id": 3,
         "node_type": 2,
-        "join_num": 4,
+        "join_num": 7,
         "cost_model": "SeamlessDB",
+        "interval": 10,
+        "write_ckpt": 1,
         "local_rdma_port": 12201,
         "break_percentage": 0.9,
-        "normal_time": 700.5,
+        "normal_time": 29,
         "buffer_pool_size": 1310720,
         "thread_num": 1,
         "state_open": 1,
-        "state_theta": 0.3,
+        "state_theta": 30,
         "src_scale_factor": 0.9,
-        "block_size": 500,
-        "MB": 8192,
-        "RB": 8192,
-        "C": 1000
+        "block_size": 1000,
+        "MB": 819200,
+        "RB": 819200,
+        "C": 500000
     },
     "remote_state_nodes": {
         "remote_ips": [

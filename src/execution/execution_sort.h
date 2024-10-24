@@ -15,7 +15,7 @@ struct SortCheckpointInfo {
 
 class SortExecutor : public AbstractExecutor {
 public:
-    std::unique_ptr<AbstractExecutor> prev_;
+    std::shared_ptr<AbstractExecutor> prev_;
     //目前只支持一个键排序
     ColMeta cols_;
     bool is_desc_;
@@ -31,9 +31,9 @@ public:
     int checkpointed_tuple_num_;
 
    public:
-    SortExecutor(std::unique_ptr<AbstractExecutor> prev, TabCol sel_cols, bool is_desc, Context* context, int sql_id, int operator_id):
+    SortExecutor(std::shared_ptr<AbstractExecutor> prev, TabCol sel_cols, bool is_desc, Context* context, int sql_id, int operator_id):
         AbstractExecutor(sql_id, operator_id) {
-        prev_ = std::move(prev);
+        prev_ = prev;
         cols_ = prev_->get_col_offset(sel_cols);
         tuple_len_ = prev_->tupleLen();
         is_desc_ = is_desc;
@@ -128,4 +128,9 @@ public:
     int64_t getRCop(std::chrono::time_point<std::chrono::system_clock> curr_time);
     void write_state_if_allow(int type = 0);
     void load_state_info(SortOperatorState *sort_op);
+
+    // 对比工作
+    std::chrono::time_point<std::chrono::system_clock> get_latest_ckpt_time() override;
+    double get_curr_suspend_cost() override;
+    void write_state();
 };

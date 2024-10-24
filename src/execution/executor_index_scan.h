@@ -117,15 +117,16 @@ friend class IndexScanOperatorState;
                 cond.op = swap_op.at(cond.op);
             }
         }
-        // std::cout << "IndexScanExecutor: " << tab_name_ << std::endl;
-        // std::cout << "filter conds: \n";
-        // for(auto& cond: filter_conds_) {
-        //     std::cout << cond.lhs_col.col_name << CompOpString[cond.op] << cond.rhs_val.int_val << std::endl;
-        // }
-        // std::cout << "index conds: \n";
-        // for(auto& cond: index_conds_) {
-        //     std::cout << cond.lhs_col.col_name << CompOpString[cond.op] << cond.rhs_val.int_val << std::endl;
-        // }
+        std::cout << "IndexScanExecutor: " << tab_name_ << std::endl;
+        std::cout << "filter conds: \n";
+        for(auto& cond: filter_conds_) {
+            std::cout << cond.lhs_col.col_name << CompOpString[cond.op] << cond.rhs_val.int_val << std::endl;
+        }
+        std::cout << "index conds: \n";
+        for(auto& cond: index_conds_) {
+            std::cout << cond.lhs_col.col_name << CompOpString[cond.op] << cond.rhs_val.int_val << std::endl;
+        }
+        std::cout << "\n";
         // std::cout << "is_seq_scan: " << is_seq_scan_ << std::endl;
 
         // first request LOCK_IX on table
@@ -221,6 +222,7 @@ NOTALBELOCK:
         // }
 
             // CompOp right_op = OP_EQ;
+
         CompOp op = OP_EQ;
         char* min_key = new char[index_meta_.col_tot_len];
         char* max_key = new char[index_meta_.col_tot_len];
@@ -330,6 +332,7 @@ NOTALBELOCK:
         lower_rid_ = lower;
         upper_rid_ = upper;
 
+        std::cout << "Table: " << tab_name_ << "\n";
         std::cout << "lower_rid: {page_no=" << lower_rid_.page_no << ", slot_no=" << lower_rid_.slot_no << ", record_no" << lower_rid_.record_no << "}\n";
         std::cout << "upper_rid: {page_no=" << upper_rid_.page_no << ", slot_no=" << upper_rid_.slot_no << ", record_no" << upper_rid_.record_no << "}\n";
 
@@ -689,5 +692,14 @@ NOLOCK1:
             index_scan_op_ = nullptr;
         }
         return ;
+    }
+
+    std::chrono::time_point<std::chrono::system_clock> get_latest_ckpt_time() override {
+        assert(0);
+        return std::chrono::high_resolution_clock::now();
+    }
+
+    double get_curr_suspend_cost() override {
+        return sizeof(Rid) * 3 + sizeof(bool) + sizeof(int) * 2 + sizeof(size_t) + sizeof(time_t) + sizeof(ExecutionType);
     }
 };

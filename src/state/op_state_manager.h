@@ -200,6 +200,9 @@ public:
         事务已提交，不需要op checkpoint了
     */
     void clear_op_checkpoint();
+    void clear_op_meta();
+
+    bool finish_write();
 
 private:
     /*

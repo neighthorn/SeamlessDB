@@ -7,6 +7,7 @@
 #include "executor_hash_join.h"
 #include "executor_projection.h"
 #include "executor_index_scan.h"
+#include "comp_ckpt_mgr.h"
 
 std::pair<bool, double> SortExecutor::judge_state_reward(SortCheckpointInfo* curr_ck_info) {
     SortCheckpointInfo* latest_ck_info = nullptr;
@@ -82,7 +83,34 @@ int64_t SortExecutor::getRCop(std::chrono::time_point<std::chrono::system_clock>
     
 }
 
+std::chrono::time_point<std::chrono::system_clock> SortExecutor::get_latest_ckpt_time() {
+    return ck_infos_[ck_infos_.size() - 1].ck_timestamp_;
+}
+
+double SortExecutor::get_curr_suspend_cost() {
+    double src_op = (double)sort_state_size_min + (double)(num_records_ - checkpointed_tuple_num_) * tuple_len_;
+    if(is_sorted_ == true && is_sort_index_checkpointed_ == false) {
+        src_op += (double)num_records_ * sizeof(int);
+    }
+    return src_op;
+}
+
+void SortExecutor::write_state() {
+    SortCheckpointInfo curr_ck_info = {.ck_timestamp_ = std::chrono::high_resolution_clock::now()};
+    double src_op = (double)sort_state_size_min + (double)(num_records_ - checkpointed_tuple_num_) * tuple_len_;
+    if(is_sorted_ == true && is_sort_index_checkpointed_ == false) {
+        src_op += (double)num_records_ * sizeof(int);
+    }
+    context_->op_state_mgr_->add_operator_state_to_buffer(this, src_op);
+    ck_infos_.push_back(curr_ck_info);
+    checkpointed_tuple_num_ = num_records_;
+}
+
 void SortExecutor::write_state_if_allow(int type) {
+    if(cost_model_ >= 1) {
+        CompCkptManager::get_instance()->solve_mip(context_->op_state_mgr_);
+        return;
+    }
     // if(type == 1) return;
     SortCheckpointInfo curr_ck_info = {.ck_timestamp_ = std::chrono::high_resolution_clock::now()};
     if(state_open_) {

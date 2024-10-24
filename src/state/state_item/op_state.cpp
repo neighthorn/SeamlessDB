@@ -743,7 +743,8 @@ size_t HashJoinOperatorState::serialize(char *dest) {
                 offset += left_record_len_;
                 incremental_tuples_count ++;
             }
-            *last_checkpoint_index = record_vector.size();
+            if(cost_model_ != 2)
+                *last_checkpoint_index = record_vector.size();
         }
         assert(incremental_tuples_count == left_hash_table_size_);
 
@@ -865,6 +866,7 @@ void HashJoinOperatorState::rebuild_hash_table(HashJoinExecutor* hash_join_op, c
         hash_join_op_->append_tuple_to_hash_table_from_state(src + offset, left_record_len_, join_key);
         offset += left_record_len_;
     }
+    std::cout << "rebuild hash table, count: " << hash_join_op_->left_hash_table_curr_tuple_count_ << "\n";
     delete[] join_key;
 }
 

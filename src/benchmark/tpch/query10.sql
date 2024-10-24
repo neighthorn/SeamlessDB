@@ -23,3 +23,5 @@ c_address,
 c_comment
 order by
 revenue desc;
+
+select c_custkey, c_name, l_extendedprice, l_discount, c_acctbal, n_name, c_address, c_phone, c_comment from lineitem, orders, customer, nation where c_nationkey = 3 and c_nationkey = n_nationkey and o_orderdate <= '1992-03-01' and l_shipdate <= '1992-02-01' and c_custkey = o_custkey and l_orderkey = o_orderkey order by n_name desc;

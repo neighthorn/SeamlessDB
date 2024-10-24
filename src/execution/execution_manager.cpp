@@ -132,7 +132,7 @@ void QlManager::run_cmd_utility(std::shared_ptr<Plan> plan, Context *context) {
 }
 
 // 执行select语句，select语句的输出除了需要返回客户端外，还需要写入output.txt文件中
-void QlManager::select_from(std::unique_ptr<AbstractExecutor> executorTreeRoot, std::vector<TabCol> sel_cols, 
+void QlManager::select_from(std::shared_ptr<AbstractExecutor> executorTreeRoot, std::vector<TabCol> sel_cols, 
                             Context *context) {
     std::vector<std::string> captions;
     captions.reserve(sel_cols.size());
@@ -178,7 +178,7 @@ void QlManager::select_from(std::unique_ptr<AbstractExecutor> executorTreeRoot, 
     RecordPrinter::print_record_count(num_rec, context);
 }
 
-void QlManager::re_run_select_from(std::unique_ptr<AbstractExecutor> executorTreeRoot, std::vector<TabCol> sel_cols, 
+void QlManager::re_run_select_from(std::shared_ptr<AbstractExecutor> executorTreeRoot, std::vector<TabCol> sel_cols, 
                             Context *context) {
 
     /*
@@ -205,7 +205,7 @@ void QlManager::re_run_select_from(std::unique_ptr<AbstractExecutor> executorTre
     /*
         之前已经beginTuple初始化过了，这里直接nextTuple
     */
-   executorTreeRoot->nextTuple();
+//    if(!executorTreeRoot->is_end()) executorTreeRoot->nextTuple();
     for (; !executorTreeRoot->is_end(); executorTreeRoot->nextTuple()) {
         auto Tuple = executorTreeRoot->Next();
         std::vector<std::string> columns;
@@ -236,6 +236,6 @@ void QlManager::re_run_select_from(std::unique_ptr<AbstractExecutor> executorTre
 
 
 // 执行DML语句
-void QlManager::run_dml(std::unique_ptr<AbstractExecutor> exec){
+void QlManager::run_dml(std::shared_ptr<AbstractExecutor> exec){
     exec->Next();
 }

@@ -8,6 +8,7 @@
 #include "state/op_state_manager.h"
 #include "state/state_item/op_state.h"
 #include "execution_sort.h"
+#include "comp_ckpt_mgr.h"
 
 void ProjectionExecutor::load_state_info(ProjectionOperatorState *proj_op_state) {
     be_call_times_ = proj_op_state->left_child_call_times_;
@@ -30,6 +31,17 @@ void ProjectionExecutor::load_state_info(ProjectionOperatorState *proj_op_state)
             }
         }
     }
+}
+
+double ProjectionExecutor::get_curr_suspend_cost() {
+    double src_op;
+    if(is_root_) {
+        src_op = (double)projection_state_size_min + (double)(curr_result_num_ - checkpointed_result_num_) * len_;
+    }
+    else {
+        src_op = projection_state_size_min;
+    }
+    return src_op;
 }
 
 std::pair<bool, double> ProjectionExecutor::judge_state_reward(ProjectionCheckpointInfo *current_ck_info) {
@@ -71,6 +83,10 @@ std::pair<bool, double> ProjectionExecutor::judge_state_reward(ProjectionCheckpo
     }
 
     return {false, -1};
+}
+
+std::chrono::time_point<std::chrono::system_clock> ProjectionExecutor::get_latest_ckpt_time() {
+    return ck_infos_[ck_infos_.size() - 1].ck_timestamp_;
 }
 
 int64_t ProjectionExecutor::getRCop(std::chrono::time_point<std::chrono::system_clock> curr_time) {
@@ -119,7 +135,18 @@ int64_t ProjectionExecutor::getRCop(std::chrono::time_point<std::chrono::system_
     }
 }
 
+void ProjectionExecutor::write_state() {
+    ProjectionCheckpointInfo curr_ck_info = {.ck_timestamp_ = std::chrono::high_resolution_clock::now()};
+    double src_op = (double)projection_state_size_min + (double)(curr_result_num_ - checkpointed_result_num_) * len_;
+    context_->op_state_mgr_->add_operator_state_to_buffer(this, src_op);
+    ck_infos_.push_back(curr_ck_info);
+}
+
 void ProjectionExecutor::write_state_if_allow(int type) {
+    if(cost_model_ >= 1) {
+        CompCkptManager::get_instance()->solve_mip(context_->op_state_mgr_);
+        return;
+    }
     assert(is_root_);
     ProjectionCheckpointInfo curr_ck_info = {.ck_timestamp_ = std::chrono::high_resolution_clock::now()};
     if(state_open_) {

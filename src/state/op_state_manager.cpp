@@ -54,6 +54,10 @@ OperatorStateManager::OperatorStateManager(int connection_id, CoroutineScheduler
     op_checkpoint_write_thread_ = new std::thread(&OperatorStateManager::write_op_state_thread, this);
 }
 
+bool OperatorStateManager::finish_write() {
+    return write_cnts == ck_meta_->checkpoint_num;
+}
+
 /*
     初始化remote state node的内容
 */
@@ -269,6 +273,7 @@ void OperatorStateManager::write_plan_to_state(int sql_id, SmManager* sm_mgr, st
 
 
 std::pair<bool, size_t> OperatorStateManager::add_operator_state_to_buffer(AbstractExecutor *abstract_executor, double src_op) {
+    if(write_ckpt_ == false) return {true, 0};
     std::unique_lock<std::mutex> lock(op_latch_);
 
     /*
@@ -465,6 +470,9 @@ std::pair<bool, size_t> OperatorStateManager::add_operator_state_to_buffer(Abstr
     }
 
     // add_cktp_cnts++;
+    // std::cout << "add operator size: " << actual_size << "\n";
+    write_tot_size += actual_size;
+    write_cnts++;
 
     return {write_status, actual_size};
     
@@ -503,8 +511,9 @@ void OperatorStateManager::write_operator_state_to_state_node() {
     //         }
     //     } break;
     // }
-
+    
     if(!coro_sched_->RDMAWriteSync(0, op_checkpoint_qp_, op_checkpoint_block.buffer, remote_offset + op_next_write_offset_, op_checkpoint_block.size)) {
+        std::cout << "write size: " << op_checkpoint_block.size /1024/1024 << "MB\n";
         RDMA_LOG(ERROR) << "Failed to write operator state into state_node.";
         assert(0);
     }
@@ -514,15 +523,19 @@ void OperatorStateManager::write_operator_state_to_state_node() {
     */
     std::unique_lock<std::mutex> op_meta_lock(op_meta_latch_);
 
-    ck_meta_->checkpoint_num++;
+    // std::cout << "op_checkpoint_block.size: " << op_checkpoint_block.size << "\n";
+    ck_meta_->checkpoint_num ++;
     ck_meta_->total_size += op_checkpoint_block.size;    
+        
     write_op_checkpoint_meta();
+    // std::cout << "op_checkpoint_block_size: " << op_checkpoint_block.size << "\n";
 
     /*
         update next_write_offset_
     */
     int prev_offset = op_next_write_offset_;
     op_next_write_offset_ += op_checkpoint_block.size;
+    
 
     /*
         free buffer
@@ -539,8 +552,7 @@ void OperatorStateManager::write_operator_state_to_state_node() {
 void OperatorStateManager::write_op_state_thread() {
     while(1) {
         write_operator_state_to_state_node();
-        write_cnts++;
-        write_tot_size = ck_meta_->total_size;
+        // write_tot_size = ck_meta_->total_size;
         // std::cout << "write block " << cnt << "\n";
     }
 }
@@ -567,6 +579,12 @@ void OperatorStateManager::clear_op_checkpoint() {
         write_op_checkpoint_meta();
     }
 
+    op_next_write_offset_ = CheckPointMetaSize;
+}
+
+void OperatorStateManager::clear_op_meta() {
+    ck_meta_->checkpoint_num = 0;
+    ck_meta_->total_size = 0;
     op_next_write_offset_ = CheckPointMetaSize;
 }
 
@@ -679,6 +697,7 @@ std::vector<std::unique_ptr<OperatorState>> OperatorStateManager::read_op_checkp
         // std::cout << "op_state_addr: " << op_stat->op_state_addr_ << "\n";
 
         offset += op_stat->op_state_size_;
+        // std::cout << "op_state_size: " << op_stat->op_state_size_ << "\n";
 
         // std::cout << "[sql_id_: " << op_stat->sql_id_ << "][op_id: " << op_stat->operator_id_ << "][op_state_size: " << op_stat->op_state_size_ << "][op_stat->op_state_time: " << op_stat->op_state_time_ << "][op_stat->exec_type: " << op_stat->exec_type_ << "]\n";
 

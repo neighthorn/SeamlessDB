@@ -56,7 +56,7 @@ public:
     ComparativeExp(int join_num, int buffer_pool_size, int thread_num): join_node_num_(join_num), 
         buffer_pool_size_(buffer_pool_size), thread_num_(thread_num) {
         init_db_meta();
-        assert(max_table_num == sm_mgr_->db_.tabs_.size());
+        // assert(max_table_num == sm_mgr_->db_.tabs_.size());
     }
 
     void get_table_cond(int table_id, std::vector<Condition>& filter_conds, std::vector<Condition>& index_conds);

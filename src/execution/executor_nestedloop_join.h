@@ -7,8 +7,8 @@
 
 class NestedLoopJoinExecutor : public AbstractExecutor {
    private:
-    std::unique_ptr<AbstractExecutor> left_;
-    std::unique_ptr<AbstractExecutor> right_;
+    std::shared_ptr<AbstractExecutor> left_;
+    std::shared_ptr<AbstractExecutor> right_;
     size_t len_;                                // join后获得的每条记录的长度
     std::vector<ColMeta> cols_;                 // join后获得的记录的字段
 
@@ -26,10 +26,10 @@ class NestedLoopJoinExecutor : public AbstractExecutor {
     int right_size_;
 
    public:
-    NestedLoopJoinExecutor(std::unique_ptr<AbstractExecutor> left, std::unique_ptr<AbstractExecutor> right, 
+    NestedLoopJoinExecutor(std::shared_ptr<AbstractExecutor> left, std::shared_ptr<AbstractExecutor> right, 
                             std::vector<Condition> conds) {
-        left_ = std::move(left);
-        right_ = std::move(right);
+        left_ = left;
+        right_ = right;
         len_ = left_->tupleLen() + right_->tupleLen();
         cols_ = left_->cols();
         auto right_cols = right_->cols();
@@ -239,5 +239,10 @@ class NestedLoopJoinExecutor : public AbstractExecutor {
     
     int checkpoint(char* dest) override {
 
+    }
+
+    std::chrono::time_point<std::chrono::system_clock> get_latest_ckpt_time() override {
+        assert(0);
+        return std::chrono::high_resolution_clock::now();
     }
 };

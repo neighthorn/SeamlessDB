@@ -6,6 +6,7 @@
 #include "state/state_manager.h"
 #include "state/state_item/op_state.h"
 #include "debug_log.h"
+#include "comp_ckpt_mgr.h"
 
 void HashJoinExecutor::beginTuple() {
     if(is_in_recovery_ && finished_begin_tuple_) return;
@@ -69,7 +70,7 @@ void HashJoinExecutor::beginTuple() {
             // std::cout << "HashJoinWriteCkpt time: " << std::chrono::duration_cast<std::chrono::milliseconds>(find_end - find_start).count() << "ms" << std::endl;
         }
 
-        std::cout << "HashJoin HashTableSize: " << left_hash_table_curr_tuple_count_ << std::endl;
+        std::cout << "HashJoinOp, op_id: " << operator_id_ <<  ", HashTableCount: " << left_hash_table_curr_tuple_count_ << ", size: " << (int64_t)left_hash_table_curr_tuple_count_ * len_ << std::endl;
         initialized_ = true;
         delete[] left_key;
     }
@@ -190,6 +191,21 @@ std::unordered_map<std::string, std::vector<std::unique_ptr<Record>>>::const_ite
     return left_iter_;
 }
 
+std::chrono::time_point<std::chrono::system_clock> HashJoinExecutor::get_latest_ckpt_time() {
+    return ck_infos_[ck_infos_.size() - 1].ck_timestamp_;
+}
+
+double HashJoinExecutor::get_curr_suspend_cost() {
+    HashJoinCheckpointInfo* latest_ck_info = nullptr;
+    if(ck_infos_.empty()) {
+        std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
+    }
+    latest_ck_info = &ck_infos_[ck_infos_.size() - 1];
+    double src_op = hash_join_state_size_min;
+    src_op += (double)left_->tupleLen() * (left_hash_table_curr_tuple_count_ - latest_ck_info->left_hash_table_curr_tuple_count_);
+    return src_op;
+}
+
 std::pair<bool, double> HashJoinExecutor::judge_state_reward(HashJoinCheckpointInfo* curr_ck_info) {
     /*
         要记录的主要是左算子产生的哈希表的大小，哈希表的增量大小计算
@@ -222,6 +238,12 @@ std::pair<bool, double> HashJoinExecutor::judge_state_reward(HashJoinCheckpointI
     double rew_op = rc_op / new_src_op - state_theta_;
     // RwServerDebug::getInstance()->DEBUG_PRINT("[HashJoinExecutor][op_id: " + std::to_string(operator_id_) + "]: [delta_hash_table_tuple_count]: " + std::to_string(left_hash_table_curr_tuple_count_ - latest_ck_info->left_hash_table_curr_tuple_count_) \
     // + " [Rew_op]: " + std::to_string(rew_op) + " [state_size]: " + std::to_string(src_op) + " [Src_op]: " + std::to_string(new_src_op) + " [Rc_op]: " + std::to_string(rc_op) + " [State Theta]: " + std::to_string(state_theta_));
+    // if(rew_op > 1) {
+    //     state_theta_ = state_theta_ + rew_op;
+    // }
+    // if(rew_op < -1) {
+    //     state_theta_ = state_theta_ - rew_op;
+    // }
 
     if(rew_op > 0) {
         // if create checkpoint in current time, calculate the rc_op(curr_time) for left child and right child
@@ -239,7 +261,7 @@ std::pair<bool, double> HashJoinExecutor::judge_state_reward(HashJoinCheckpointI
         curr_ck_info->state_change_time_ = state_change_time_;
         RwServerDebug::getInstance()->DEBUG_PRINT("[HashJoinExecutor][op_id: " + std::to_string(operator_id_) + "]: [delta_hash_table_tuple_count]: " + std::to_string(left_hash_table_curr_tuple_count_ - latest_ck_info->left_hash_table_curr_tuple_count_) \
         + " [Rew_op]: " + std::to_string(rew_op) + " [state_size]: " + std::to_string(src_op) + " [Src_op]: " + std::to_string(new_src_op) + " [Rc_op]: " + std::to_string(rc_op) + " [State Theta]: " + std::to_string(state_theta_));
-        
+        if(state_change_time_ - latest_ck_info->state_change_time_ < 10) return {false, -1};
         return {true, src_op};
     }
 
@@ -279,7 +301,29 @@ int64_t HashJoinExecutor::getRCop(std::chrono::time_point<std::chrono::system_cl
     }
 }
 
+void HashJoinExecutor::write_state() {
+    HashJoinCheckpointInfo curr_ckpt_info = {.ck_timestamp_ = std::chrono::high_resolution_clock::now(), .left_hash_table_curr_tuple_count_ = left_hash_table_curr_tuple_count_};
+    HashJoinCheckpointInfo* latest_ck_info = nullptr;
+    if(ck_infos_.empty()) {
+        std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
+    }
+    latest_ck_info = &ck_infos_[ck_infos_.size() - 1];
+    double src_op = hash_join_state_size_min;
+    // std::cout << "current_hash_table_count: " << left_hash_table_curr_tuple_count_ << ", checkpointed count: " << left_hash_table_checkpointed_tuple_count_ << "\n";
+    src_op += (double)left_->tupleLen() * (left_hash_table_curr_tuple_count_ - latest_ck_info->left_hash_table_curr_tuple_count_);
+    context_->op_state_mgr_->add_operator_state_to_buffer(this, src_op);
+    if(cost_model_ != 2) {
+        ck_infos_.push_back(curr_ckpt_info);
+        left_hash_table_checkpointed_tuple_count_ = left_hash_table_curr_tuple_count_;
+    }
+        
+}
+
 void HashJoinExecutor::write_state_if_allow(int type) {
+    if(cost_model_ >= 1) {
+        CompCkptManager::get_instance()->solve_mip(context_->op_state_mgr_);
+        return;
+    }
     // if(type == 1) return;
     HashJoinCheckpointInfo curr_ckpt_info = {.ck_timestamp_ = std::chrono::high_resolution_clock::now(), .left_hash_table_curr_tuple_count_ = left_hash_table_curr_tuple_count_};
     if(state_open_) {
@@ -312,6 +356,7 @@ void HashJoinExecutor::load_state_info(HashJoinOperatorState* state) {
             if(state->right_child_state_->finish_begin_tuple_ == false) {
                 std::cout << "HashJoinExecutor::load_state_info: IndexScanExecutor beginTuple\n";
                 x->beginTuple();
+                std::cout << "finish begin tuple\n";
             }
             else {
                 x->load_state_info(dynamic_cast<IndexScanOperatorState *>(state->right_child_state_));

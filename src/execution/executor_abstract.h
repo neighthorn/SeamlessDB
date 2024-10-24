@@ -65,6 +65,9 @@ class AbstractExecutor {
 
     virtual int checkpoint(char* dest) = 0;
 
+    virtual std::chrono::time_point<std::chrono::system_clock> get_latest_ckpt_time() = 0;
+    virtual double get_curr_suspend_cost() = 0;
+
         // 从Record中取出某一列的Value
     Value fetch_value(const std::unique_ptr<Record> &record, const ColMeta& col) const {
         return fetch_value(record.get(), col);

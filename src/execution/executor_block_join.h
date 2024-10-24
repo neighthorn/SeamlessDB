@@ -91,6 +91,7 @@ struct BlockCheckpointInfo {
     int left_block_id_;         // 记录建立检查点时的left block id
     size_t left_block_size_;    // 记录建立检查点时的left block 大小
     double left_rc_op_;         // 左子树重做到当前检查点的rc_op
+    int state_change_time_;
 };
 
 class BlockNestedLoopJoinExecutor : public AbstractExecutor {
@@ -98,13 +99,14 @@ friend class BlockJoinOperatorState;
 friend class JoinBlockExecutor;
 
 public:
-    std::unique_ptr<AbstractExecutor> left_;    // 左儿子节点（需要join的表）
-    std::unique_ptr<AbstractExecutor> right_;   // 右儿子节点（需要join的表）
+    std::shared_ptr<AbstractExecutor> left_;    // 左儿子节点（需要join的表）
+    std::shared_ptr<AbstractExecutor> right_;   // 右儿子节点（需要join的表）
     size_t len_;                                // join后获得的每条记录的长度
     std::vector<ColMeta> cols_;                 // join后获得的记录的字段
 
     std::vector<Condition> fed_conds_;          // join条件
     bool isend;
+    int state_change_time_;
 
 public:
 
@@ -122,7 +124,7 @@ public:
 
 
    public:
-    BlockNestedLoopJoinExecutor(std::unique_ptr<AbstractExecutor> left, std::unique_ptr<AbstractExecutor> right, 
+    BlockNestedLoopJoinExecutor(std::shared_ptr<AbstractExecutor> left, std::shared_ptr<AbstractExecutor> right, 
                             std::vector<Condition> conds, Context *context, int sql_id, int operator_id) ;
 
 
@@ -182,4 +184,8 @@ public:
         load block join state
     */
     void load_state_info(BlockJoinOperatorState *block_join_op) ;
+
+    std::chrono::time_point<std::chrono::system_clock> get_latest_ckpt_time() override;
+    double get_curr_suspend_cost() override;
+    void write_state();
 };

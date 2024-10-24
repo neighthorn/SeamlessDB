@@ -15,7 +15,7 @@ struct ProjectionCheckpointInfo {
 
 class ProjectionExecutor : public AbstractExecutor {
 public:
-    std::unique_ptr<AbstractExecutor> prev_;
+    std::shared_ptr<AbstractExecutor> prev_;
     std::vector<ColMeta> cols_;
     size_t len_;
     std::vector<size_t> sel_idxs_;
@@ -28,8 +28,8 @@ public:
     int checkpointed_result_num_;
 
    public:
-    ProjectionExecutor(std::unique_ptr<AbstractExecutor> prev, const std::vector<TabCol> &sel_cols, Context* context, int sql_id, int operator_id) : AbstractExecutor(sql_id, operator_id) {
-        prev_ = std::move(prev);
+    ProjectionExecutor(std::shared_ptr<AbstractExecutor> prev, const std::vector<TabCol> &sel_cols, Context* context, int sql_id, int operator_id) : AbstractExecutor(sql_id, operator_id) {
+        prev_ = prev;
 
         size_t curr_offset = 0;
         auto &prev_cols = prev_->cols();
@@ -113,4 +113,8 @@ public:
     std::pair<bool, double> judge_state_reward(ProjectionCheckpointInfo *curr_ck_info);
     int64_t getRCop(std::chrono::time_point<std::chrono::system_clock> curr_time);
     void write_state_if_allow(int type = 0);
+
+    std::chrono::time_point<std::chrono::system_clock> get_latest_ckpt_time() override;
+    double get_curr_suspend_cost() override;
+    void write_state();
 };

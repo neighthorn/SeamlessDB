@@ -138,8 +138,10 @@ static const std::string DB_META_NAME = "db.meta";
 
 #define PER_THREAD_SQL_SIZE 10485760 // 10 MB
 #define PER_THREAD_JOIN_PLAN_SIZE  10485760     // 10MB      = 1024 * 1024
-#define PER_THREAD_JOIN_BLOCK_SIZE 268435456   // 256MB    = 1024 * 1024 * 100
-#define PER_THREAD_OP_CK_READ_CACHE_SIZE 268435456  // 256 MB
+// #define PER_THREAD_JOIN_BLOCK_SIZE 268435456   // 256MB    = 1024 * 1024 * 100
+#define PER_THREAD_JOIN_BLOCK_SIZE 5368709120   // 5GB    = 1024 * 1024 * 1024
+// #define PER_THREAD_OP_CK_READ_CACHE_SIZE 268435456  // 256 MB
+#define PER_THREAD_OP_CK_READ_CACHE_SIZE 5368709120 // 5GB
 
 /*
     状态转移参数
@@ -154,4 +156,6 @@ extern int      node_type_;
 extern int      MB_;
 extern int      RB_;
 extern int      C_;
-extern int      cost_model_;
+extern int      cost_model_;    // 0 代表seamlessDB, 1 代表对比工作, 2 代表周期性创建检查点
+extern int      interval_;      // 创建检查点的间隔
+extern bool     write_ckpt_;    // 1 代表正常使用cost model正常创建检查点，0 代表只使用cost model不创建检查点

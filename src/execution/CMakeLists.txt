@@ -4,6 +4,7 @@ set(SOURCES
     executor_hash_join.cpp
     executor_projection.cpp
     execution_sort.cpp
+    comp_ckpt_mgr.cpp
 )
 add_library(execution STATIC ${SOURCES})
 
@@ -14,6 +15,7 @@ set(OP_SOURCES
     executor_hash_join.cpp
     executor_projection.cpp
     execution_sort.cpp
+    comp_ckpt_mgr.cpp
 )
 add_library(execution_op STATIC ${OP_SOURCES})
 target_link_libraries(execution_op system index transaction multi_version_record)

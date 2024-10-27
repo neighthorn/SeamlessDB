@@ -386,8 +386,10 @@ void HashJoinExecutor::load_state_info(HashJoinOperatorState* state) {
         left_iter_ = hash_table_.find(state->left_iter_key_);
     }
 
-    HashJoinCheckpointInfo curr_ckpt_info = {.ck_timestamp_ = std::chrono::high_resolution_clock::now(), .left_hash_table_curr_tuple_count_ = left_hash_table_curr_tuple_count_, .left_rc_op_ = 0, .state_change_time_ = left_hash_table_checkpointed_tuple_count_ + be_call_times_};
+    HashJoinCheckpointInfo curr_ckpt_info = {.ck_timestamp_ = std::chrono::high_resolution_clock::now(), .left_hash_table_curr_tuple_count_ = left_hash_table_curr_tuple_count_, .left_rc_op_ = 0, .state_change_time_ = left_hash_table_curr_tuple_count_ + be_call_times_};
+    state_change_time_ = left_hash_table_checkpointed_tuple_count_ + be_call_times_;
     ck_infos_.push_back(curr_ckpt_info);
+    std::cout << "HashJoinOp, op_id: "  << operator_id_ << ", HashTableCount: " << left_hash_table_curr_tuple_count_  << "be_call_time: " << be_call_times_ << ", state_change_time: " << state_change_time_ << "\n";
 
     // 先build了哈希表，才能调用当前函数
     if(!initialized_) {

@@ -180,13 +180,13 @@ void rebuild_exec_plan_with_query_tree(Context* context, std::shared_ptr<PortalS
                     if(op_checkpoints[i]->operator_id_ == x->operator_id_ && op_checkpoints[i]->op_state_time_ <= latest_time) {
                         find_match_checkpoint = true;
                         checkpoint_index = i;
-                        // std::cout << "HashJoinOperator, op_id: " << x->operator_id_ << ", checkpoint index: " << checkpoint_index << "  " << __FILE__ << ":" << __LINE__ << std::endl;
+                        std::cout << "HashJoinOperator, op_id: " << x->operator_id_ << ", checkpoint index: " << checkpoint_index << "  " << __FILE__ << ":" << __LINE__ << std::endl;
                         break;
                     }
                 }
                 if(checkpoint_index == -1) {
-                    // std::cout << "HashJoinOperator, op_id: " << x->operator_id_ << ", [Warning]: Checkpoints Not Found! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
-                    // RwServerDebug::getInstance()->DEBUG_PRINT("[Warning]: Checkpoints Not Found! [Location]: " + std::string(__FILE__) + ":" + std::to_string(__LINE__));
+                    std::cout << "HashJoinOperator, op_id: " << x->operator_id_ << ", [Warning]: Checkpoints Not Found! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
+                    RwServerDebug::getInstance()->DEBUG_PRINT("[Warning]: Checkpoints Not Found! [Location]: " + std::string(__FILE__) + ":" + std::to_string(__LINE__));
                     
                     if(first_ckpt_op != nullptr) {
                         break;
@@ -221,7 +221,7 @@ void rebuild_exec_plan_with_query_tree(Context* context, std::shared_ptr<PortalS
                 // 首先找到所有包含hash_table的检查点，然后重构hash_table
                 int i = 0;
                 if(cost_model_ == 2) i = last_checkpoint_index;
-                for(int i = 0; i <= last_checkpoint_index; ++i) {
+                for(; i <= last_checkpoint_index; ++i) {
                     // 通过hash_table_contained_变量来判断是否包含hash_table的数据
                     if(op_checkpoints[i]->operator_id_ == x->operator_id_ && *reinterpret_cast<bool*>(op_checkpoints[i]->op_state_addr_ + OPERATOR_STATE_HEADER_SIZE) == true) {
                         // op_checkpoints[i]->rebuild_hash_table(x);
@@ -262,12 +262,13 @@ void rebuild_exec_plan_with_query_tree(Context* context, std::shared_ptr<PortalS
                     if(op_checkpoints[i]->operator_id_ == x->operator_id_ && op_checkpoints[i]->op_state_time_ <= latest_time) {
                         find_match_checkpoint = true;
                         checkpoint_index = i;
+                        std::cout << "SortOperator, op_id: " << x->operator_id_ << ", checkpoint index: " << checkpoint_index << "  " << __FILE__ << ":" << __LINE__ << std::endl;
                         break;
                     }
                 }
                 if(checkpoint_index == -1) {
-                    // std::cout << "[Warning]: Checkpoints Not Found! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
-                    // RwServerDebug::getInstance()->DEBUG_PRINT("[Warning]: Checkpoints Not Found! [Location]: " + std::string(__FILE__) + ":" + std::to_string(__LINE__));
+                    std::cout << "[Warning]: Checkpoints Not Found! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
+                    RwServerDebug::getInstance()->DEBUG_PRINT("[Warning]: Checkpoints Not Found! [Location]: " + std::string(__FILE__) + ":" + std::to_string(__LINE__));
                     
                     if(first_ckpt_op != nullptr) {
                         break;
@@ -299,8 +300,10 @@ void rebuild_exec_plan_with_query_tree(Context* context, std::shared_ptr<PortalS
                     first_ckpt_op = x;
                 }
 
+                int i = 0;
+                if(cost_model_ == 2) i = last_checkpoint_index;
                 // 找到所有包含unsorted_tuple的检查点，重构unsorted_tuple
-                for(int i = 0; i <= last_checkpoint_index; ++i) {
+                for(; i <= last_checkpoint_index; ++i) {
                     if(op_checkpoints[i]->operator_id_ == x->operator_id_ && *reinterpret_cast<int*>(op_checkpoints[i]->op_state_addr_ + OPERATOR_STATE_HEADER_SIZE + OFF_SORT_UNSORTED_TUPLE_CNT) > 0) {
                         std::unique_ptr<SortOperatorState> sort_op_state = std::make_unique<SortOperatorState>();
                         sort_op_state->deserialize(op_checkpoints[i]->op_state_addr_, op_checkpoints[i]->op_state_size_);
@@ -535,12 +538,12 @@ void recover_exec_plan_to_consistent_state(Context* context, AbstractExecutor* r
         if(x->finished_begin_tuple_ == false) {
             // 如果未完成beginTuple，则需要首先将左子树恢复到一致性状态，然后将左儿子恢复到调用次数为left_child_call_times_的状态，再完成beginTuple
             // 如果已经完成了beginTuple，则无需恢复左子树的状态
-            // std::cout << "Recover: HashJoinExecutor beginTuple, operator_id: " << x->operator_id_ << std::endl;
+            std::cout << "Recover: HashJoinExecutor beginTuple, operator_id: " << x->operator_id_ << std::endl;
             recover_exec_plan_to_consistent_state(context, x->left_.get(), x->left_child_call_times_);
             x->beginTuple();
         }
         
-        // std::cout << "HashJoinOp: " << x->operator_id_ << ", x->be_call_times: " << x->be_call_times_ << ", need_to_be_call_time: " << need_to_be_call_time << std::endl;
+        std::cout << "HashJoinOp: " << x->operator_id_ << ", x->be_call_times: " << x->be_call_times_ << ", need_to_be_call_time: " << need_to_be_call_time << std::endl;
         // 将当前算子恢复到被调用次数为need_to_be_call_time的状态
         while(x->be_call_times_ < need_to_be_call_time) {
             x->nextTuple();

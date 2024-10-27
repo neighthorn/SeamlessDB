@@ -5,7 +5,6 @@
 # macos
 .DS_Store
 
-**/result/
 
 # build
 **/build/

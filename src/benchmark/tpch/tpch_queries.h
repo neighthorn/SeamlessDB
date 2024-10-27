@@ -85,13 +85,14 @@ public:
         // queries.push_back("select n_name, l_shipdate, l_extendedprice, l_discount from nation, supplier, lineitem, orders, customer where s_suppkey = l_suppkey and o_orderkey = l_orderkey and c_custkey = o_custkey and s_nationkey = n_nationkey and n_nationkey = 4 and c_nationkey = 16 and s_nationkey = 4 and l_shipdate >= '1998-01-01' and o_orderdate <= '1994-12-01' order by l_shipdate;");
         // queries.push_back("select l_orderkey, l_extendedprice, l_discount, o_orderdate, o_shippriority from customer, orders, lineitem where c_mktsegment = 'AUTOMOBILE' and c_custkey = o_custkey and l_orderkey = o_orderkey and o_orderdate < '1993-03-01' and l_shipdate > '1997-06-01' order by l_orderkey;");
         // queries.push_back("select l_orderkey, l_extendedprice, l_discount, o_orderdate, o_shippriority from customer, orders, lineitem where c_mktsegment = 'AUTOMOBILE' and c_custkey = o_custkey and l_orderkey = o_orderkey and o_orderdate < '1995-03-01' and l_shipdate > '1995-03-01' order by l_orderkey;");
-        queries.push_back("select r_name, n_name, l_linenumber from region, nation, customer, supplier, orders, lineitem, partsupp, part where r_regionkey < 5 and n_nationkey < 5 and c_nationkey = 1 and s_suppkey < 10000 and o_orderdate = '1992-01-01' and o_id <= 10000 and l_shipdate = '1992-01-01' and l_id <= 10000 and ps_partkey < 10000 and p_partkey < 10000 and r_regionkey = n_regionkey and n_nationkey=c_nationkey and n_nationkey=s_nationkey and c_custkey=o_custkey and s_suppkey=l_suppkey and s_suppkey=ps_suppkey and ps_partkey=p_partkey;");
+        queries.push_back("select l_orderkey, l_extendedprice, l_discount, o_orderdate, o_shippriority from customer, orders, lineitem where c_mktsegment = 'AUTOMOBILE' and c_custkey = o_custkey and l_orderkey = o_orderkey and o_orderdate < '1995-03-01' and l_shipdate > '1995-03-01' order by l_orderkey;");
         queries.push_back("commit;");
 
         return ;
     }
 };
 
+// select * from orders, customer, lineitem where o_orderdate = '1992-01-01' and o_id < 20000 and c_mktsegment = 'AUTOMOBILE' and c_id < 20000 and l_shipdate = '1992-01-01' and l_id < 10000 and c_custkey = o_custkey and l_orderkey = o_orderkey;
 /*
 Query5
 select

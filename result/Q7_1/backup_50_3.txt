@@ -1,0 +1,653 @@
+../src/config/compute_back_config.json
+===== json file content =====
+{
+    "rw_node": {
+        "machine_id": 1,
+        "local_rpc_port": 12194,
+        "local_rdma_port": 12195,
+        "thread_num": 17,
+        "workload": "tpcc",
+        "record_num": 32,
+        "state_open": 1,
+        "state_theta": 0.9,
+        "buffer_pool_size": 1310720,
+        "src_scale_factor": 1.0,
+        "block_size": 500,
+        "MB": 8192,
+        "RB": 8192,
+        "C": 1000
+    },
+    "ro_node": {
+        "machine_id": 3,
+        "local_rpc_port": 12199,
+        "local_rdma_port": 12200,
+        "thread_num": 1,
+        "workload": "tpch",
+        "cost_model": "SeamlessDB",
+        "interval": 5,
+        "write_ckpt": 1,
+        "record_num": 10,
+        "state_open": 1,
+        "state_theta": 1,
+        "buffer_pool_size": 1310720,
+        "src_scale_factor": 0.9,
+        "block_size": 500,
+        "MB": 819200,
+        "RB": 819200,
+        "C": 500000
+    },
+    "remote_state_nodes": {
+        "remote_ips": [
+            "127.0.0.1","127.0.0.1"
+        ],
+        "remote_ports": [
+            12193,12193
+        ],
+        "txn_list_size_GB": 1,
+        "log_buf_size_GB": 1,
+        "lock_buf_size_GB": 1,
+        "sql_buf_size_GB": 1,
+        "plan_buf_size_GB": 1,
+        "cursor_buf_size_GB": 1
+    }
+}
+seamlessdb
+cost_model: 0, interval: 5
+node_id: 3, rpc_port: 12199, workload: tpch, record_num: 10
+begin
+===== json file content =====
+{
+    "rw_node": {
+        "machine_id": 1,
+        "local_rpc_port": 12194,
+        "local_rdma_port": 12195,
+        "thread_num": 17,
+        "workload": "tpcc",
+        "record_num": 32,
+        "state_open": 1,
+        "state_theta": 0.9,
+        "buffer_pool_size": 1310720,
+        "src_scale_factor": 1.0,
+        "block_size": 500,
+        "MB": 8192,
+        "RB": 8192,
+        "C": 1000
+    },
+    "ro_node": {
+        "machine_id": 3,
+        "local_rpc_port": 12199,
+        "local_rdma_port": 12200,
+        "thread_num": 1,
+        "workload": "tpch",
+        "cost_model": "SeamlessDB",
+        "interval": 5,
+        "write_ckpt": 1,
+        "record_num": 10,
+        "state_open": 1,
+        "state_theta": 1,
+        "buffer_pool_size": 1310720,
+        "src_scale_factor": 0.9,
+        "block_size": 500,
+        "MB": 819200,
+        "RB": 819200,
+        "C": 500000
+    },
+    "remote_state_nodes": {
+        "remote_ips": [
+            "127.0.0.1","127.0.0.1"
+        ],
+        "remote_ports": [
+            12193,12193
+        ],
+        "txn_list_size_GB": 1,
+        "log_buf_size_GB": 1,
+        "lock_buf_size_GB": 1,
+        "sql_buf_size_GB": 1,
+        "plan_buf_size_GB": 1,
+        "cursor_buf_size_GB": 1
+    }
+}
+get json file
+local port: 12200
+get remote ip array
+get remote port array
+MetaManager: finish parse config file
+MetaManager: finish create txn_list bitmap
+GetMRMeta: 127.0.0.1:12193
+GetMRMeta Success
+finish create meta manager
+thread_num: 1
+global_mr_size: 11030496280
+finish create rdma region allocator
+finish create qp manager
+begin build qp conns for node: 0
+finishi create state manager
+directory already exists, just load meta
+load region index
+path2fd_.size: 0
+open index, ix_name: region_r_regionkey.idx, fd: 8
+try to fetch page, pageid={tabel_id=0,page_no=0}
+page not found in buffer
+first
+tot_len: 54
+num_pages: 2
+root_page: 1
+1
+first_leaf: 1
+last_leaf: 1
+next_record_no: 5
+path2fd_.size: 1
+path2fd_.size: 2
+open index, ix_name: nation_n_nationkey.idx, fd: 14
+try to fetch page, pageid={tabel_id=1,page_no=0}
+page not found in buffer
+first
+tot_len: 54
+num_pages: 4
+root_page: 3
+1
+first_leaf: 1
+last_leaf: 2
+next_record_no: 25
+path2fd_.size: 3
+path2fd_.size: 4
+open index, ix_name: part_p_partkey.idx, fd: 16
+try to fetch page, pageid={tabel_id=3,page_no=0}
+page not found in buffer
+first
+tot_len: 54
+num_pages: 200795
+root_page: 128782
+1
+first_leaf: 1
+last_leaf: 200794
+next_record_no: 2000000
+path2fd_.size: 5
+path2fd_.size: 6
+open index, ix_name: customer_c_nationkey_c_id.idx, fd: 18
+try to fetch page, pageid={tabel_id=4,page_no=0}
+page not found in buffer
+first
+tot_len: 60
+num_pages: 215526
+root_page: 59672
+2
+first_leaf: 1
+last_leaf: 215513
+next_record_no: 1500000
+path2fd_.size: 7
+path2fd_.size: 8
+open index, ix_name: orders_o_orderdate_o_id.idx, fd: 20
+try to fetch page, pageid={tabel_id=5,page_no=0}
+page not found in buffer
+first
+tot_len: 60
+num_pages: 1513509
+root_page: 25429
+2
+first_leaf: 1
+last_leaf: 1513508
+next_record_no: 14999964
+path2fd_.size: 9
+path2fd_.size: 10
+open index, ix_name: supplier_s_nationkey_s_suppkey.idx, fd: 22
+try to fetch page, pageid={tabel_id=6,page_no=0}
+page not found in buffer
+first
+tot_len: 60
+num_pages: 12544
+root_page: 341
+2
+first_leaf: 1
+last_leaf: 12536
+next_record_no: 100000
+path2fd_.size: 11
+path2fd_.size: 12
+open index, ix_name: partsupp_ps_partkey_ps_suppkey.idx, fd: 24
+try to fetch page, pageid={tabel_id=7,page_no=0}
+page not found in buffer
+first
+tot_len: 60
+num_pages: 1149642
+root_page: 57463
+2
+first_leaf: 1
+last_leaf: 1149641
+next_record_no: 7999870
+path2fd_.size: 13
+path2fd_.size: 14
+open index, ix_name: lineitem_l_shipdate_l_id.idx, fd: 26
+try to fetch page, pageid={tabel_id=8,page_no=0}
+page not found in buffer
+first
+tot_len: 60
+num_pages: 4656960
+root_page: 2847942
+2
+first_leaf: 1
+last_leaf: 4656959
+next_record_no: 59999940
+path2fd_.size: 15
+Waiting for new connection...
+establish client connection, sockfd: 28
+0pthread_name: 0
+tid: 0, thread_num: 1
+tid: 0
+Read Op CK meta: checkpoint_num: 668, total_size: 21913524op_ck_meta->total_src_op: 4.35507e+07
+RwServerDebug instance created.
+time for read state: 1392
+proj_col: nation.n_name
+proj_col: nation.n_nationkey
+proj_col: supplier.s_suppkey
+proj_col: supplier.s_nationkey
+proj_col: lineitem.l_shipdate
+proj_col: lineitem.l_extendedprice
+proj_col: lineitem.l_discount
+proj_col: lineitem.l_suppkey
+proj_col: lineitem.l_orderkey
+proj_col: orders.o_orderkey
+proj_col: orders.o_custkey
+proj_col: orders.o_orderdate
+proj_col: customer.c_custkey
+proj_col: customer.c_nationkey
+HashJoin: n_nationkey=s_nationkey, 
+HashJoin: s_suppkey=l_suppkey, 
+HashJoin: l_orderkey=o_orderkey, 
+HashJoin: o_custkey=c_custkey, 
+IndexScanExecutor: nation
+filter conds: 
+index conds: 
+n_nationkey=4
+
+IndexScanExecutor: supplier
+filter conds: 
+index conds: 
+s_nationkey=4
+
+IndexScanExecutor: lineitem
+filter conds: 
+index conds: 
+l_shipdate>=4
+
+IndexScanExecutor: orders
+filter conds: 
+index conds: 
+o_orderdate<=4
+
+IndexScanExecutor: customer
+filter conds: 
+index conds: 
+c_nationkey=16
+
+time for generate query tree: 886
+[Warning]: Checkpoints Not Found! [Location]: /root/SeamlessDB/src/state/resume_util.cpp:79
+operator_id: 10
+rebuild hash table, count: 802
+rebuild hash table, count: 1983
+rebuild hash table, count: 3077
+rebuild hash table, count: 4190
+rebuild hash table, count: 5218
+rebuild hash table, count: 6349
+rebuild hash table, count: 7491
+rebuild hash table, count: 8680
+rebuild hash table, count: 9918
+rebuild hash table, count: 11110
+rebuild hash table, count: 12248
+rebuild hash table, count: 13392
+rebuild hash table, count: 14416
+rebuild hash table, count: 15586
+rebuild hash table, count: 16981
+rebuild hash table, count: 18197
+rebuild hash table, count: 19388
+rebuild hash table, count: 20558
+rebuild hash table, count: 21582
+rebuild hash table, count: 22607
+rebuild hash table, count: 23728
+rebuild hash table, count: 24828
+rebuild hash table, count: 26065
+rebuild hash table, count: 27181
+rebuild hash table, count: 28410
+rebuild hash table, count: 29480
+rebuild hash table, count: 30673
+rebuild hash table, count: 31780
+rebuild hash table, count: 33039
+rebuild hash table, count: 34347
+rebuild hash table, count: 35577
+rebuild hash table, count: 36696
+rebuild hash table, count: 37838
+rebuild hash table, count: 39007
+rebuild hash table, count: 40182
+rebuild hash table, count: 41503
+rebuild hash table, count: 42630
+rebuild hash table, count: 43941
+rebuild hash table, count: 44981
+rebuild hash table, count: 46154
+rebuild hash table, count: 47316
+rebuild hash table, count: 48538
+rebuild hash table, count: 49653
+rebuild hash table, count: 50667
+rebuild hash table, count: 51627
+rebuild hash table, count: 52626
+rebuild hash table, count: 53631
+rebuild hash table, count: 54541
+rebuild hash table, count: 55574
+rebuild hash table, count: 56692
+rebuild hash table, count: 57844
+rebuild hash table, count: 58945
+rebuild hash table, count: 60050
+rebuild hash table, count: 61127
+rebuild hash table, count: 62314
+rebuild hash table, count: 63524
+rebuild hash table, count: 64554
+rebuild hash table, count: 65706
+rebuild hash table, count: 66767
+rebuild hash table, count: 67883
+rebuild hash table, count: 69004
+rebuild hash table, count: 70036
+rebuild hash table, count: 70975
+rebuild hash table, count: 71926
+rebuild hash table, count: 72897
+rebuild hash table, count: 74033
+rebuild hash table, count: 75034
+rebuild hash table, count: 76118
+rebuild hash table, count: 77198
+rebuild hash table, count: 78271
+rebuild hash table, count: 79327
+rebuild hash table, count: 80425
+rebuild hash table, count: 81455
+rebuild hash table, count: 82469
+rebuild hash table, count: 83463
+rebuild hash table, count: 84501
+rebuild hash table, count: 85627
+rebuild hash table, count: 86668
+rebuild hash table, count: 87919
+rebuild hash table, count: 89060
+rebuild hash table, count: 90314
+rebuild hash table, count: 91374
+rebuild hash table, count: 92442
+rebuild hash table, count: 93510
+rebuild hash table, count: 94586
+rebuild hash table, count: 95660
+rebuild hash table, count: 96685
+rebuild hash table, count: 97843
+rebuild hash table, count: 98971
+rebuild hash table, count: 100035
+rebuild hash table, count: 101057
+rebuild hash table, count: 102045
+rebuild hash table, count: 103104
+rebuild hash table, count: 104148
+rebuild hash table, count: 105097
+rebuild hash table, count: 106149
+rebuild hash table, count: 107238
+rebuild hash table, count: 108331
+rebuild hash table, count: 109342
+rebuild hash table, count: 110334
+rebuild hash table, count: 111323
+rebuild hash table, count: 112416
+rebuild hash table, count: 113464
+rebuild hash table, count: 114522
+rebuild hash table, count: 115501
+rebuild hash table, count: 116464
+rebuild hash table, count: 117474
+rebuild hash table, count: 118573
+rebuild hash table, count: 119734
+rebuild hash table, count: 120858
+rebuild hash table, count: 121930
+rebuild hash table, count: 123047
+rebuild hash table, count: 124139
+rebuild hash table, count: 125231
+rebuild hash table, count: 126281
+rebuild hash table, count: 127340
+rebuild hash table, count: 128416
+rebuild hash table, count: 129536
+rebuild hash table, count: 130587
+rebuild hash table, count: 131607
+rebuild hash table, count: 132441
+rebuild hash table, count: 133328
+rebuild hash table, count: 134289
+rebuild hash table, count: 135219
+rebuild hash table, count: 136249
+rebuild hash table, count: 137397
+rebuild hash table, count: 138517
+rebuild hash table, count: 139624
+rebuild hash table, count: 140793
+rebuild hash table, count: 141777
+rebuild hash table, count: 142915
+rebuild hash table, count: 144028
+rebuild hash table, count: 145107
+rebuild hash table, count: 146052
+rebuild hash table, count: 147137
+rebuild hash table, count: 148204
+rebuild hash table, count: 149207
+rebuild hash table, count: 150148
+rebuild hash table, count: 151218
+rebuild hash table, count: 152272
+rebuild hash table, count: 153366
+rebuild hash table, count: 154421
+rebuild hash table, count: 155567
+rebuild hash table, count: 156608
+rebuild hash table, count: 157664
+rebuild hash table, count: 158685
+rebuild hash table, count: 159775
+rebuild hash table, count: 160769
+rebuild hash table, count: 161794
+rebuild hash table, count: 162875
+rebuild hash table, count: 163859
+rebuild hash table, count: 164794
+rebuild hash table, count: 165783
+rebuild hash table, count: 166794
+rebuild hash table, count: 167827
+rebuild hash table, count: 168771
+rebuild hash table, count: 169680
+rebuild hash table, count: 170673
+rebuild hash table, count: 171820
+rebuild hash table, count: 172913
+rebuild hash table, count: 173940
+rebuild hash table, count: 174976
+rebuild hash table, count: 176132
+rebuild hash table, count: 177076
+rebuild hash table, count: 178042
+rebuild hash table, count: 178970
+rebuild hash table, count: 180001
+rebuild hash table, count: 180968
+rebuild hash table, count: 181971
+rebuild hash table, count: 183072
+rebuild hash table, count: 184111
+rebuild hash table, count: 185172
+rebuild hash table, count: 186244
+rebuild hash table, count: 187421
+rebuild hash table, count: 188498
+rebuild hash table, count: 189628
+rebuild hash table, count: 190722
+rebuild hash table, count: 191741
+rebuild hash table, count: 192655
+rebuild hash table, count: 193650
+rebuild hash table, count: 194695
+rebuild hash table, count: 195587
+rebuild hash table, count: 196473
+rebuild hash table, count: 197327
+rebuild hash table, count: 198235
+rebuild hash table, count: 199097
+rebuild hash table, count: 200077
+rebuild hash table, count: 200979
+rebuild hash table, count: 202062
+rebuild hash table, count: 203104
+rebuild hash table, count: 204037
+rebuild hash table, count: 205031
+rebuild hash table, count: 206046
+rebuild hash table, count: 207026
+rebuild hash table, count: 208009
+rebuild hash table, count: 209030
+rebuild hash table, count: 210060
+rebuild hash table, count: 211079
+rebuild hash table, count: 212065
+rebuild hash table, count: 213148
+rebuild hash table, count: 214197
+rebuild hash table, count: 215126
+rebuild hash table, count: 216099
+rebuild hash table, count: 216956
+rebuild hash table, count: 217946
+rebuild hash table, count: 218799
+rebuild hash table, count: 219791
+rebuild hash table, count: 220835
+rebuild hash table, count: 221828
+rebuild hash table, count: 222630
+rebuild hash table, count: 223630
+rebuild hash table, count: 224616
+rebuild hash table, count: 225538
+rebuild hash table, count: 226415
+rebuild hash table, count: 227303
+rebuild hash table, count: 228207
+rebuild hash table, count: 229111
+rebuild hash table, count: 230160
+rebuild hash table, count: 231158
+rebuild hash table, count: 232174
+rebuild hash table, count: 233202
+rebuild hash table, count: 234165
+rebuild hash table, count: 235205
+rebuild hash table, count: 236255
+rebuild hash table, count: 237169
+rebuild hash table, count: 238153
+rebuild hash table, count: 239076
+rebuild hash table, count: 240021
+rebuild hash table, count: 240996
+rebuild hash table, count: 241997
+rebuild hash table, count: 243033
+rebuild hash table, count: 243909
+rebuild hash table, count: 244890
+rebuild hash table, count: 245815
+rebuild hash table, count: 246753
+rebuild hash table, count: 247743
+rebuild hash table, count: 248797
+rebuild hash table, count: 249778
+rebuild hash table, count: 250744
+rebuild hash table, count: 251804
+rebuild hash table, count: 252820
+rebuild hash table, count: 253830
+rebuild hash table, count: 254720
+rebuild hash table, count: 255618
+rebuild hash table, count: 256634
+rebuild hash table, count: 257502
+rebuild hash table, count: 258461
+rebuild hash table, count: 259475
+rebuild hash table, count: 260465
+rebuild hash table, count: 261498
+rebuild hash table, count: 262494
+rebuild hash table, count: 263364
+rebuild hash table, count: 264261
+rebuild hash table, count: 265147
+rebuild hash table, count: 266092
+rebuild hash table, count: 267122
+rebuild hash table, count: 268044
+rebuild hash table, count: 268982
+rebuild hash table, count: 270036
+rebuild hash table, count: 271012
+rebuild hash table, count: 271950
+rebuild hash table, count: 272885
+rebuild hash table, count: 273876
+rebuild hash table, count: 274939
+rebuild hash table, count: 276112
+rebuild hash table, count: 276993
+rebuild hash table, count: 278036
+rebuild hash table, count: 279007
+rebuild hash table, count: 279915
+rebuild hash table, count: 280990
+rebuild hash table, count: 281950
+rebuild hash table, count: 282858
+rebuild hash table, count: 283843
+rebuild hash table, count: 284728
+rebuild hash table, count: 285645
+rebuild hash table, count: 286417
+rebuild hash table, count: 287406
+rebuild hash table, count: 288428
+rebuild hash table, count: 289486
+rebuild hash table, count: 290400
+rebuild hash table, count: 291344
+rebuild hash table, count: 292404
+rebuild hash table, count: 293329
+rebuild hash table, count: 294344
+rebuild hash table, count: 295366
+rebuild hash table, count: 296339
+rebuild hash table, count: 297232
+rebuild hash table, count: 298175
+rebuild hash table, count: 299165
+rebuild hash table, count: 300176
+rebuild hash table, count: 301155
+rebuild hash table, count: 302114
+rebuild hash table, count: 303115
+rebuild hash table, count: 304181
+rebuild hash table, count: 305215
+rebuild hash table, count: 306415
+rebuild hash table, count: 307608
+rebuild hash table, count: 308674
+rebuild hash table, count: 309619
+rebuild hash table, count: 310611
+rebuild hash table, count: 311694
+rebuild hash table, count: 312622
+rebuild hash table, count: 313428
+rebuild hash table, count: 314199
+rebuild hash table, count: 315155
+rebuild hash table, count: 316245
+rebuild hash table, count: 317235
+rebuild hash table, count: 318183
+rebuild hash table, count: 319307
+rebuild hash table, count: 320293
+rebuild hash table, count: 321233
+rebuild hash table, count: 322143
+rebuild hash table, count: 323007
+rebuild hash table, count: 323992
+rebuild hash table, count: 324920
+rebuild hash table, count: 325799
+rebuild hash table, count: 326868
+rebuild hash table, count: 327849
+rebuild hash table, count: 328935
+rebuild hash table, count: 329902
+rebuild hash table, count: 330919
+rebuild hash table, count: 331838
+rebuild hash table, count: 332797
+rebuild hash table, count: 333862
+rebuild hash table, count: 334898
+rebuild hash table, count: 335923
+rebuild hash table, count: 337010
+rebuild hash table, count: 338014
+rebuild hash table, count: 338978
+rebuild hash table, count: 340041
+rebuild hash table, count: 341082
+rebuild hash table, count: 342131
+rebuild hash table, count: 343107
+rebuild hash table, count: 344121
+HashJoinExecutor::load_state_info: IndexScanExecutor beginTuple
+Table: orders
+lower_rid: {page_no=1, slot_no=0, record_no0}
+upper_rid: {page_no=648647, slot_no=6, record_no6428557}
+finish begin tuple
+rebuild hash table, count: 4101
+time for recover state: 432224
+Table: nation
+lower_rid: {page_no=1, slot_no=3, record_no3}
+upper_rid: {page_no=1, slot_no=4, record_no4}
+HashJoinOp, op_id: 5, HashTableCount: 1, size: 37
+Table: supplier
+lower_rid: {page_no=12519, slot_no=10, record_no81}
+upper_rid: {page_no=4, slot_no=0, record_no32}
+HashJoinOp Recovery BeginTuple: left_child_call_times: 344121, hash_table_size: 344121
+HashJoinOp, op_id: 7, HashTableCount: 352690, size: 28567890
+time for recover consistency: 3652325
+SortExecutor: beginTuple
+HashJoinOp, op_id: 8, HashTableCount: 150919, size: 13431791
+Table: customer
+lower_rid: {page_no=215501, slot_no=12, record_no450}
+upper_rid: {page_no=215520, slot_no=9, record_no119}
+SortExecutor: beginTuple: num_records_=6010, size: 534890
+time for root beginTuple(): 327094758
+time for reconstruct exec plan: 331182513
+begin re run
+sel_cols.size() = 4
+time for re_run: 21786
+time for reconnect: 331208346
+Maybe the client has closed
+Terminating current client_connection...
+commit_tot_cnt: 0, time: 508712
+commit_tput: 0, abort_tput: 0
+write op checkpoints: 15101
+write op checkpoint size(Bytes): 14533774

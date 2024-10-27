@@ -1,7 +1,7 @@
 #!/bin/bash
 # 定义常量 normal_time, SQL正常执行时间(s)
 # normal_time=1678
-normal_time=27
+normal_time=430
 
 # 检查是否传入 percent 参数
 if [ -z "$1" ]; then

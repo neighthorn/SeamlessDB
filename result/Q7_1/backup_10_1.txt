@@ -1,0 +1,385 @@
+../src/config/compute_back_config.json
+===== json file content =====
+{
+    "rw_node": {
+        "machine_id": 1,
+        "local_rpc_port": 12194,
+        "local_rdma_port": 12195,
+        "thread_num": 17,
+        "workload": "tpcc",
+        "record_num": 32,
+        "state_open": 1,
+        "state_theta": 0.9,
+        "buffer_pool_size": 1310720,
+        "src_scale_factor": 1.0,
+        "block_size": 500,
+        "MB": 8192,
+        "RB": 8192,
+        "C": 1000
+    },
+    "ro_node": {
+        "machine_id": 3,
+        "local_rpc_port": 12199,
+        "local_rdma_port": 12200,
+        "thread_num": 1,
+        "workload": "tpch",
+        "cost_model": "SeamlessDB",
+        "interval": 5,
+        "write_ckpt": 1,
+        "record_num": 10,
+        "state_open": 1,
+        "state_theta": 1,
+        "buffer_pool_size": 1310720,
+        "src_scale_factor": 0.9,
+        "block_size": 500,
+        "MB": 819200,
+        "RB": 819200,
+        "C": 500000
+    },
+    "remote_state_nodes": {
+        "remote_ips": [
+            "127.0.0.1","127.0.0.1"
+        ],
+        "remote_ports": [
+            12193,12193
+        ],
+        "txn_list_size_GB": 1,
+        "log_buf_size_GB": 1,
+        "lock_buf_size_GB": 1,
+        "sql_buf_size_GB": 1,
+        "plan_buf_size_GB": 1,
+        "cursor_buf_size_GB": 1
+    }
+}
+seamlessdb
+cost_model: 0, interval: 5
+node_id: 3, rpc_port: 12199, workload: tpch, record_num: 10
+begin
+===== json file content =====
+{
+    "rw_node": {
+        "machine_id": 1,
+        "local_rpc_port": 12194,
+        "local_rdma_port": 12195,
+        "thread_num": 17,
+        "workload": "tpcc",
+        "record_num": 32,
+        "state_open": 1,
+        "state_theta": 0.9,
+        "buffer_pool_size": 1310720,
+        "src_scale_factor": 1.0,
+        "block_size": 500,
+        "MB": 8192,
+        "RB": 8192,
+        "C": 1000
+    },
+    "ro_node": {
+        "machine_id": 3,
+        "local_rpc_port": 12199,
+        "local_rdma_port": 12200,
+        "thread_num": 1,
+        "workload": "tpch",
+        "cost_model": "SeamlessDB",
+        "interval": 5,
+        "write_ckpt": 1,
+        "record_num": 10,
+        "state_open": 1,
+        "state_theta": 1,
+        "buffer_pool_size": 1310720,
+        "src_scale_factor": 0.9,
+        "block_size": 500,
+        "MB": 819200,
+        "RB": 819200,
+        "C": 500000
+    },
+    "remote_state_nodes": {
+        "remote_ips": [
+            "127.0.0.1","127.0.0.1"
+        ],
+        "remote_ports": [
+            12193,12193
+        ],
+        "txn_list_size_GB": 1,
+        "log_buf_size_GB": 1,
+        "lock_buf_size_GB": 1,
+        "sql_buf_size_GB": 1,
+        "plan_buf_size_GB": 1,
+        "cursor_buf_size_GB": 1
+    }
+}
+get json file
+local port: 12200
+get remote ip array
+get remote port array
+MetaManager: finish parse config file
+MetaManager: finish create txn_list bitmap
+GetMRMeta: 127.0.0.1:12193
+GetMRMeta Success
+finish create meta manager
+thread_num: 1
+global_mr_size: 11030496280
+finish create rdma region allocator
+finish create qp manager
+begin build qp conns for node: 0
+finishi create state manager
+directory already exists, just load meta
+load region index
+path2fd_.size: 0
+open index, ix_name: region_r_regionkey.idx, fd: 8
+try to fetch page, pageid={tabel_id=0,page_no=0}
+page not found in buffer
+first
+tot_len: 54
+num_pages: 2
+root_page: 1
+1
+first_leaf: 1
+last_leaf: 1
+next_record_no: 5
+path2fd_.size: 1
+path2fd_.size: 2
+open index, ix_name: nation_n_nationkey.idx, fd: 14
+try to fetch page, pageid={tabel_id=1,page_no=0}
+page not found in buffer
+first
+tot_len: 54
+num_pages: 4
+root_page: 3
+1
+first_leaf: 1
+last_leaf: 2
+next_record_no: 25
+path2fd_.size: 3
+path2fd_.size: 4
+open index, ix_name: part_p_partkey.idx, fd: 16
+try to fetch page, pageid={tabel_id=3,page_no=0}
+page not found in buffer
+first
+tot_len: 54
+num_pages: 200795
+root_page: 128782
+1
+first_leaf: 1
+last_leaf: 200794
+next_record_no: 2000000
+path2fd_.size: 5
+path2fd_.size: 6
+open index, ix_name: customer_c_nationkey_c_id.idx, fd: 18
+try to fetch page, pageid={tabel_id=4,page_no=0}
+page not found in buffer
+first
+tot_len: 60
+num_pages: 215526
+root_page: 59672
+2
+first_leaf: 1
+last_leaf: 215513
+next_record_no: 1500000
+path2fd_.size: 7
+path2fd_.size: 8
+open index, ix_name: orders_o_orderdate_o_id.idx, fd: 20
+try to fetch page, pageid={tabel_id=5,page_no=0}
+page not found in buffer
+first
+tot_len: 60
+num_pages: 1513509
+root_page: 25429
+2
+first_leaf: 1
+last_leaf: 1513508
+next_record_no: 14999964
+path2fd_.size: 9
+path2fd_.size: 10
+open index, ix_name: supplier_s_nationkey_s_suppkey.idx, fd: 22
+try to fetch page, pageid={tabel_id=6,page_no=0}
+page not found in buffer
+first
+tot_len: 60
+num_pages: 12544
+root_page: 341
+2
+first_leaf: 1
+last_leaf: 12536
+next_record_no: 100000
+path2fd_.size: 11
+path2fd_.size: 12
+open index, ix_name: partsupp_ps_partkey_ps_suppkey.idx, fd: 24
+try to fetch page, pageid={tabel_id=7,page_no=0}
+page not found in buffer
+first
+tot_len: 60
+num_pages: 1149642
+root_page: 57463
+2
+first_leaf: 1
+last_leaf: 1149641
+next_record_no: 7999870
+path2fd_.size: 13
+path2fd_.size: 14
+open index, ix_name: lineitem_l_shipdate_l_id.idx, fd: 26
+try to fetch page, pageid={tabel_id=8,page_no=0}
+page not found in buffer
+first
+tot_len: 60
+num_pages: 4656960
+root_page: 2847942
+2
+first_leaf: 1
+last_leaf: 4656959
+next_record_no: 59999940
+path2fd_.size: 15
+Waiting for new connection...
+establish client connection, sockfd: 28
+0pthread_name: 0
+tid: 0, thread_num: 1
+tid: 0
+Read Op CK meta: checkpoint_num: 132, total_size: 4983882op_ck_meta->total_src_op: 9.74288e+06
+RwServerDebug instance created.
+time for read state: 831
+proj_col: nation.n_name
+proj_col: nation.n_nationkey
+proj_col: supplier.s_suppkey
+proj_col: supplier.s_nationkey
+proj_col: lineitem.l_shipdate
+proj_col: lineitem.l_extendedprice
+proj_col: lineitem.l_discount
+proj_col: lineitem.l_suppkey
+proj_col: lineitem.l_orderkey
+proj_col: orders.o_orderkey
+proj_col: orders.o_custkey
+proj_col: orders.o_orderdate
+proj_col: customer.c_custkey
+proj_col: customer.c_nationkey
+HashJoin: n_nationkey=s_nationkey, 
+HashJoin: s_suppkey=l_suppkey, 
+HashJoin: l_orderkey=o_orderkey, 
+HashJoin: o_custkey=c_custkey, 
+IndexScanExecutor: nation
+filter conds: 
+index conds: 
+n_nationkey=4
+
+IndexScanExecutor: supplier
+filter conds: 
+index conds: 
+s_nationkey=4
+
+IndexScanExecutor: lineitem
+filter conds: 
+index conds: 
+l_shipdate>=4
+
+IndexScanExecutor: orders
+filter conds: 
+index conds: 
+o_orderdate<=4
+
+IndexScanExecutor: customer
+filter conds: 
+index conds: 
+c_nationkey=16
+
+time for generate query tree: 905
+[Warning]: Checkpoints Not Found! [Location]: /root/SeamlessDB/src/state/resume_util.cpp:79
+operator_id: 10
+rebuild hash table, count: 840
+rebuild hash table, count: 1994
+rebuild hash table, count: 3146
+rebuild hash table, count: 4383
+rebuild hash table, count: 5610
+rebuild hash table, count: 6766
+rebuild hash table, count: 7932
+rebuild hash table, count: 9004
+rebuild hash table, count: 10152
+rebuild hash table, count: 11529
+rebuild hash table, count: 12803
+rebuild hash table, count: 14099
+rebuild hash table, count: 15315
+rebuild hash table, count: 16566
+rebuild hash table, count: 17615
+rebuild hash table, count: 18714
+rebuild hash table, count: 19871
+rebuild hash table, count: 21107
+rebuild hash table, count: 22296
+rebuild hash table, count: 23391
+rebuild hash table, count: 24601
+rebuild hash table, count: 25883
+rebuild hash table, count: 27113
+rebuild hash table, count: 28252
+rebuild hash table, count: 29375
+rebuild hash table, count: 30642
+rebuild hash table, count: 31928
+rebuild hash table, count: 33156
+rebuild hash table, count: 34398
+rebuild hash table, count: 35656
+rebuild hash table, count: 36862
+rebuild hash table, count: 38170
+rebuild hash table, count: 39326
+rebuild hash table, count: 40441
+rebuild hash table, count: 41656
+rebuild hash table, count: 42898
+rebuild hash table, count: 44114
+rebuild hash table, count: 45332
+rebuild hash table, count: 46428
+rebuild hash table, count: 47525
+rebuild hash table, count: 48672
+rebuild hash table, count: 49783
+rebuild hash table, count: 50900
+rebuild hash table, count: 52084
+rebuild hash table, count: 53229
+rebuild hash table, count: 54271
+rebuild hash table, count: 55449
+rebuild hash table, count: 56586
+rebuild hash table, count: 57820
+rebuild hash table, count: 59139
+rebuild hash table, count: 60241
+rebuild hash table, count: 61274
+rebuild hash table, count: 62355
+rebuild hash table, count: 63444
+rebuild hash table, count: 64593
+rebuild hash table, count: 65666
+rebuild hash table, count: 66782
+rebuild hash table, count: 67894
+rebuild hash table, count: 69054
+rebuild hash table, count: 70176
+rebuild hash table, count: 71115
+rebuild hash table, count: 72207
+rebuild hash table, count: 73180
+rebuild hash table, count: 74271
+rebuild hash table, count: 75402
+rebuild hash table, count: 76443
+HashJoinExecutor::load_state_info: IndexScanExecutor beginTuple
+Table: orders
+lower_rid: {page_no=1, slot_no=0, record_no0}
+upper_rid: {page_no=648647, slot_no=6, record_no6428557}
+finish begin tuple
+rebuild hash table, count: 4101
+time for recover state: 97086
+Table: nation
+lower_rid: {page_no=1, slot_no=3, record_no3}
+upper_rid: {page_no=1, slot_no=4, record_no4}
+HashJoinOp, op_id: 5, HashTableCount: 1, size: 37
+Table: supplier
+lower_rid: {page_no=12519, slot_no=10, record_no81}
+upper_rid: {page_no=4, slot_no=0, record_no32}
+HashJoinOp Recovery BeginTuple: left_child_call_times: 76443, hash_table_size: 76443
+HashJoinOp, op_id: 7, HashTableCount: 352691, size: 28567971
+time for recover consistency: 141770946
+SortExecutor: beginTuple
+HashJoinOp, op_id: 8, HashTableCount: 150919, size: 13431791
+Table: customer
+lower_rid: {page_no=215501, slot_no=12, record_no450}
+upper_rid: {page_no=215520, slot_no=9, record_no119}
+SortExecutor: beginTuple: num_records_=6010, size: 534890
+time for root beginTuple(): 163141332
+time for reconstruct exec plan: 305012889
+begin re run
+sel_cols.size() = 4
+time for re_run: 25160
+time for reconnect: 305039772
+Maybe the client has closed
+Terminating current client_connection...
+commit_tot_cnt: 0, time: 347666
+commit_tput: 0, abort_tput: 0
+write op checkpoints: 1438
+write op checkpoint size(Bytes): 30321504

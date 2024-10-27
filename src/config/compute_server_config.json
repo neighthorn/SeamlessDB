@@ -22,7 +22,7 @@
         "thread_num": 1,
         "workload": "tpch",
         "cost_model": "SeamlessDB",
-        "interval": 5,
+        "interval": 0,
         "write_ckpt": 1,
         "record_num": 10,
         "state_open": 1,

@@ -11,6 +11,7 @@ class ProjectionOperatorState;
 struct ProjectionCheckpointInfo {
     std::chrono::time_point<std::chrono::system_clock> ck_timestamp_;
     double left_rc_op_;
+    int state_change_time_;
 };
 
 class ProjectionExecutor : public AbstractExecutor {
@@ -26,6 +27,7 @@ public:
     bool is_root_;
     int curr_result_num_;
     int checkpointed_result_num_;
+    int state_change_time_;
 
    public:
     ProjectionExecutor(std::shared_ptr<AbstractExecutor> prev, const std::vector<TabCol> &sel_cols, Context* context, int sql_id, int operator_id) : AbstractExecutor(sql_id, operator_id) {
@@ -50,6 +52,7 @@ public:
         left_child_call_times_ = 0;
         context_ = context;
         finished_begin_tuple_ = false;
+        state_change_time_ = 0;
     }
 
     void set_root() { 

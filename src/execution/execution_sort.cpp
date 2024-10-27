@@ -30,6 +30,10 @@ std::pair<bool, double> SortExecutor::judge_state_reward(SortCheckpointInfo* cur
         return {false, -1};
     }
 
+    if(finished_begin_tuple_ == true) {
+        src_op += (double)tuple_len_ * (state_change_time_ - latest_ck_info->state_change_time_);
+    }
+
     // double new_src_op = src_op / src_scale_factor_;
     double new_src_op = src_op / MB_ + src_op / RB_ + C_;
     double rew_op = rc_op / new_src_op - state_theta_;
@@ -44,9 +48,10 @@ std::pair<bool, double> SortExecutor::judge_state_reward(SortCheckpointInfo* cur
         } else if(auto x = dynamic_cast<ProjectionExecutor *>(prev_.get())) {
             curr_ck_info->left_rc_op_ = x->getRCop(curr_ck_info->ck_timestamp_);
         }
-
-        // RwServerDebug::getInstance()->DEBUG_PRINT("[SortExecutor][op_id: " + std::to_string(operator_id_) + "]: [delta tuple num]: " + std::to_string(num_records_ - checkpointed_tuple_num_) \
-        // + " [State size]: " + std::to_string(src_op) + " [Rew_op]: " + std::to_string(rew_op) + " [Src_op]: " + std::to_string(new_src_op) + " [Rc_op]: " + std::to_string(rc_op) + " [State Theta]: " + std::to_string(state_theta_));
+        curr_ck_info->state_change_time_ = state_change_time_;
+        if(state_change_time_ - latest_ck_info->state_change_time_ < 10) return {false, -1};
+        RwServerDebug::getInstance()->DEBUG_PRINT("[SortExecutor][op_id: " + std::to_string(operator_id_) + "]: [delta tuple num]: " + std::to_string(num_records_ - checkpointed_tuple_num_) \
+        + " [State size]: " + std::to_string(src_op) + " [Rew_op]: " + std::to_string(rew_op) + " [Src_op]: " + std::to_string(new_src_op) + " [Rc_op]: " + std::to_string(rc_op) + " [State Theta]: " + std::to_string(state_theta_));
         return {true, src_op};
     }
 
@@ -66,6 +71,9 @@ int64_t SortExecutor::getRCop(std::chrono::time_point<std::chrono::system_clock>
         assert(0);
     }
 
+    if(finished_begin_tuple_ == true) {
+        return std::chrono::duration_cast<std::chrono::microseconds>(curr_time - latest_ck_info->ck_timestamp_).count();
+    }
     // RwServerDebug::getInstance()->DEBUG_PRINT("[SortExecutor][op_id: " + std::to_string(operator_id_) + "]: [Curr time]: " + std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(curr_time.time_since_epoch()).count()) \
     // + " [Latest ck time]: " + std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(latest_ck_info->ck_timestamp_.time_since_epoch()).count()) \
     // + " [Left rc op]: " + std::to_string(latest_ck_info->left_rc_op_));

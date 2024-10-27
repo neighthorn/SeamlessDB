@@ -53,7 +53,7 @@ std::pair<bool, double> ProjectionExecutor::judge_state_reward(ProjectionCheckpo
 
     latest_ck_info = &ck_infos_[ck_infos_.size() - 1];
 
-    double src_op = (double)projection_state_size_min + (double)(curr_result_num_ - checkpointed_result_num_) * len_;
+    double src_op = (double)projection_state_size_min + (double)(curr_result_num_ - checkpointed_result_num_) * prev_->tupleLen();
     double rc_op = getRCop(current_ck_info->ck_timestamp_);
 
     if(rc_op == 0) {
@@ -77,8 +77,10 @@ std::pair<bool, double> ProjectionExecutor::judge_state_reward(ProjectionCheckpo
         else if(auto x = dynamic_cast<SortExecutor *>(prev_.get())) {
             current_ck_info->left_rc_op_ = x->getRCop(current_ck_info->ck_timestamp_);
         }
-        // RwServerDebug::getInstance()->DEBUG_PRINT("[ProjectionExecutor][op_id: " + std::to_string(operator_id_) + "]: [delta result num]: " + std::to_string(curr_result_num_ - checkpointed_result_num_) \
-        // + " [Rew_op]: " + std::to_string(rew_op) + " [state_size]: " + std::to_string(src_op) + " [Src_op]: " + std::to_string(new_src_op) + " [Rc_op]: " + std::to_string(rc_op) + " [State Theta]: " + std::to_string(state_theta_));
+        current_ck_info->state_change_time_ = state_change_time_;
+        if(state_change_time_ - latest_ck_info->state_change_time_ < 10) return {false, -1};
+        RwServerDebug::getInstance()->DEBUG_PRINT("[ProjectionExecutor][op_id: " + std::to_string(operator_id_) + "]: [delta result num]: " + std::to_string(curr_result_num_ - checkpointed_result_num_) \
+        + " [Rew_op]: " + std::to_string(rew_op) + " [state_size]: " + std::to_string(src_op) + " [Src_op]: " + std::to_string(new_src_op) + " [Rc_op]: " + std::to_string(rc_op) + " [State Theta]: " + std::to_string(state_theta_));
         return {true, src_op};
     }
 

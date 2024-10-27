@@ -11,6 +11,7 @@ class SortOperatorState;
 struct SortCheckpointInfo {
     std::chrono::time_point<std::chrono::system_clock> ck_timestamp_;
     double left_rc_op_;
+    int state_change_time_;
 };
 
 class SortExecutor : public AbstractExecutor {
@@ -29,6 +30,7 @@ public:
 
     std::vector<SortCheckpointInfo> ck_infos_;
     int checkpointed_tuple_num_;
+    int state_change_time_;
 
    public:
     SortExecutor(std::shared_ptr<AbstractExecutor> prev, TabCol sel_cols, bool is_desc, Context* context, int sql_id, int operator_id):
@@ -47,7 +49,8 @@ public:
         checkpointed_tuple_num_ = 0;
         exec_type_ = ExecutionType::SORT;
         is_in_recovery_ = false;
-        ck_infos_.push_back(SortCheckpointInfo{.ck_timestamp_ = std::chrono::high_resolution_clock::now(), .left_rc_op_ = 0});
+        state_change_time_ = 0;
+        ck_infos_.push_back(SortCheckpointInfo{.ck_timestamp_ = std::chrono::high_resolution_clock::now(), .left_rc_op_ = 0, .state_change_time_ = 0});
     }
 
     std::string getType() override { return "Sort"; }
@@ -74,10 +77,11 @@ public:
             unsorted_records_.push_back(std::move(prev_->Next()));
             num_records_ ++;
             left_child_call_times_ ++;
+            state_change_time_ ++;
             write_state_if_allow();
         } 
 
-        std::cout << "SortExecutor: beginTuple: num_records_=" << num_records_ << std::endl;
+        std::cout << "SortExecutor: beginTuple: num_records_=" << num_records_ << ", size: " << num_records_ * tuple_len_ << std::endl;
 
         sorted_index_ = new int[num_records_];
         for(int i = 0; i < unsorted_records_.size(); i++) {
@@ -93,6 +97,7 @@ public:
 
             return std::memcmp(left_field, right_field, cols_.len) < 0;
         });
+        state_change_time_ += 10;
 
         is_sorted_ = true;
         finished_begin_tuple_ = true;
@@ -101,6 +106,7 @@ public:
 
     void nextTuple() override {
         be_call_times_ ++;
+        state_change_time_ ++;
     }
 
     bool is_end() const override { return be_call_times_ >= num_records_; }
@@ -111,7 +117,7 @@ public:
         assert(sorted_index_[be_call_times_] < unsorted_records_.size());
         return std::move(unsorted_records_[sorted_index_[be_call_times_]]);
         // TODO: remove the annotation below
-        // write_state_if_allow();
+        write_state_if_allow();
     }
     
     ColMeta get_col_offset(const TabCol &target) override {

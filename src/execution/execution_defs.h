@@ -9,5 +9,6 @@ enum class ExecutionType {
     HASH_JOIN,
     PROJECTION,
     SORT,
+    GATHER,
     NOT_DEFINED
 };

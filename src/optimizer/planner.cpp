@@ -70,6 +70,7 @@ void Planner::get_proj_cols(std::shared_ptr<Query> query, const std::string& tab
     filter_conds: 非索引列的条件
 */
 bool Planner::check_primary_index_match(std::string tab_name, std::vector<Condition> curr_conds, std::vector<Condition>& index_conds, std::vector<Condition>& filter_conds) {
+    // 当前函数保证了返回的iindex_conds中谓词条件的顺序和主键中的顺序一致
     index_conds.clear();
     filter_conds.clear();
     TabMeta& tab = sm_manager_->db_.get_table(tab_name);
@@ -87,12 +88,17 @@ bool Planner::check_primary_index_match(std::string tab_name, std::vector<Condit
                 if(curr_conds[i].op != OP_EQ) is_op_eq = false;
             }
         }
-        if(find_col == false) return false;
+
+        if(find_col == false) {
+            return false;
+        }
 
         index_cols.emplace_back(index_col.name);
         if(is_op_eq == false) break;
     }
-    if(index_conds.size() == 0) return false;
+    if(index_conds.size() == 0) {
+        return false;
+    }
 
     bool is_in_index;
     for(auto cond: curr_conds) {
@@ -107,6 +113,7 @@ bool Planner::check_primary_index_match(std::string tab_name, std::vector<Condit
             filter_conds.emplace_back(cond);
         }
     }
+
     return true;
 }
 
@@ -249,7 +256,7 @@ bool Planner::convert_scan_to_parallel_scan(std::shared_ptr<ScanPlan> scan_plan,
 
     TabCol parallel_col;
     Value min_value, max_value;
-    CompOp left_op, right_op;   // 四种：[], [), (], ()
+    CompOp left_op = CompOp::DEFAULT, right_op = CompOp::DEFAULT;   // 四种：[], [), (], ()
     if(scan_plan->index_conds_.size() == 0) {
         // 如果index_conds为空，代表当前是全表扫描，那么min_value和max_value设置为第一个主键字段的最大值和最小值
         parallel_col = sm_manager_->get_table_first_col(scan_plan->tab_name_);
@@ -261,26 +268,53 @@ bool Planner::convert_scan_to_parallel_scan(std::shared_ptr<ScanPlan> scan_plan,
         range_scan_exist = true;
     }
     
+    // @assumption: 谓词中的条件是按照索引字段的顺序排列的
+    // 这个assumption在check_primary_index_match中保证了
     for(int i = 0; i < scan_plan->index_conds_.size(); ++i) {
         if(scan_plan->index_conds_[i].op != OP_EQ) {
-            // 如果是等值查询，那么就不转换为并行scan
-            range_scan_exist = true;
-            if(scan_plan->index_conds_[i].op == OP_LT || scan_plan->index_conds_[i].op == OP_LE) {
-                // 目前只支持一个字段在谓词条件中出现一次
-                
-                max_value = scan_plan->index_conds_[i].rhs_val;
-                min_value = sm_manager_->get_min_value(scan_plan->index_conds_[i].lhs_col.col_name);
+            if(range_scan_exist == true && parallel_col.col_name.compare(scan_plan->index_conds_[i].lhs_col.col_name) == 0) {
+                // 如果已经找到了一个非等值条件，那么则需要查找该parallel_col上的其他谓词
+                if(scan_plan->index_conds_[i].op == OP_LT || scan_plan->index_conds_[i].op == OP_LE) {
+                    // 如果是<或<=，那么该cond为右边界
+                    max_value = scan_plan->index_conds_[i].rhs_val;
+                    right_op = scan_plan->index_conds_[i].op;
+                    // min_value = sm_manager_->get_min_value(scan_plan->index_conds_[i].lhs_col.col_name);
+                }
+                else if(scan_plan->index_conds_[i].op == OP_GT || scan_plan->index_conds_[i].op == OP_GE) {
+                    min_value = scan_plan->index_conds_[i].rhs_val;
+                    left_op = scan_plan->index_conds_[i].op;
+                    // max_value = sm_manager_->get_max_value(scan_plan->index_conds_[i].lhs_col.col_name);
+                }
             }
-            else if(scan_plan->index_conds_[i].op == OP_GT || scan_plan->index_conds_[i].op == OP_GE) {
-                min_value = scan_plan->index_conds_[i].rhs_val;
-                max_value = sm_manager_->get_max_value(scan_plan->index_conds_[i].lhs_col.col_name);
+            else {
+                range_scan_exist = true;
+                if(scan_plan->index_conds_[i].op == OP_LT || scan_plan->index_conds_[i].op == OP_LE) {
+                    // 如果是<或<=，那么该cond为右边界
+                    max_value = scan_plan->index_conds_[i].rhs_val;
+                    right_op = scan_plan->index_conds_[i].op;
+                    // min_value = sm_manager_->get_min_value(scan_plan->index_conds_[i].lhs_col.col_name);
+                }
+                else if(scan_plan->index_conds_[i].op == OP_GT || scan_plan->index_conds_[i].op == OP_GE) {
+                    min_value = scan_plan->index_conds_[i].rhs_val;
+                    left_op = scan_plan->index_conds_[i].op;
+                    // max_value = sm_manager_->get_max_value(scan_plan->index_conds_[i].lhs_col.col_name);
+                }
             }
-            break;
         }
     }
 
     if(range_scan_exist == false) {
         return false;
+    }
+
+    // 如果左边界或者右边界没有赋值，那么用最大值和最小值代替
+    if(left_op == CompOp::DEFAULT) {
+        left_op = OP_GE;
+        min_value = sm_manager_->get_min_value(parallel_col.col_name);
+    }
+    if(right_op == CompOp::DEFAULT) {
+        right_op = OP_LE;
+        max_value = sm_manager_->get_max_value(parallel_col.col_name);
     }
 
     // 2. 计算每个worker的扫描范围
@@ -320,10 +354,20 @@ bool Planner::convert_scan_to_parallel_scan(std::shared_ptr<ScanPlan> scan_plan,
     // 3. 生成并行scan plan
     std::vector<std::shared_ptr<ScanPlan>> parallel_scan_plans;
     for(int i = 0; i < worker_num; ++i) {
+        if(i == 0) {
+            
+        }
+        else if(i == worker_num - 1) {
+
+        }
+        else {
+
+        }
+
         // 如果本身是全表扫描，那么就额外增加一个index的条件
         if(scan_plan->index_conds_.size() == 0) {
             std::vector<Condition> index_conds;
-            index_conds.emplace_back(scan_plan->tab_name_, parallel_col, OP_GE, scan_ranges[i].first);
+            index_conds.emplace_back(Condition{.lhs_col = parallel_col, .op = left_op, .is_rhs_val = true, .rhs_val = scan_ranges[i].first});
             std::shared_ptr<ScanPlan> worker_plan = std::make_shared<ScanPlan>(T_IndexScan, scan_plan->sql_id_, current_plan_id_++, sm_manager_, scan_plan->tab_name_, scan_plan->filter_conds_, )
         }
         else {

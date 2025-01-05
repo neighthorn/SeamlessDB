@@ -8,6 +8,8 @@
 #include "index/ix.h"
 #include "record_printer.h"
 
+#include "util/json_util.h"
+
 /**
  * @description: 判断是否为一个文件夹
  * @return {bool} 返回是否为一个文件夹
@@ -104,6 +106,35 @@ void SmManager::open_db(const std::string& db_name) {
 
     int fd = disk_manager_->open_file(LOG_FILE_NAME);
     disk_manager_->SetLogFd(fd);
+
+    // load表字段的最大值和最小值
+    std::string meta_path = "../../src/benchmark/tpch/table_meta.json";
+    cJSON* cjson = parse_json_file(meta_path);
+    cJSON* field_item = cJSON_GetObjectItem(cjson, "r_regionkey");
+    // 遍历json文件中所有key-value
+    while(field_item != nullptr) {
+        std::string field_name = field_item->string;
+        ColType value_type = static_cast<ColType>(cJSON_GetArrayItem(field_item, 0)->valueint);
+        Value min_val, max_val;
+        switch(value_type) {
+            case ColType::TYPE_INT: {
+                min_val.set_int(cJSON_GetArrayItem(field_item, 1)->valueint);
+                min_val.init_raw(sizeof(int));
+                max_val.set_int(cJSON_GetArrayItem(field_item, 2)->valueint);
+                max_val.init_raw(sizeof(int));
+            } break;
+            case ColType::TYPE_STRING: {
+                min_val.set_str(cJSON_GetArrayItem(field_item, 1)->valuestring);
+                min_val.init_raw(min_val.str_val.size());
+                max_val.set_str(cJSON_GetArrayItem(field_item, 2)->valuestring);
+                max_val.init_raw(max_val.str_val.size());
+            } break;
+            default:
+            break;
+        }
+        min_max_values_.emplace(field_name, std::make_pair(std::move(min_val), std::move(max_val)));
+        field_item = field_item->next;
+    }
 }
 
 /**
@@ -256,6 +287,11 @@ void SmManager::create_table(const std::string& tab_name, const std::vector<ColD
     // }
 
     flush_meta();
+}
+
+TabCol SmManager::get_table_first_col(const std::string& tab_name) {
+    TabMeta &tab = db_.get_table(tab_name);
+    return std::move(TabCol{.tab_name = tab_name, .col_name = tab.cols_[0].name});
 }
 
 /**

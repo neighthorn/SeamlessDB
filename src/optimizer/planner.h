@@ -50,6 +50,10 @@ class Planner {
     bool check_primary_index_match(std::string tab_name, std::vector<Condition> curr_conds, std::vector<Condition>& index_conds, std::vector<Condition>& filter_conds);
     void get_proj_cols(std::shared_ptr<Query> query, const std::string& tab_name, std::vector<TabCol>& proj_cols);
 
+    int convert_date_to_int(std::string date);
+    std::string get_date_from_int(int date_index);
+    bool convert_scan_to_parallel_scan(std::shared_ptr<ScanPlan> scan_plan, Context* context);
+
     ColType interp_sv_type(ast::SvType sv_type) {
         std::map<ast::SvType, ColType> m = {
             {ast::SV_TYPE_INT, TYPE_INT}, {ast::SV_TYPE_FLOAT, TYPE_FLOAT}, {ast::SV_TYPE_STRING, TYPE_STRING}};

@@ -51,6 +51,9 @@ class SmManager {
     std::unordered_map<std::string, std::unique_ptr<IxIndexHandle>> ihs_;   // file name -> index file handle, 当前数据库中每个索引的文件
     std::unordered_map<std::string, std::unique_ptr<IxIndexHandle>> primary_index_;     // table_name -> primary_key index handle
     std::unordered_map<std::string, std::unique_ptr<MultiVersionFileHandle>> old_versions_; // table_name -> old_version每个表的旧版本数据
+
+    // 可能出现字段的最大值和最小值
+    std::unordered_map<std::string, std::pair<Value, Value>> min_max_values_;
     
    private:
     DiskManager* disk_manager_;
@@ -71,6 +74,13 @@ class SmManager {
     BufferPoolManager* get_bpm() { return buffer_pool_manager_; }
 
     IxManager* get_ix_manager() { return ix_manager_; }  
+
+    Value& get_min_value(const std::string& field_name) {
+        return min_max_values_[field_name].first;
+    }
+    Value& get_max_value(const std::string& field_name) {
+        return min_max_values_[field_name].second;
+    }
 
     bool is_dir(const std::string& db_name);
 
@@ -93,6 +103,8 @@ class SmManager {
     void drop_table(const std::string& tab_name, Context* context);
 
     int get_table_id(const std::string& tab_name);
+
+    TabCol get_table_first_col(const std::string& tab_name);
 
     void create_index(const std::string& tab_name, const std::vector<std::string>& col_names, Context* context);
 

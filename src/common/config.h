@@ -144,6 +144,12 @@ static const std::string DB_META_NAME = "db.meta";
 #define PER_THREAD_OP_CK_READ_CACHE_SIZE 5368709120 // 5GB
 
 /*
+    parallel execution parameters
+*/
+#define MAX_PARALLEL_NUM 4
+#define MIN_PARALLEL_SCAN_RANGE 10000
+
+/*
     状态转移参数
     state open     是否状态转移
     state theta    转移阈值

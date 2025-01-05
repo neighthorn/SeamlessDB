@@ -518,6 +518,32 @@ class ProjectionPlan : public Plan
         
 };
 
+class GatherPlan: public Plan {
+public:
+    GatherPlan(PlanTag tag, int sql_id, int plan_id, std::vector<std::shared_ptr<Plan>> subplans): Plan(sql_id, plan_id) {
+        Plan::tag = tag;
+        subplans_ = std::move(subplans);
+    }
+
+    int serialize(char* dest) override {
+        return -1;
+    }
+
+    int plan_tree_size() override {
+        return 1;
+    }
+
+    void format_print() override {
+        std::cout << "op_id: " << plan_id_ << ", ";
+        std::cout << "Gather: ";
+        for(auto& plan: subplans_) {
+            plan->format_print();
+        }
+    }
+
+    std::vector<std::shared_ptr<Plan>> subplans_;
+};
+
 // dml语句，包括insert; delete; update; select语句　
 class DMLPlan : public Plan
 {

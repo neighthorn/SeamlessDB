@@ -219,6 +219,119 @@ static std::map<CompOp, CompOp> swap_op = {
                         {OP_EQ, OP_EQ}, {OP_NE, OP_NE}, {OP_LT, OP_GT}, {OP_GT, OP_LT}, {OP_LE, OP_GE}, {OP_GE, OP_LE},
                     };
 
+int Planner::convert_date_to_int(std::string date) {
+    // 将日期转换为int，1992-01-01 -> 0, 1998-12-01 -> 83
+    int year = std::stoi(date.substr(0, 4));
+    int month = std::stoi(date.substr(5, 2));
+    return (year - 1992) * 12 + month - 1;
+}
+
+std::string Planner::get_date_from_int(int date_index) {
+    // 将int转换为日期，0 -> 1992-01-01, 83 -> 1998-12-01
+    int year = date_index / 12 + 1992;
+    int month = date_index % 12 + 1;
+    std::string month_str = std::to_string(month);
+    if(month_str.size() == 1) {
+        month_str = "0" + month_str;
+    }
+    return std::to_string(year) + "-" + month_str + "-01";
+}
+
+bool Planner::convert_scan_to_parallel_scan(std::shared_ptr<ScanPlan> scan_plan, Context* context) {
+    // 如果scan范围不超过MIN_PARALLEL_SCAN_RANGE，那么就不需要转换为并行scan
+    if(scan_plan->tag != T_IndexScan) {
+        return false;
+    }
+
+    // 按照index_conds来进行scan range的划分
+    // 1. 找到index_conds中第一个非等值条件的最大值和最小值
+    bool range_scan_exist = false;
+
+    TabCol parallel_col;
+    Value min_value, max_value;
+    CompOp left_op, right_op;   // 四种：[], [), (], ()
+    if(scan_plan->index_conds_.size() == 0) {
+        // 如果index_conds为空，代表当前是全表扫描，那么min_value和max_value设置为第一个主键字段的最大值和最小值
+        parallel_col = sm_manager_->get_table_first_col(scan_plan->tab_name_);
+        min_value = sm_manager_->get_min_value(parallel_col.col_name);
+        max_value = sm_manager_->get_max_value(parallel_col.col_name);
+        // 全表扫描，所以是[]区间
+        left_op = OP_GE;
+        right_op = OP_LE;
+        range_scan_exist = true;
+    }
+    
+    for(int i = 0; i < scan_plan->index_conds_.size(); ++i) {
+        if(scan_plan->index_conds_[i].op != OP_EQ) {
+            // 如果是等值查询，那么就不转换为并行scan
+            range_scan_exist = true;
+            if(scan_plan->index_conds_[i].op == OP_LT || scan_plan->index_conds_[i].op == OP_LE) {
+                // 目前只支持一个字段在谓词条件中出现一次
+                
+                max_value = scan_plan->index_conds_[i].rhs_val;
+                min_value = sm_manager_->get_min_value(scan_plan->index_conds_[i].lhs_col.col_name);
+            }
+            else if(scan_plan->index_conds_[i].op == OP_GT || scan_plan->index_conds_[i].op == OP_GE) {
+                min_value = scan_plan->index_conds_[i].rhs_val;
+                max_value = sm_manager_->get_max_value(scan_plan->index_conds_[i].lhs_col.col_name);
+            }
+            break;
+        }
+    }
+
+    if(range_scan_exist == false) {
+        return false;
+    }
+
+    // 2. 计算每个worker的扫描范围
+    int worker_num = context->parallel_worker_num_;
+    std::vector<std::pair<Value, Value>> scan_ranges;
+    switch(min_value.type) {
+        case ColType::TYPE_INT: {
+            int interval = (max_value.int_val - min_value.int_val) / worker_num;
+            for(int i = 0; i < worker_num; ++i) {
+                Value start_val, end_val;
+                start_val.set_int(min_value.int_val + i * interval);
+                end_val.set_int(min_value.int_val + (i + 1) * interval);
+                if(i == worker_num - 1) end_val.set_int(max_value.int_val);
+                scan_ranges.emplace_back(std::make_pair(start_val, end_val));
+            }
+        } break;
+        case ColType::TYPE_STRING: {
+            // 扫描范围划分：日期的可能取值为1992-01-01 ~ 1998-12-01，并且只可能是每个月的第一天，如果划分条件是string类型那么一定是日期类型
+            // 日期的字符串格式为"YYYY-MM-DD"，并且只可能是1992-1998年之间的每个月的第一天，如何划分？
+            // 1. 先将日期转换为int，1992-01-01 -> 0, 1998-12-01 -> 83
+            // 2. 按照int划分为worker_num份
+            int start_date = convert_date_to_int(min_value.str_val);
+            int end_date = convert_date_to_int(max_value.str_val);
+            int interval = (end_date - start_date) / worker_num;
+            for(int i = 0; i < worker_num; ++i) {
+                Value start_val, end_val;
+                start_val.set_str(get_date_from_int(start_date + i * interval));
+                end_val.set_str(get_date_from_int(start_date + (i + 1) * interval));
+                if(i == worker_num - 1) end_val.set_str(max_value.str_val);
+                scan_ranges.emplace_back(std::make_pair(start_val, end_val));
+            }
+        } break;
+        default:
+        break;
+    }
+
+    // 3. 生成并行scan plan
+    std::vector<std::shared_ptr<ScanPlan>> parallel_scan_plans;
+    for(int i = 0; i < worker_num; ++i) {
+        // 如果本身是全表扫描，那么就额外增加一个index的条件
+        if(scan_plan->index_conds_.size() == 0) {
+            std::vector<Condition> index_conds;
+            index_conds.emplace_back(scan_plan->tab_name_, parallel_col, OP_GE, scan_ranges[i].first);
+            std::shared_ptr<ScanPlan> worker_plan = std::make_shared<ScanPlan>(T_IndexScan, scan_plan->sql_id_, current_plan_id_++, sm_manager_, scan_plan->tab_name_, scan_plan->filter_conds_, )
+        }
+        else {
+            
+        }
+    }
+}
+
 std::shared_ptr<Plan> Planner::make_one_rel(std::shared_ptr<Query> query)
 {
     auto x = std::dynamic_pointer_cast<ast::SelectStmt>(query->parse);

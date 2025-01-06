@@ -244,10 +244,10 @@ std::string Planner::get_date_from_int(int date_index) {
     return std::to_string(year) + "-" + month_str + "-01";
 }
 
-bool Planner::convert_scan_to_parallel_scan(std::shared_ptr<ScanPlan> scan_plan, Context* context) {
+std::shared_ptr<GatherPlan> Planner::convert_scan_to_parallel_scan(std::shared_ptr<ScanPlan> scan_plan, Context* context) {
     // 如果scan范围不超过MIN_PARALLEL_SCAN_RANGE，那么就不需要转换为并行scan
     if(scan_plan->tag != T_IndexScan) {
-        return false;
+        return nullptr;
     }
 
     // 按照index_conds来进行scan range的划分
@@ -304,7 +304,7 @@ bool Planner::convert_scan_to_parallel_scan(std::shared_ptr<ScanPlan> scan_plan,
     }
 
     if(range_scan_exist == false) {
-        return false;
+        return nullptr;
     }
 
     // 如果左边界或者右边界没有赋值，那么用最大值和最小值代替
@@ -354,26 +354,29 @@ bool Planner::convert_scan_to_parallel_scan(std::shared_ptr<ScanPlan> scan_plan,
     // 3. 生成并行scan plan
     std::vector<std::shared_ptr<ScanPlan>> parallel_scan_plans;
     for(int i = 0; i < worker_num; ++i) {
+        std::vector<Condition> index_conds = scan_plan->index_conds_;
         if(i == 0) {
-            
+            // 第一个range的左边界和整体range的左边界对齐
+            index_conds.emplace_back(Condition{.lhs_col = parallel_col, .op = left_op, .is_rhs_val = true, .rhs_val = scan_ranges[i].first});
+            index_conds.emplace_back(Condition{.lhs_col = parallel_col, .op = OP_LT, .is_rhs_val = true, .rhs_val = scan_ranges[i].second}); 
         }
         else if(i == worker_num - 1) {
-
+            // 最后一个range的右边界和整体range的右边界对齐
+            index_conds.emplace_back(Condition{.lhs_col = parallel_col, .op = OP_GE, .is_rhs_val = true, .rhs_val = scan_ranges[i].first});
+            index_conds.emplace_back(Condition{.lhs_col = parallel_col, .op = right_op, .is_rhs_val = true, .rhs_val = scan_ranges[i].second});
         }
         else {
-
+            // 中间的range为[)区间
+            index_conds.emplace_back(Condition{.lhs_col = parallel_col, .op = OP_GE, .is_rhs_val = true, .rhs_val = scan_ranges[i].first});
+            index_conds.emplace_back(Condition{.lhs_col = parallel_col, .op = OP_LT, .is_rhs_val = true, .rhs_val = scan_ranges[i].second});
         }
-
-        // 如果本身是全表扫描，那么就额外增加一个index的条件
-        if(scan_plan->index_conds_.size() == 0) {
-            std::vector<Condition> index_conds;
-            index_conds.emplace_back(Condition{.lhs_col = parallel_col, .op = left_op, .is_rhs_val = true, .rhs_val = scan_ranges[i].first});
-            std::shared_ptr<ScanPlan> worker_plan = std::make_shared<ScanPlan>(T_IndexScan, scan_plan->sql_id_, current_plan_id_++, sm_manager_, scan_plan->tab_name_, scan_plan->filter_conds_, )
-        }
-        else {
-            
-        }
+        std::shared_ptr<ScanPlan> worker_plan = std::make_shared<ScanPlan>(T_IndexScan, scan_plan->sql_id_, current_plan_id_++, sm_manager_, scan_plan->tab_name_, scan_plan->filter_conds_, index_conds, scan_plan->proj_cols_);
+        parallel_scan_plans.emplace_back(std::move(worker_plan));
     }
+
+    // 4. 将并行scan plan合并到Gather算子上
+    std::shared_ptr<GatherPlan> gather_plan = std::make_shared<GatherPlan>(T_Gather, scan_plan->sql_id_, current_plan_id_++, parallel_scan_plans);
+    return gather_plan;
 }
 
 std::shared_ptr<Plan> Planner::make_one_rel(std::shared_ptr<Query> query)

@@ -52,7 +52,7 @@ class Planner {
 
     int convert_date_to_int(std::string date);
     std::string get_date_from_int(int date_index);
-    bool convert_scan_to_parallel_scan(std::shared_ptr<ScanPlan> scan_plan, Context* context);
+    std::shared_ptr<GatherPlan> convert_scan_to_parallel_scan(std::shared_ptr<ScanPlan> scan_plan, Context* context);
 
     ColType interp_sv_type(ast::SvType sv_type) {
         std::map<ast::SvType, ColType> m = {

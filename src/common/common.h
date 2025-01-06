@@ -318,7 +318,8 @@ typedef enum PlanTag{
     T_NestLoop,
     T_HashJoin,
     T_Sort,
-    T_Projection
+    T_Projection,
+    T_Gather
 } PlanTag;
 
 enum NodeType: int {

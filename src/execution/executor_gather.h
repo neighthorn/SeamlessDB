@@ -35,10 +35,10 @@ public:
     int state_change_time_;
 
 
-    GatherExecutor(int worker_thread_num, std::vector<std::shared_ptr<AbstractExecutor>> workers, Context* context, int sql_id, int operator_id)
+    GatherExecutor(int worker_thread_num, std::vector<std::shared_ptr<AbstractExecutor>>& workers, Context* context, int sql_id, int operator_id)
         :AbstractExecutor(sql_id, operator_id) {
         worker_thread_num_ = worker_thread_num;
-        workers_ = workers;
+        workers_ = std::move(workers);
         assert(workers_.size() == worker_thread_num_);
         assert(workers_.size() > 0);
         for(int i = 0; i < worker_thread_num_; ++i) {

@@ -242,8 +242,8 @@ struct Value {
     }
 };
 
-enum CompOp: int { OP_EQ, OP_NE, OP_LT, OP_GT, OP_LE, OP_GE, DEFAULT };
-static std::string CompOpString[] = {"=", "!=", "<", ">", "<=", ">=", "DEFAULT"};
+enum CompOp: int { OP_EQ, OP_NE, OP_LT, OP_GT, OP_LE, OP_GE, OP_NONE };
+static std::string CompOpString[] = {"=", "!=", "<", ">", "<=", ">=", "OP_NONE"};
 
 struct Condition {
     TabCol lhs_col;   // left-hand side column

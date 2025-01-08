@@ -212,7 +212,7 @@ std::shared_ptr<Query> Planner::logical_optimization(std::shared_ptr<Query> quer
 std::shared_ptr<Plan> Planner::physical_optimization(std::shared_ptr<Query> query, Context *context)
 {
     // 
-    std::shared_ptr<Plan> plan = make_one_rel(query);
+    std::shared_ptr<Plan> plan = make_one_rel(query, context);
     
     // 其他物理优化
 
@@ -245,6 +245,8 @@ std::string Planner::get_date_from_int(int date_index) {
 }
 
 std::shared_ptr<GatherPlan> Planner::convert_scan_to_parallel_scan(std::shared_ptr<ScanPlan> scan_plan, Context* context) {
+    // 不需要转换成parallel scan
+    if(context->parallel_worker_num_ == 1) return nullptr;
     // 如果scan范围不超过MIN_PARALLEL_SCAN_RANGE，那么就不需要转换为并行scan
     if(scan_plan->tag != T_IndexScan) {
         return nullptr;
@@ -256,7 +258,7 @@ std::shared_ptr<GatherPlan> Planner::convert_scan_to_parallel_scan(std::shared_p
 
     TabCol parallel_col;
     Value min_value, max_value;
-    CompOp left_op = CompOp::DEFAULT, right_op = CompOp::DEFAULT;   // 四种：[], [), (], ()
+    CompOp left_op = CompOp::OP_NONE, right_op = CompOp::OP_NONE;   // 四种：[], [), (], ()
     if(scan_plan->index_conds_.size() == 0) {
         // 如果index_conds为空，代表当前是全表扫描，那么min_value和max_value设置为第一个主键字段的最大值和最小值
         parallel_col = sm_manager_->get_table_first_col(scan_plan->tab_name_);
@@ -308,11 +310,11 @@ std::shared_ptr<GatherPlan> Planner::convert_scan_to_parallel_scan(std::shared_p
     }
 
     // 如果左边界或者右边界没有赋值，那么用最大值和最小值代替
-    if(left_op == CompOp::DEFAULT) {
+    if(left_op == CompOp::OP_NONE) {
         left_op = OP_GE;
         min_value = sm_manager_->get_min_value(parallel_col.col_name);
     }
-    if(right_op == CompOp::DEFAULT) {
+    if(right_op == CompOp::OP_NONE) {
         right_op = OP_LE;
         max_value = sm_manager_->get_max_value(parallel_col.col_name);
     }
@@ -352,7 +354,7 @@ std::shared_ptr<GatherPlan> Planner::convert_scan_to_parallel_scan(std::shared_p
     }
 
     // 3. 生成并行scan plan
-    std::vector<std::shared_ptr<ScanPlan>> parallel_scan_plans;
+    std::vector<std::shared_ptr<Plan>> parallel_scan_plans;
     for(int i = 0; i < worker_num; ++i) {
         std::vector<Condition> index_conds = scan_plan->index_conds_;
         Condition left_cond, right_cond;
@@ -393,7 +395,7 @@ std::shared_ptr<GatherPlan> Planner::convert_scan_to_parallel_scan(std::shared_p
     return gather_plan;
 }
 
-std::shared_ptr<Plan> Planner::make_one_rel(std::shared_ptr<Query> query)
+std::shared_ptr<Plan> Planner::make_one_rel(std::shared_ptr<Query> query, Context* context)
 {
     auto x = std::dynamic_pointer_cast<ast::SelectStmt>(query->parse);
     std::vector<std::string> tables = query->tables;
@@ -418,10 +420,12 @@ std::shared_ptr<Plan> Planner::make_one_rel(std::shared_ptr<Query> query)
             table_scan_executors[i] =
                 std::make_shared<ScanPlan>(T_IndexScan, current_sql_id_, current_plan_id_++, sm_manager_, tables[i], filter_conds, index_conds, proj_cols);
         }
+        auto gather_plan = convert_scan_to_parallel_scan(std::dynamic_pointer_cast<ScanPlan>(table_scan_executors[i]), nullptr);
+        if(gather_plan != nullptr)
+            table_scan_executors[i] = convert_scan_to_parallel_scan(std::dynamic_pointer_cast<ScanPlan>(table_scan_executors[i]), nullptr);
     }
     // 只有一个表，不需要join。
-    if(tables.size() == 1)
-    {
+    if(tables.size() == 1) {
         return table_scan_executors[0];
     }
     // 获取where条件

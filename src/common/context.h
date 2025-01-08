@@ -24,6 +24,7 @@ public:
         data_send_(data_send), offset_(offset), plan_tag_(plan_tag), coro_sched_(coro_sched), op_state_mgr_(op_state_mgr),
         state_slot_index_(state_slot_index) {
           ellipsis_ = false;
+          parallel_worker_num_ = 1;
         }
 
   inline void clear() {

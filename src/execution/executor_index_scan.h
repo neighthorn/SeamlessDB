@@ -437,6 +437,9 @@ NOTALBELOCK:
             lower = pindex_handle_->lower_bound(min_key);
             upper = pindex_handle_->upper_bound(max_key);
         }
+
+        delete[] min_key;
+        delete[] max_key;
         /*
             赋值
         */

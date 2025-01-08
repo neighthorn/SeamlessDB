@@ -46,6 +46,8 @@ bool write_ckpt_ = true;
 
 int back_up_resumption_ = 0;
 
+int parallel_factor = 1;
+
 int* commit_txns;
 int* abort_txns;
 int client_num;
@@ -337,7 +339,7 @@ void client_handler(int* sock_fd, RWNode* node) {
 
     Context* context = new Context(node->lock_mgr_, node->log_mgr_, txn, coro_sched, op_state_manager, qp_mgr, data_send, &offset, rdma_allocated);
     context->rdma_buffer_allocator_ = rdma_buffer_allocator;
-    
+    context->parallel_worker_num_ = parallel_factor;
 
     while (true) {
         // std::cout << "Waiting for request..." << std::endl;
@@ -866,6 +868,7 @@ int main(int argc, char** argv) {
         std::cout << "interval ckpt\n";
         cost_model_ = 2;
     }
+    parallel_factor = cJSON_GetObjectItem(node, "parallel_factor")->valueint;
 
     std::cout << "cost_model: " << cost_model_ << ", interval: " << interval_ << "\n";
     

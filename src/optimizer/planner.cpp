@@ -355,20 +355,34 @@ std::shared_ptr<GatherPlan> Planner::convert_scan_to_parallel_scan(std::shared_p
     std::vector<std::shared_ptr<ScanPlan>> parallel_scan_plans;
     for(int i = 0; i < worker_num; ++i) {
         std::vector<Condition> index_conds = scan_plan->index_conds_;
+        Condition left_cond, right_cond;
         if(i == 0) {
             // 第一个range的左边界和整体range的左边界对齐
-            index_conds.emplace_back(Condition{.lhs_col = parallel_col, .op = left_op, .is_rhs_val = true, .rhs_val = scan_ranges[i].first});
-            index_conds.emplace_back(Condition{.lhs_col = parallel_col, .op = OP_LT, .is_rhs_val = true, .rhs_val = scan_ranges[i].second}); 
+            left_cond = Condition{.lhs_col = parallel_col, .op = left_op, .is_rhs_val = true, .rhs_val = scan_ranges[i].first};
+            right_cond = Condition{.lhs_col = parallel_col, .op = OP_LT, .is_rhs_val = true, .rhs_val = scan_ranges[i].second}; 
         }
         else if(i == worker_num - 1) {
             // 最后一个range的右边界和整体range的右边界对齐
-            index_conds.emplace_back(Condition{.lhs_col = parallel_col, .op = OP_GE, .is_rhs_val = true, .rhs_val = scan_ranges[i].first});
-            index_conds.emplace_back(Condition{.lhs_col = parallel_col, .op = right_op, .is_rhs_val = true, .rhs_val = scan_ranges[i].second});
+            left_cond = Condition{.lhs_col = parallel_col, .op = OP_GE, .is_rhs_val = true, .rhs_val = scan_ranges[i].first};
+            right_cond = Condition{.lhs_col = parallel_col, .op = right_op, .is_rhs_val = true, .rhs_val = scan_ranges[i].second};
         }
         else {
             // 中间的range为[)区间
-            index_conds.emplace_back(Condition{.lhs_col = parallel_col, .op = OP_GE, .is_rhs_val = true, .rhs_val = scan_ranges[i].first});
-            index_conds.emplace_back(Condition{.lhs_col = parallel_col, .op = OP_LT, .is_rhs_val = true, .rhs_val = scan_ranges[i].second});
+            left_cond = Condition{.lhs_col = parallel_col, .op = OP_GE, .is_rhs_val = true, .rhs_val = scan_ranges[i].first};
+            right_cond = Condition{.lhs_col = parallel_col, .op = OP_LT, .is_rhs_val = true, .rhs_val = scan_ranges[i].second};
+        }
+
+        auto it = std::find_if(index_conds.begin(), index_conds.end(), [&](const Condition& cond) {
+            return cond.lhs_col.col_name.compare(parallel_col.col_name) == 0;
+        });
+        if(it != index_conds.end()) {
+            index_conds.erase(it);
+            index_conds.insert(it, left_cond);
+            index_conds.insert(it, right_cond);
+        }
+        else {
+            index_conds.emplace_back(left_cond);
+            index_conds.emplace_back(right_cond);
         }
         std::shared_ptr<ScanPlan> worker_plan = std::make_shared<ScanPlan>(T_IndexScan, scan_plan->sql_id_, current_plan_id_++, sm_manager_, scan_plan->tab_name_, scan_plan->filter_conds_, index_conds, scan_plan->proj_cols_);
         parallel_scan_plans.emplace_back(std::move(worker_plan));

@@ -117,6 +117,10 @@ friend class IndexScanOperatorState;
                 cond.op = swap_op.at(cond.op);
             }
         }
+
+        /**
+         * @TODO: 检查一下index_conds中的条件是否是按照索引字段的顺序排列的
+         */
         std::cout << "IndexScanExecutor: " << tab_name_ << std::endl;
         std::cout << "filter conds: \n";
         for(auto& cond: filter_conds_) {
@@ -232,82 +236,189 @@ NOTALBELOCK:
         // upper 是最后一条记录的后面一条
         auto upper = pindex_handle_->leaf_end();
         // 整张表的记录查询范围是[leaf_begin, leaf_end)
-        // TODO: 现有逻辑只支持一个字段一个condition，不支持一个字段多个condition
+        // 一个字段可能存在一个或者两个condition，如果存在两个condition，必须都是非等值条件，不能存在等值条件
         int i = 0;
+        // @assumption: index_conds中的条件是按照索引字段的顺序排列的
+        /** 存在两个条件的情况如何找到lower record和upper record
+         * 1. [], <GE, LE>, min_key: remain keys set min_val, lower_bound(min_key); max_key: remain keys set max_val, upper_bound(max_key)
+         * 2. [), <GE, LT>, min_key: remain keys set min_val, lower_bound(min_key); max_key: remain keys set min_val, lower_bound(max_key)
+         * 3. (], <GT, LE>, min_key: remain keys set max_val, upper_bound(min_key); max_key: remain keys set max_val, upper_bound(max_key)
+         * 4. (), <GT, LT>, min_key: remain keys set max_val, upper_bound(min_key); max_key: remain keys set min_val, upper_bound(max_key)
+         * 存在一个条件的情况如何找到lower record和upper record
+         * 1, 只存在左边界：右边界设置为 <= max_val
+         * 2. 只存在右边界：左边界设置为 >= min_val
+         */
         for(i = 0; i < (int)index_conds_.size() && i < index_meta_.col_num; ++i) {
+            // 由于前面的都是等值条件，所以第一个非等值条件的index一定和primary index的字段index是一样的，可以直接通过index_meta_.cols[i]来获取
             auto& col = index_meta_.cols[i];
             auto& cond = index_conds_[i];
 
             if(cond.op != OP_EQ) {
-                op = cond.op;
-                switch(op) {
-                    case OP_GT: {
-                        // min_key: the remained cols must be max_val
-                        // max_key: the remained cols and the current col must be max_val
-                        memcpy(min_key + offset, cond.rhs_val.raw->data, col.len);
-                        setMaxKey(max_key, offset, col.len, col.type);
-                        offset += col.len;
-                        for(int j = i + 1; j < index_meta_.col_num; ++j) {
-                            col = index_meta_.cols[j];
-                            setMaxKey(min_key, offset, col.len, col.type);
-                            setMaxKey(max_key, offset, col.len, col.type);
-                            offset += col.len;
-                        }
-                        lower = pindex_handle_->upper_bound(min_key);
-                        upper = pindex_handle_->upper_bound(max_key);
-                        // std::cout << "lower_rid: {page_no=" << lower.page_no << ", slot_no=" << lower.slot_no << "}\n";
-                        // std::cout << "upper_rid: {page_no=" << upper.page_no << ", slot_no=" << upper.slot_no << "}\n";
-                    } break;
-                    case OP_GE: {
-                        // min_key: the remained cols must be min_val
-                        // max_key: the remained cols and the current col must be max_val
-                        memcpy(min_key + offset, cond.rhs_val.raw->data, col.len);
-                        setMaxKey(max_key, offset, col.len, col.type);
-                        offset += col.len;
-                        for(int j = i + 1; j < index_meta_.col_num; ++j) {
-                            col = index_meta_.cols[j];
-                            setMinKey(min_key, offset, col.len, col.type);
-                            setMaxKey(max_key, offset, col.len, col.type);
-                            offset += col.len;
-                        }
-                        lower = pindex_handle_->lower_bound(min_key);
-                        upper = pindex_handle_->upper_bound(max_key);
-                    } break;
-                    case OP_LT: {
-                        // min_key: the remained cols and the current col must be min_val
-                        // max_key: the remained cols must be min_val
-                        setMinKey(min_key, offset, col.len, col.type);
-                        memcpy(max_key + offset, cond.rhs_val.raw->data, col.len);
-                        offset += col.len;
-                        for(int j = i + 1; j < index_meta_.col_num; ++j) {
-                            col = index_meta_.cols[j];
-                            setMinKey(min_key, offset, col.len, col.type);
-                            setMinKey(max_key, offset, col.len, col.type);
-                            offset += col.len;
-                        }
-                        lower = pindex_handle_->lower_bound(min_key);
-                        upper = pindex_handle_->lower_bound(max_key);
-                    } break;
-                    case OP_LE: {
-                        // min_key: the remained cols and the current col must be min_val
-                        // max_key: the remained cols must be max_val
-                        setMinKey(min_key, offset, col.len, col.type);
-                        memcpy(max_key + offset, cond.rhs_val.raw->data, col.len);
-                        offset += col.len;
-                        for(int j = i + 1; j < index_meta_.col_num; ++j) {
-                            col = index_meta_.cols[j];
-                            setMinKey(min_key, offset, col.len, col.type);
-                            setMaxKey(max_key, offset, col.len, col.type);
-                            offset += col.len;
-                        }
-                        lower = pindex_handle_->lower_bound(min_key);
-                        upper = pindex_handle_->upper_bound(max_key);
-                    } break;
-                    default:
-                        std::cout << "Invalid operator type.\n";
-                    break;
+                assert(col.name.compare(cond.lhs_col.col_name) == 0);
+                // 找到了第一个非等值条件之后，需要判断一下后面的条件是否也是当前字段上的条件
+                Condition* left_cond;
+                Condition* right_cond;
+                if(i == index_conds_.size() || cond.lhs_col.col_name.compare(index_conds_[i + 1].lhs_col.col_name) != 0) {
+                    if(cond.op == OP_GE || cond.op == OP_GT) {
+                        left_cond = &index_conds_[i];
+                        right_cond = nullptr;
+                    }
+                    else {
+                        left_cond = nullptr;
+                        right_cond = &index_conds_[i];
+                    }
                 }
+                else {
+                    if(cond.op == OP_GE || cond.op == OP_GT) {
+                        left_cond = &index_conds_[i];
+                        right_cond = &index_conds_[i + 1];
+                    }
+                    else {
+                        left_cond = &index_conds_[i + 1];
+                        right_cond = &index_conds_[i];
+                    }
+                }
+
+                // 首先对left_cond进行处理
+                int left_off = offset;
+                if(left_cond == nullptr) {
+                    // 左边界设置为 >= min_val
+                    setMinKey(min_key, left_off, col.len, col.type);
+                    left_off += col.len;
+                    for(int j = i + 1; j < index_meta_.col_num; ++j) {
+                        col = index_meta_.cols[j];
+                        setMinKey(min_key, left_off, col.len, col.type);
+                        left_off += col.len;
+                    }
+                    lower = pindex_handle_->lower_bound(min_key);
+                }
+                else if(left_cond->op == OP_GE) {
+                    memcpy(min_key + left_off, left_cond->rhs_val.raw->data, col.len);
+                    left_off += col.len;
+                    for(int j = i + 1; j < index_meta_.col_num; ++j) {
+                        col = index_meta_.cols[j];
+                        setMinKey(min_key, left_off, col.len, col.type);
+                        left_off += col.len;
+                    }
+                    lower = pindex_handle_->lower_bound(min_key);
+                }
+                else {
+                    // left_cond->op == OP_GT
+                    memcpy(min_key + left_off, left_cond->rhs_val.raw->data, col.len);
+                    left_off += col.len;
+                    for(int j = i + 1; j < index_meta_.col_num; ++j) {
+                        col = index_meta_.cols[j];
+                        setMaxKey(min_key, left_off, col.len, col.type);
+                        left_off += col.len;
+                    }
+                    lower = pindex_handle_->upper_bound(min_key);
+                }
+
+                // 对right_cond进行处理
+                int right_off = offset;
+                if(right_cond == nullptr) {
+                    // 右边界设置为 <= max_val
+                    setMaxKey(max_key, right_off, col.len, col.type);
+                    right_off += col.len;
+                    for(int j = i + 1; j < index_meta_.col_num; ++j) {
+                        col = index_meta_.cols[j];
+                        setMaxKey(max_key, right_off, col.len, col.type);
+                        right_off += col.len;
+                    }
+                    upper = pindex_handle_->upper_bound(max_key);
+                }
+                else if(right_cond->op == OP_LE) {
+                    memcpy(max_key + right_off, right_cond->rhs_val.raw->data, col.len);
+                    right_off += col.len;
+                    for(int j = i + 1; j < index_meta_.col_num; ++j) {
+                        col = index_meta_.cols[j];
+                        setMaxKey(max_key, right_off, col.len, col.type);
+                        right_off += col.len;
+                    }
+                    upper = pindex_handle_->upper_bound(max_key);
+                }
+                else {
+                    // right_cond->op == OP_LT
+                    memcpy(max_key + right_off, right_cond->rhs_val.raw->data, col.len);
+                    right_off += col.len;
+                    for(int j = i + 1; j < index_meta_.col_num; ++j) {
+                        col = index_meta_.cols[j];
+                        setMinKey(max_key, right_off, col.len, col.type);
+                        right_off += col.len;
+                    }
+                    upper = pindex_handle_->lower_bound(max_key); 
+                }
+                
                 break;
+                
+                // switch(op) {
+                //     case OP_GT: {
+                //         // min_key: the remained cols must be max_val
+                //         // max_key: the remained cols and the current col must be max_val
+                //         memcpy(min_key + offset, cond.rhs_val.raw->data, col.len);
+                //         setMaxKey(max_key, offset, col.len, col.type);
+                //         offset += col.len;
+                //         for(int j = i + 1; j < index_meta_.col_num; ++j) {
+                //             col = index_meta_.cols[j];
+                //             setMaxKey(min_key, offset, col.len, col.type);
+                //             setMaxKey(max_key, offset, col.len, col.type);
+                //             offset += col.len;
+                //         }
+                //         lower = pindex_handle_->upper_bound(min_key);
+                //         upper = pindex_handle_->upper_bound(max_key);
+                //         // std::cout << "lower_rid: {page_no=" << lower.page_no << ", slot_no=" << lower.slot_no << "}\n";
+                //         // std::cout << "upper_rid: {page_no=" << upper.page_no << ", slot_no=" << upper.slot_no << "}\n";
+                //     } break;
+                //     case OP_GE: {
+                //         // min_key: the remained cols must be min_val
+                //         // max_key: the remained cols and the current col must be max_val
+                //         memcpy(min_key + offset, cond.rhs_val.raw->data, col.len);
+                //         setMaxKey(max_key, offset, col.len, col.type);
+                //         offset += col.len;
+                //         for(int j = i + 1; j < index_meta_.col_num; ++j) {
+                //             col = index_meta_.cols[j];
+                //             setMinKey(min_key, offset, col.len, col.type);
+                //             setMaxKey(max_key, offset, col.len, col.type);
+                //             offset += col.len;
+                //         }
+                //         lower = pindex_handle_->lower_bound(min_key);
+                //         upper = pindex_handle_->upper_bound(max_key);
+                //     } break;
+                //     case OP_LT: {
+                //         // min_key: the remained cols and the current col must be min_val
+                //         // max_key: the remained cols must be min_val
+                //         setMinKey(min_key, offset, col.len, col.type);
+                //         memcpy(max_key + offset, cond.rhs_val.raw->data, col.len);
+                //         offset += col.len;
+                //         for(int j = i + 1; j < index_meta_.col_num; ++j) {
+                //             col = index_meta_.cols[j];
+                //             setMinKey(min_key, offset, col.len, col.type);
+                //             setMinKey(max_key, offset, col.len, col.type);
+                //             offset += col.len;
+                //         }
+                //         lower = pindex_handle_->lower_bound(min_key);
+                //         upper = pindex_handle_->lower_bound(max_key);
+                //     } break;
+                //     case OP_LE: {
+                //         // min_key: the remained cols and the current col must be min_val
+                //         // max_key: the remained cols must be max_val
+                //         setMinKey(min_key, offset, col.len, col.type);
+                //         memcpy(max_key + offset, cond.rhs_val.raw->data, col.len);
+                //         offset += col.len;
+                //         for(int j = i + 1; j < index_meta_.col_num; ++j) {
+                //             col = index_meta_.cols[j];
+                //             setMinKey(min_key, offset, col.len, col.type);
+                //             setMaxKey(max_key, offset, col.len, col.type);
+                //             offset += col.len;
+                //         }
+                //         lower = pindex_handle_->lower_bound(min_key);
+                //         upper = pindex_handle_->upper_bound(max_key);
+                //     } break;
+                //     default:
+                //         std::cout << "Invalid operator type.\n";
+                //     break;
+                // }
+                // break;
             }
             else {
                 memcpy(min_key + offset, cond.rhs_val.raw->data, col.len);

@@ -252,6 +252,7 @@ NOTALBELOCK:
             // 由于前面的都是等值条件，所以第一个非等值条件的index一定和primary index的字段index是一样的，可以直接通过index_meta_.cols[i]来获取
             auto& col = index_meta_.cols[i];
             auto& cond = index_conds_[i];
+            op = cond.op;
 
             if(cond.op != OP_EQ) {
                 assert(col.name.compare(cond.lhs_col.col_name) == 0);

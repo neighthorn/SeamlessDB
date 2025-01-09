@@ -207,7 +207,7 @@ int SmManager::get_table_id(const std::string& tab_name) {
 void SmManager::desc_table(const std::string& tab_name, Context* context) {
     TabMeta &tab = db_.get_table(tab_name);
 
-    std::vector<std::string> captions = {"Field", "Type", "Index"};
+    std::vector<std::string> captions = {"Field", "Type"};
     RecordPrinter printer(captions.size());
     // Print header
     printer.print_separator(context);

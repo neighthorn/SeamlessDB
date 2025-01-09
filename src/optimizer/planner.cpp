@@ -420,9 +420,9 @@ std::shared_ptr<Plan> Planner::make_one_rel(std::shared_ptr<Query> query, Contex
             table_scan_executors[i] =
                 std::make_shared<ScanPlan>(T_IndexScan, current_sql_id_, current_plan_id_++, sm_manager_, tables[i], filter_conds, index_conds, proj_cols);
         }
-        auto gather_plan = convert_scan_to_parallel_scan(std::dynamic_pointer_cast<ScanPlan>(table_scan_executors[i]), nullptr);
+        auto gather_plan = convert_scan_to_parallel_scan(std::dynamic_pointer_cast<ScanPlan>(table_scan_executors[i]), context);
         if(gather_plan != nullptr)
-            table_scan_executors[i] = convert_scan_to_parallel_scan(std::dynamic_pointer_cast<ScanPlan>(table_scan_executors[i]), nullptr);
+            table_scan_executors[i] = convert_scan_to_parallel_scan(std::dynamic_pointer_cast<ScanPlan>(table_scan_executors[i]), context);
     }
     // 只有一个表，不需要join。
     if(tables.size() == 1) {

@@ -94,6 +94,7 @@ void TestWK::load_data() {
         index_handle_->insert_entry(record.raw_data_, record.record_, txn);
         std::cout << "inserted record " << i << "\n";
     }
+    delete txn;
     ix_mgr_->close_index(index_handle_);
     std::cout << "finish flush all pages in the pindex\n";
     sm_mgr_->primary_index_.clear();

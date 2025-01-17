@@ -145,6 +145,8 @@ void ProjectionExecutor::write_state() {
 }
 
 void ProjectionExecutor::write_state_if_allow(int type) {
+    if(state_open_ == 0) return;
+    
     if(cost_model_ >= 1) {
         CompCkptManager::get_instance()->solve_mip(context_->op_state_mgr_);
         return;

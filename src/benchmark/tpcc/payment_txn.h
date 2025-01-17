@@ -17,6 +17,9 @@ public:
     PaymentTransaction() {
         clock = new SystemClock();    
     }
+    ~PaymentTransaction() {
+        delete clock;
+    }
 
     void generate_new_txn() override {
         queries.clear();

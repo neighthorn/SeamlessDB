@@ -179,6 +179,8 @@ void ContextManager::fetch_and_print_lock_states() {
     //     memcpy(lock, lock_region, LOCK_STATE_SIZE_REMOTE);
     //     std::cout << "lock trx_id: " << lock->trx_id_ << ", table_id: " << lock->table_id_ << ", record_no:" << lock->record_no_ << "\n";
     // }
+
+    delete[] origin_bitmap;
 }
 
 LockRequestQueue* ContextManager::get_record_request_queue_(int record_no, LockListInBucket* lock_list) {

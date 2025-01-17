@@ -300,6 +300,9 @@ public:
     Customer() {
         clock = new SystemClock();
     }
+    ~Customer() {
+        delete clock;
+    }
 
     void create_table(SmManager* sm_mgr) {
         std::string table_name = "customer";
@@ -543,6 +546,9 @@ public:
         clock = new SystemClock();
         sqls.clear();
     }
+    ~History() {
+        delete clock;
+    }
 
     void create_table(SmManager* sm_mgr) {
         std::string table_name = "history";
@@ -750,6 +756,9 @@ public:
     Orders() {
         clock = new SystemClock();
     }
+    ~Orders() {
+        delete clock;
+    }
 
     void create_table(SmManager* sm_mgr) {
         std::string table_name = "orders";
@@ -904,6 +913,9 @@ public:
     OrderLine() {
         clock = new SystemClock();
         sqls.clear();
+    }
+    ~OrderLine() {
+        delete clock;
     }
 
     void create_table(SmManager* sm_mgr) {

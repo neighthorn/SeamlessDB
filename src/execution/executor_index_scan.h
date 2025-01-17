@@ -124,11 +124,11 @@ friend class IndexScanOperatorState;
         std::cout << "IndexScanExecutor: " << tab_name_ << std::endl;
         std::cout << "filter conds: \n";
         for(auto& cond: filter_conds_) {
-            std::cout << cond.lhs_col.col_name << CompOpString[cond.op] << cond.rhs_val.int_val << std::endl;
+            std::cout << cond.lhs_col.col_name << CompOpString[cond.op] << (cond.rhs_val.type == TYPE_INT ? std::to_string(cond.rhs_val.int_val) : cond.rhs_val.str_val) << std::endl;
         }
         std::cout << "index conds: \n";
         for(auto& cond: index_conds_) {
-            std::cout << cond.lhs_col.col_name << CompOpString[cond.op] << cond.rhs_val.int_val << std::endl;
+            std::cout << cond.lhs_col.col_name << CompOpString[cond.op] << (cond.rhs_val.type == TYPE_INT ? std::to_string(cond.rhs_val.int_val) : cond.rhs_val.str_val) << std::endl;
         }
         std::cout << "\n";
         // std::cout << "is_seq_scan: " << is_seq_scan_ << std::endl;
@@ -611,7 +611,7 @@ NOLOCK1:
     }
 
     void nextTuple() override {
-        check_runtime_conds();
+        // check_runtime_conds();
         assert(!is_end());
         // if(load_from_state_) {
         //     std::cout << "IndexScan Current location: " << rid_.page_no << ", " << rid_.slot_no << std::endl;
@@ -685,7 +685,7 @@ NOLOCK1:
             auto& proj_col = cols_[proj_idx];
             memcpy(proj_sel_record->raw_data_ + proj_col.offset, current_record_->raw_data_ + prev_col.offset, proj_col.len);
         }
-        return proj_sel_record;
+        return std::move(proj_sel_record);
         // return std::make_unique<Record>(*current_record_);   // 复制构造，代价稍微高一些
     }
 

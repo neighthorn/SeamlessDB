@@ -48,6 +48,13 @@ class NestedLoopJoinExecutor : public AbstractExecutor {
         left_offset_ = right_offset_ = 0;
     }
 
+    ~NestedLoopJoinExecutor() {
+        if(left_tuple_block_ != nullptr)
+            delete[] left_tuple_block_;
+        if(right_tuple_block_ != nullptr)
+            delete[] right_tuple_block_;
+    }
+
     std::string getType() override { return "Join"; }
 
     size_t tupleLen() const override { return len_; }

@@ -319,6 +319,7 @@ public:
             memcpy(range_string, buffer_ + head, size1);
             memcpy(range_string + size1, buffer_, REDO_LOG_BUFFER_SIZE - size1);
             redo_log_hdr->deserialize(range_string);
+            delete[] range_string;
         }
 
         if (persist_lsn >= redo_log_hdr->lsn_) {

@@ -131,6 +131,9 @@ private:
             log_flush_thread_.join();
         }
         delete lock_bitmap_;
+        delete lock_rdma_buffer_;
+        delete log_rdma_buffer_;
+        delete coro_sched_;
     }
 
     void lock_flush_thread_function() {

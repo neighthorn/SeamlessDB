@@ -235,6 +235,10 @@ void replay_log_for_resumption(SmManager* sm_mgr) {
     stub.GetPersistLsn(cntl, &request, response, NULL);
     int persist_lsn = response->persist_lsn();
 
+    delete response;
+    delete cntl;
+    delete lsn_channel_;
+
     // std::cout << "persist_lsn: " << persist_lsn << "\n";
 
     int64_t head = state_mgr->curr_log_head_;
@@ -695,6 +699,11 @@ void client_handler(int* sock_fd, RWNode* node) {
         // }
     }
 
+    delete context;
+    delete coro_sched;
+    delete op_state_manager;
+    delete[] data_send;
+
     // Clear
     std::cout << "Terminating current client_connection..." << std::endl;
     close(fd);           // close a file descriptor.
@@ -895,6 +904,10 @@ int main(int argc, char** argv) {
     signal(SIGINT, sigint_handler);
 
     server->start_server();
+
+    delete server;
+    delete[] commit_txns;
+    delete[] abort_txns;
     
     return 0;
 }

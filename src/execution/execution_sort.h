@@ -53,6 +53,11 @@ public:
         ck_infos_.push_back(SortCheckpointInfo{.ck_timestamp_ = std::chrono::high_resolution_clock::now(), .left_rc_op_ = 0, .state_change_time_ = 0});
     }
 
+    ~SortExecutor() {
+        if(sorted_index_ != nullptr)
+            delete[] sorted_index_;
+    }
+
     std::string getType() override { return "Sort"; }
 
     size_t tupleLen() const override { return tuple_len_; }

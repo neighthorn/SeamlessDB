@@ -30,6 +30,10 @@ class IxIndexHandle {
    public:
     IxIndexHandle(DiskManager *disk_manager, BufferPoolManager *buffer_pool_manager, int fd, const TabMeta& table_meta);
 
+    ~IxIndexHandle() {
+        delete file_hdr_;
+    }
+
     // for test
     int32_t get_next_record_no() { return file_hdr_->next_record_no_; }
 

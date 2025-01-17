@@ -15,6 +15,7 @@
 #include "execution/executor_insert.h"
 #include "execution/executor_delete.h"
 #include "execution/execution_sort.h"
+#include "execution/executor_gather.h"
 #include "state/op_state_manager.h"
 #include "common/common.h"
 
@@ -205,6 +206,12 @@ class Portal
         } else if(auto x = std::dynamic_pointer_cast<SortPlan>(plan)) {
             return std::make_shared<SortExecutor>(convert_plan_executor(x->subplan_, context), 
                                             x->sel_col_, x->is_desc_, context, x->sql_id_, x->plan_id_);
+        } else if(auto x = std::dynamic_pointer_cast<GatherPlan>(plan)) {
+            std::vector<std::shared_ptr<AbstractExecutor>> children;
+            for(auto& subplan: x->subplans_) {
+                children.push_back(std::move(convert_plan_executor(subplan, context)));
+            }
+            return std::make_shared<GatherExecutor>(x->subplans_.size(), children, context, x->sql_id_, x->plan_id_);
         }
         return nullptr;
     }

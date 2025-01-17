@@ -14,6 +14,7 @@ LogStore::LogStore(const std::string &log_store_path) : log_store_path_(log_stor
 
 // write log
 bool LogStore::write_log(lsn_t lsn, const std::string &redo_log) {
+    std::cout << "write log: " << redo_log << std::endl;
     rocksdb::WriteOptions write_options;
     std::string key = std::to_string(lsn);
     // std::string value; // TODO: redo_log-> to string

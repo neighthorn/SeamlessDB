@@ -91,7 +91,11 @@ class IxManager {
         memset(data, 0, PAGE_SIZE);
         fhdr->serialize(data);
 
+        delete fhdr;
+
         disk_manager_->write_page(fd, IX_FILE_HDR_PAGE, data, PAGE_SIZE);
+
+        delete[] data;
 
         char page_buf[PAGE_SIZE];  // 在内存中初始化page_buf中的内容，然后将其写入磁盘
         memset(page_buf, 0, PAGE_SIZE);

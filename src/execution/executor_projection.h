@@ -2,6 +2,7 @@
 #include "execution_defs.h"
 #include "execution_manager.h"
 #include "executor_abstract.h"
+#include "executor_gather.h"
 #include "index/ix.h"
 #include "system/sm.h"
 
@@ -72,7 +73,10 @@ public:
     }
 
     void nextTuple() override {
-        assert(!prev_->is_end());
+        // assert(!prev_->is_end());
+        if(prev_->is_end()) {
+            dynamic_cast<GatherExecutor*>(prev_.get())->print_debug();
+        }
         prev_->nextTuple();
     }
 
@@ -98,7 +102,7 @@ public:
             curr_result_num_ ++;
             write_state_if_allow();
         }
-        return proj_rec;
+        return std::move(proj_rec);
     }
 
     ColMeta get_col_offset(const TabCol &target) override {

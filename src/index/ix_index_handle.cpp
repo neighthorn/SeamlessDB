@@ -297,6 +297,7 @@ void IxIndexHandle::insert_into_parent(IxNodeHandle *old_node, const char *key, 
         // unlock_pages(transaction);
         // TODO??
         unlock_unpin_pages(transaction);
+        delete root;
         return;
     }
 
@@ -417,6 +418,7 @@ Rid IxIndexHandle::insert_entry(const char* key, const char* record_value, Trans
     unlock_unpin_pages(transaction);
     
     delete new_leaf_node;
+    delete leaf_node;
 
     // return true;
     return rid;

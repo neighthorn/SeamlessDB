@@ -23,7 +23,7 @@
         "thread_num": 1,
         "workload": "tpch",
         "cost_model": "SeamlessDB",
-        "parallel_factor": 1,
+        "parallel_factor": 2,
         "interval": 0,
         "write_ckpt": 0,
         "record_num": 1,

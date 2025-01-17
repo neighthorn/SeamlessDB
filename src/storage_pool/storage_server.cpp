@@ -65,7 +65,9 @@ int main(int argc, char* argv[]) {
     load_data(workload, record_num, sm_manager.get(), ix_manager.get(), mvcc_manager.get());
     // auto log_manager = std::make_shared<LogManager>();
 
+// #ifdef ENABLE_LOG_STORE
     auto log_store = std::make_shared<LogStore>("./storage_node_log_storage");
+
     // clear all log storage data
     // log_store->clear_all();
 
@@ -76,9 +78,15 @@ int main(int argc, char* argv[]) {
         log replay thread
     */
     auto log_replay = std::make_shared<LogReplay>(log_store.get(), disk_manager.get(), ix_manager.get(), sm_manager.get(), &share_status);
+// #endif
 
     std::cout << "try to start server\n";
+
+// #ifdef ENABLE_LOG_STORE
     auto server = std::make_shared<StorageServer>(node_id, local_rpc_port, disk_manager.get(), log_store.get(), &share_status, buffer_pool_manager.get());
+// #else
+    // auto server = std::make_shared<StorageServer>(node_id, local_rpc_port, disk_manager.get(), nullptr, nullptr, buffer_pool_manager.get());
+// #endif
 
     return 0;
 }

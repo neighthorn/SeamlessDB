@@ -16,6 +16,9 @@ public:
     DeliveryTransaction() {
         clock = new SystemClock();
     }
+    ~DeliveryTransaction() {
+        delete clock;
+    }
 
     void generate_new_txn() override {
         queries.clear();

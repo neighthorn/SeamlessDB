@@ -99,7 +99,7 @@ class InsertExecutor : public AbstractExecutor {
             
         }
 
-        delete pkey;
+        delete[] pkey;
         
         // Insert into index
         // for(size_t i = 1; i < tab_.indexes_.size(); ++i) {

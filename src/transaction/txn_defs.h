@@ -40,7 +40,8 @@ class WriteRecord {
     }
 
     ~WriteRecord() {
-        delete pkey_;
+        if(pkey_ != nullptr)
+            delete[] pkey_;
     }
 
     WType wtype_;

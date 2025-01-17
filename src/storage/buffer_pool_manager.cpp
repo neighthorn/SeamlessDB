@@ -80,6 +80,8 @@ void BufferPool::fetch_page_from_rpc(Page* page, PageId page_id, frame_id_t fram
 
     // RwServerDebug::getInstance()->DEBUG_PRINT("[fetch_page_from_rpc][end][table id: " + std::to_string(page_id.table_id) + ", page no: " + std::to_string(page_id.page_no));
     memcpy(page->data_, response->data()[0].c_str(), PAGE_SIZE);
+    delete response;
+    delete cntl;
 }
 
 /**

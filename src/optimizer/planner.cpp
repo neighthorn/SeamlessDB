@@ -252,6 +252,7 @@ std::shared_ptr<GatherPlan> Planner::convert_scan_to_parallel_scan(std::shared_p
         return nullptr;
     }
 
+std::cout << "ConvertScanToParallelScan" << std::endl;
     // 按照index_conds来进行scan range的划分
     // 1. 找到index_conds中第一个非等值条件的最大值和最小值
     bool range_scan_exist = false;
@@ -260,6 +261,7 @@ std::shared_ptr<GatherPlan> Planner::convert_scan_to_parallel_scan(std::shared_p
     Value min_value, max_value;
     CompOp left_op = CompOp::OP_NONE, right_op = CompOp::OP_NONE;   // 四种：[], [), (], ()
     if(scan_plan->index_conds_.size() == 0) {
+std::cout << "ConvertScanToParallelScan: Full Table Scan" << std::endl;
         // 如果index_conds为空，代表当前是全表扫描，那么min_value和max_value设置为第一个主键字段的最大值和最小值
         parallel_col = sm_manager_->get_table_first_col(scan_plan->tab_name_);
         min_value = sm_manager_->get_min_value(parallel_col.col_name);
@@ -288,8 +290,9 @@ std::shared_ptr<GatherPlan> Planner::convert_scan_to_parallel_scan(std::shared_p
                     // max_value = sm_manager_->get_max_value(scan_plan->index_conds_[i].lhs_col.col_name);
                 }
             }
-            else {
+            else if(range_scan_exist == false){
                 range_scan_exist = true;
+                parallel_col = scan_plan->index_conds_[i].lhs_col;
                 if(scan_plan->index_conds_[i].op == OP_LT || scan_plan->index_conds_[i].op == OP_LE) {
                     // 如果是<或<=，那么该cond为右边界
                     max_value = scan_plan->index_conds_[i].rhs_val;
@@ -306,8 +309,10 @@ std::shared_ptr<GatherPlan> Planner::convert_scan_to_parallel_scan(std::shared_p
     }
 
     if(range_scan_exist == false) {
+        std::cout << "ConvertScanToParallelScan: No Range Scan" << std::endl;
         return nullptr;
     }
+std::cout << "ConvertScanToParallelScan: Parallel_col: " << parallel_col.col_name << std::endl;
 
     // 如果左边界或者右边界没有赋值，那么用最大值和最小值代替
     if(left_op == CompOp::OP_NONE) {
@@ -321,6 +326,7 @@ std::shared_ptr<GatherPlan> Planner::convert_scan_to_parallel_scan(std::shared_p
 
     // 2. 计算每个worker的扫描范围
     int worker_num = context->parallel_worker_num_;
+std::cout << "ConvertScanToParallelScan: WorkerNum: " << worker_num << std::endl;
     std::vector<std::pair<Value, Value>> scan_ranges;
     switch(min_value.type) {
         case ColType::TYPE_INT: {
@@ -328,9 +334,14 @@ std::shared_ptr<GatherPlan> Planner::convert_scan_to_parallel_scan(std::shared_p
             for(int i = 0; i < worker_num; ++i) {
                 Value start_val, end_val;
                 start_val.set_int(min_value.int_val + i * interval);
-                end_val.set_int(min_value.int_val + (i + 1) * interval);
-                if(i == worker_num - 1) end_val.set_int(max_value.int_val);
+                start_val.init_raw(sizeof(int));
+                if(i == worker_num - 1) 
+                    end_val.set_int(max_value.int_val);
+                else
+                    end_val.set_int(min_value.int_val + (i + 1) * interval);
+                end_val.init_raw(sizeof(int));
                 scan_ranges.emplace_back(std::make_pair(start_val, end_val));
+                std::cout << "ConvertScanToParallelScan: Worker" << i << " Range: " << start_val.int_val << " ~ " << end_val.int_val << std::endl;
             }
         } break;
         case ColType::TYPE_STRING: {
@@ -344,9 +355,14 @@ std::shared_ptr<GatherPlan> Planner::convert_scan_to_parallel_scan(std::shared_p
             for(int i = 0; i < worker_num; ++i) {
                 Value start_val, end_val;
                 start_val.set_str(get_date_from_int(start_date + i * interval));
-                end_val.set_str(get_date_from_int(start_date + (i + 1) * interval));
-                if(i == worker_num - 1) end_val.set_str(max_value.str_val);
+                start_val.init_raw(start_val.str_val.length());
+                if(i == worker_num - 1) 
+                    end_val.set_str(max_value.str_val);
+                else 
+                    end_val.set_str(get_date_from_int(start_date + (i + 1) * interval));
+                end_val.init_raw(end_val.str_val.length());
                 scan_ranges.emplace_back(std::make_pair(start_val, end_val));
+                std::cout << "ConvertScanToParallelScan: Worker" << i << " Range: " << start_val.str_val << " ~ " << end_val.str_val << std::endl;
             }
         } break;
         default:
@@ -374,13 +390,28 @@ std::shared_ptr<GatherPlan> Planner::convert_scan_to_parallel_scan(std::shared_p
             right_cond = Condition{.lhs_col = parallel_col, .op = OP_LT, .is_rhs_val = true, .rhs_val = scan_ranges[i].second};
         }
 
-        auto it = std::find_if(index_conds.begin(), index_conds.end(), [&](const Condition& cond) {
-            return cond.lhs_col.col_name.compare(parallel_col.col_name) == 0;
-        });
-        if(it != index_conds.end()) {
-            index_conds.erase(it);
-            index_conds.insert(it, left_cond);
-            index_conds.insert(it, right_cond);
+        if(index_conds.size() > 0) {
+            // @assumption：index_conds中一定有非等值查询
+            size_t last_removed_index = index_conds.size(); // 初始化为vector大小，表示没有移除元素
+            auto it = index_conds.begin();
+            while (it != index_conds.end()) {
+                if (it->lhs_col.col_name.compare(parallel_col.col_name) == 0) {
+                    last_removed_index = std::distance(index_conds.begin(), it); // 记录移除元素的位置
+                    it = index_conds.erase(it); // erase 返回下一个迭代器
+                } else {
+                    ++it;
+                }
+            }
+
+            if(last_removed_index < index_conds.size())  {
+                index_conds.insert(index_conds.begin() + last_removed_index, left_cond);
+                index_conds.insert(index_conds.begin() + last_removed_index + 1, right_cond);
+            }
+            else {
+                index_conds.emplace_back(left_cond);
+                index_conds.emplace_back(right_cond);
+            }
+            
         }
         else {
             index_conds.emplace_back(left_cond);
@@ -422,7 +453,7 @@ std::shared_ptr<Plan> Planner::make_one_rel(std::shared_ptr<Query> query, Contex
         }
         auto gather_plan = convert_scan_to_parallel_scan(std::dynamic_pointer_cast<ScanPlan>(table_scan_executors[i]), context);
         if(gather_plan != nullptr)
-            table_scan_executors[i] = convert_scan_to_parallel_scan(std::dynamic_pointer_cast<ScanPlan>(table_scan_executors[i]), context);
+            table_scan_executors[i] = gather_plan;
     }
     // 只有一个表，不需要join。
     if(tables.size() == 1) {
@@ -479,90 +510,6 @@ std::shared_ptr<Plan> Planner::make_one_rel(std::shared_ptr<Query> query, Contex
         }
         
     }
-    
-    // int scantbl[tables.size()]; // 标记是否已经被加入到了算子树中
-    // for(size_t i = 0; i < tables.size(); i++)
-    // {
-    //     scantbl[i] = -1;
-    // }
-    // // 假设在ast中已经添加了jointree，这里需要修改的逻辑是，先处理jointree，然后再考虑剩下的部分
-    // if(conds.size() >= 1)
-    // {
-    //     // 有连接条件
-
-    //     // 根据连接条件，生成第一层join
-    //     std::vector<std::string> joined_tables(tables.size());
-    //     auto it = conds.begin();
-    //     while (it != conds.end()) {
-    //         std::shared_ptr<Plan> left , right;
-    //         left = pop_scan(scantbl, it->lhs_col.tab_name, joined_tables, table_scan_executors);
-    //         right = pop_scan(scantbl, it->rhs_col.tab_name, joined_tables, table_scan_executors);
-    //         std::vector<Condition> join_conds{*it};
-    //         //建立join
-    //         table_join_executors = std::make_shared<JoinPlan>(T_NestLoop, current_sql_id_, current_plan_id_++, std::move(left), std::move(right), join_conds);
-    //         it = conds.erase(it);
-    //         break;
-    //     }
-    //     // 根据连接条件，生成第2-n层join
-    //     it = conds.begin();
-    //     while (it != conds.end()) {
-    //         std::shared_ptr<Plan> left_need_to_join_executors = nullptr;
-    //         std::shared_ptr<Plan> right_need_to_join_executors = nullptr;
-    //         bool isneedreverse = false;
-    //         if (std::find(joined_tables.begin(), joined_tables.end(), it->lhs_col.tab_name) == joined_tables.end()) {
-    //             left_need_to_join_executors = pop_scan(scantbl, it->lhs_col.tab_name, joined_tables, table_scan_executors);
-    //             isneedreverse = true;
-    //         }
-    //         if (std::find(joined_tables.begin(), joined_tables.end(), it->rhs_col.tab_name) == joined_tables.end()) {
-    //             right_need_to_join_executors = pop_scan(scantbl, it->rhs_col.tab_name, joined_tables, table_scan_executors);
-    //         } 
-
-    //         if(left_need_to_join_executors != nullptr && right_need_to_join_executors != nullptr) {
-    //             std::vector<Condition> join_conds{*it};
-    //             std::shared_ptr<Plan> temp_join_executors = std::make_shared<JoinPlan>(T_NestLoop, 
-    //                                                                 current_sql_id_, current_plan_id_++,
-    //                                                                 std::move(left_need_to_join_executors), 
-    //                                                                 std::move(right_need_to_join_executors), 
-    //                                                                 join_conds);
-    //             table_join_executors = std::make_shared<JoinPlan>(T_NestLoop, 
-    //                                                                 current_sql_id_, current_plan_id_++,
-    //                                                                 std::move(temp_join_executors), 
-    //                                                                 std::move(table_join_executors), 
-    //                                                                 std::vector<Condition>());
-    //         } else if(left_need_to_join_executors != nullptr || right_need_to_join_executors != nullptr) {
-    //             if(isneedreverse) {
-    //                 std::map<CompOp, CompOp> swap_op = {
-    //                     {OP_EQ, OP_EQ}, {OP_NE, OP_NE}, {OP_LT, OP_GT}, {OP_GT, OP_LT}, {OP_LE, OP_GE}, {OP_GE, OP_LE},
-    //                 };
-    //                 std::swap(it->lhs_col, it->rhs_col);
-    //                 it->op = swap_op.at(it->op);
-    //                 right_need_to_join_executors = std::move(left_need_to_join_executors);
-    //             }
-    //             std::vector<Condition> join_conds{*it};
-    //             table_join_executors = std::make_shared<JoinPlan>(T_NestLoop, 
-    //                                                                 current_sql_id_, current_plan_id_++,
-    //                                                                 std::move(table_join_executors),
-    //                                                                 std::move(right_need_to_join_executors), 
-    //                                                                 join_conds);
-    //         } else {
-    //             push_conds(std::move(&(*it)), table_join_executors);
-    //         }
-    //         it = conds.erase(it);
-    //     }
-    // } else {
-    //     table_join_executors = table_scan_executors[0];
-    //     scantbl[0] = 1;
-    // }
-
-    // //连接剩余表
-    // for (size_t i = 0; i < tables.size(); i++) {
-    //     if(scantbl[i] == -1) {
-    //         table_join_executors = std::make_shared<JoinPlan>(T_NestLoop, 
-    //                                                 current_sql_id_, current_plan_id_++,
-    //                                                 std::move(table_scan_executors[i]), 
-    //                                                 std::move(table_join_executors), std::vector<Condition>());
-    //     }
-    // }
 
     return table_join_executors;
 }

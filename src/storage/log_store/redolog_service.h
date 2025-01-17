@@ -25,6 +25,7 @@ public:
                 break;
         }
         request.set_log(std::string(log_data, redo_log->log_tot_len_));
+        delete[] log_data;
 
         stub.LogWrite(cntl, &request, response, NULL);
     }

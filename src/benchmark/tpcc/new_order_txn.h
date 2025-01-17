@@ -21,6 +21,9 @@ public:
     NewOrderTransaction() {
         clock = new SystemClock();
     }
+    ~NewOrderTransaction() {
+        delete clock;
+    }
 
     void generate_new_txn() override {
         queries.clear();

@@ -23,6 +23,7 @@ namespace storage_service {
         //         share_status_->need_replay_lsn_ = redo_log_hdr.lsn_;
         //     }
         // }
+// #ifdef ENABLE_LOG_STORE
         auto log_buf = request->log();
         // std::cout << "receive log_write message from compute node, log_message is: " << request->log() << "\n";
         int len = log_buf.length();
@@ -40,7 +41,7 @@ namespace storage_service {
             }
             off += log_tot_len;
         }
-
+// #endif
         return;
     }
 

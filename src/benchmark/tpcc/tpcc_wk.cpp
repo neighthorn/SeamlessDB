@@ -39,6 +39,17 @@ bool TPCCWK::create_table() {
     item->create_table(sm_mgr_);
     Stock* stock = new Stock();
     stock->create_table(sm_mgr_);
+
+    delete warehouse;
+    delete district;
+    delete customer;
+    delete history;
+    delete new_orders;
+    delete orders;
+    delete order_line;
+    delete item;
+    delete stock;
+
     return true;
 }
 
@@ -133,6 +144,8 @@ void TPCCWK::load_data() {
     reload_index(order_line);
     reload_index(item);
     reload_index(stock);
+
+    delete txn;
 }
 
 void TPCCWK::init_transaction(int thread_num) {

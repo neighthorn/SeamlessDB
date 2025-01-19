@@ -35,6 +35,13 @@ class InsertExecutor : public AbstractExecutor {
         // }
     };
 
+    void beginTuple() override {}
+
+    void nextTuple() override {}
+
+    size_t tupleLen() const override {}
+    bool is_end() const override {}
+
     std::unique_ptr<Record> Next() override {
         // Make record buffer
         // RmRecord rec(fh_->get_file_hdr().record_size);

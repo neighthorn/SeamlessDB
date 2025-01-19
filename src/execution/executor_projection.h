@@ -5,6 +5,7 @@
 #include "executor_gather.h"
 #include "index/ix.h"
 #include "system/sm.h"
+#include "debug_log.h"
 
 class ProjectionExecutor;
 class ProjectionOperatorState;
@@ -73,16 +74,21 @@ public:
     }
 
     void nextTuple() override {
+        // RwServerDebug::getInstance()->DEBUG_PRINT("[ProjectionExecutor]: nextTuple() called");
         // assert(!prev_->is_end());
-        if(prev_->is_end()) {
-            dynamic_cast<GatherExecutor*>(prev_.get())->print_debug();
-        }
+        // if(prev_->is_end()) {
+        //     dynamic_cast<GatherExecutor*>(prev_.get())->print_debug();
+        // }
         prev_->nextTuple();
     }
 
-    bool is_end() const override { return prev_->is_end(); }
+    bool is_end() const override { 
+        // RwServerDebug::getInstance()->DEBUG_PRINT("[ProjectionExecutor]: is_end() called");
+        return prev_->is_end(); 
+    }
 
     std::unique_ptr<Record> Next() override {
+        // RwServerDebug::getInstance()->DEBUG_PRINT("[ProjectionExecutor]: Next() called");
         assert(!is_end());
         auto &prev_cols = prev_->cols();
         auto prev_rec = prev_->Next();

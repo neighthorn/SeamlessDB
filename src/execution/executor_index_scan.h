@@ -259,7 +259,7 @@ NOTALBELOCK:
                 // 找到了第一个非等值条件之后，需要判断一下后面的条件是否也是当前字段上的条件
                 Condition* left_cond;
                 Condition* right_cond;
-                if(i == index_conds_.size() || cond.lhs_col.col_name.compare(index_conds_[i + 1].lhs_col.col_name) != 0) {
+                if(i == index_conds_.size() - 1 || cond.lhs_col.col_name.compare(index_conds_[i + 1].lhs_col.col_name) != 0) {
                     if(cond.op == OP_GE || cond.op == OP_GT) {
                         left_cond = &index_conds_[i];
                         right_cond = nullptr;

@@ -25,9 +25,10 @@ public:
     std::vector<std::mutex> result_queues_mutex_;
     std::vector<std::shared_ptr<AbstractExecutor>> workers_;
     std::vector<std::thread> worker_threads_;   // worker线程
+    std::mutex next_tuple_mutex_;    // 用于保护next_tuple_cv_和next_worker_index_
     std::condition_variable next_tuple_cv_;         // 用于通知主线程有新的结果
-    std::vector<std::atomic<int>> consumed_result_counts_;    // 记录每个worker已经消费的结果数量
-    std::vector<std::atomic<int>> result_total_counts_;
+    std::vector<std::atomic<bool>> worker_is_end_;  // 记录每个worker是否已经结束
+    std::vector<std::atomic<size_t>> queue_sizes_;   // 记录每个worker的结果队列大小
     
     // 结果记录字段
     std::vector<ColMeta> cols_;
@@ -41,23 +42,26 @@ public:
     int state_change_time_;
 
     GatherExecutor(int worker_thread_num, std::vector<std::shared_ptr<AbstractExecutor>>& workers, Context* context, int sql_id, int operator_id)
-        :AbstractExecutor(sql_id, operator_id) {
+        :AbstractExecutor(sql_id, operator_id), result_queues_(worker_thread_num), result_queues_mutex_(worker_thread_num),
+        worker_is_end_(worker_thread_num), queue_sizes_(worker_thread_num) {
         worker_thread_num_ = worker_thread_num;
         workers_ = std::move(workers);
         assert(workers_.size() == worker_thread_num_);
         assert(workers_.size() > 0);
-
-        result_queues_.reserve(worker_thread_num_);
         // consumed_result_counts_.reserve(worker_thread_num_);
         // result_total_counts_.reserve(worker_thread_num_);
 
-        for(int i = 0; i < worker_thread_num_; ++i) {
-            result_queues_.emplace_back(std::queue<std::unique_ptr<Record>>());
-            result_queues_mutex_.emplace_back(std::mutex());
-            consumed_result_counts_.emplace_back(0);
-            result_total_counts_.emplace_back(0);
-        }
+        // for(int i = 0; i < worker_thread_num_; ++i) {
+        //     result_queues_.emplace_back(std::queue<std::unique_ptr<Record>>());
+        //     result_queues_mutex_.emplace_back(std::mutex());
+        // }
+        std::cout << "result_queues_.size(): " << result_queues_.size() << ", result_queue_mutext.size(): " << result_queues_mutex_.size() << std::endl;
 
+        for(int i = 0; i < worker_thread_num_; ++i) {
+            worker_is_end_[i] = false;
+            queue_sizes_[i] = 0;
+        }
+        
         // 所有的worker应该都是一样的算子，只是access的数据范围不同
         len_ = workers_[0]->tupleLen();
         cols_ = workers_[0]->cols();
@@ -97,10 +101,6 @@ public:
         std::cout << "Record count in ResultBuffer" << std::endl;
         for(int i = 0; i < worker_thread_num_; ++i) {
             std::cout << "Worker " << i << " Record count: " << result_queues_[i].size() << std::endl;
-        }
-        std::cout << "ConsumedStatus in ResultBuffer" << std::endl;
-        for(int i = 0; i < worker_thread_num_; ++i) {
-            std::cout << "Worker " << i << " Consumed count: " << consumed_result_counts_[i] << std::endl;
         }
         assert(0);
     }

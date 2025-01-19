@@ -29,7 +29,7 @@ class AbstractExecutor {
 
     virtual ~AbstractExecutor() = default;
 
-    virtual size_t tupleLen() const { return 0; };
+    virtual size_t tupleLen() const = 0;
 
     virtual const std::vector<ColMeta> &cols() const {
         std::vector<ColMeta> *_cols = nullptr;
@@ -38,11 +38,11 @@ class AbstractExecutor {
 
     virtual std::string getType() { return "AbstractExecutor"; };
 
-    virtual void beginTuple(){};
+    virtual void beginTuple() = 0;
 
-    virtual void nextTuple(){};
+    virtual void nextTuple() = 0;
 
-    virtual bool is_end() const { return true; };
+    virtual bool is_end() const = 0;
 
     virtual Rid &rid() = 0;
 

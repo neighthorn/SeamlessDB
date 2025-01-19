@@ -37,6 +37,10 @@ class UpdateExecutor : public AbstractExecutor {
         //     context->lock_mgr_->lock_IX_on_table(context->txn_, fh_->GetFd());
         // }
     }
+    void beginTuple() override {}
+    void nextTuple() override {}
+    size_t tupleLen() const override {}
+    bool is_end() const override {}
     std::unique_ptr<Record> Next() override {
         auto pindex = tab_.get_primary_index_meta();
         int rid_tot_size = rids_.size();

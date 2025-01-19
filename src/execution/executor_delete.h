@@ -35,6 +35,11 @@ class DeleteExecutor : public AbstractExecutor {
         //     context->lock_mgr_->lock_IX_on_table(context->txn_, fh_->GetFd());
         // }
     }
+    void beginTuple() override {}
+    void nextTuple() override {}
+    size_t tupleLen() const override {}
+    bool is_end() const override {}
+    
     void set_rids(std::vector<Rid> rids){rids_ = rids;}
     std::unique_ptr<Record> Next() override {
         // Delete each rid from record file and index file

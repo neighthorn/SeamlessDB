@@ -287,9 +287,9 @@ NOTALBELOCK:
                     setMinKey(min_key, left_off, col.len, col.type);
                     left_off += col.len;
                     for(int j = i + 1; j < index_meta_.col_num; ++j) {
-                        col = index_meta_.cols[j];
-                        setMinKey(min_key, left_off, col.len, col.type);
-                        left_off += col.len;
+                        auto& remain_col = index_meta_.cols[j];
+                        setMinKey(min_key, left_off, remain_col.len, remain_col.type);
+                        left_off += remain_col.len;
                     }
                     lower = pindex_handle_->lower_bound(min_key);
                 }
@@ -297,9 +297,9 @@ NOTALBELOCK:
                     memcpy(min_key + left_off, left_cond->rhs_val.raw->data, col.len);
                     left_off += col.len;
                     for(int j = i + 1; j < index_meta_.col_num; ++j) {
-                        col = index_meta_.cols[j];
-                        setMinKey(min_key, left_off, col.len, col.type);
-                        left_off += col.len;
+                        auto& remain_col = index_meta_.cols[j];
+                        setMinKey(min_key, left_off, remain_col.len, remain_col.type);
+                        left_off += remain_col.len;
                     }
                     lower = pindex_handle_->lower_bound(min_key);
                 }
@@ -308,9 +308,9 @@ NOTALBELOCK:
                     memcpy(min_key + left_off, left_cond->rhs_val.raw->data, col.len);
                     left_off += col.len;
                     for(int j = i + 1; j < index_meta_.col_num; ++j) {
-                        col = index_meta_.cols[j];
-                        setMaxKey(min_key, left_off, col.len, col.type);
-                        left_off += col.len;
+                        auto& remain_col = index_meta_.cols[j];
+                        setMaxKey(min_key, left_off, remain_col.len, remain_col.type);
+                        left_off += remain_col.len;
                     }
                     lower = pindex_handle_->upper_bound(min_key);
                 }
@@ -322,9 +322,9 @@ NOTALBELOCK:
                     setMaxKey(max_key, right_off, col.len, col.type);
                     right_off += col.len;
                     for(int j = i + 1; j < index_meta_.col_num; ++j) {
-                        col = index_meta_.cols[j];
-                        setMaxKey(max_key, right_off, col.len, col.type);
-                        right_off += col.len;
+                        auto& remain_col = index_meta_.cols[j];
+                        setMaxKey(max_key, right_off, remain_col.len, remain_col.type);
+                        right_off += remain_col.len;
                     }
                     upper = pindex_handle_->upper_bound(max_key);
                 }
@@ -332,9 +332,9 @@ NOTALBELOCK:
                     memcpy(max_key + right_off, right_cond->rhs_val.raw->data, col.len);
                     right_off += col.len;
                     for(int j = i + 1; j < index_meta_.col_num; ++j) {
-                        col = index_meta_.cols[j];
-                        setMaxKey(max_key, right_off, col.len, col.type);
-                        right_off += col.len;
+                        auto& remain_col = index_meta_.cols[j];
+                        setMaxKey(max_key, right_off, remain_col.len, remain_col.type);
+                        right_off += remain_col.len;
                     }
                     upper = pindex_handle_->upper_bound(max_key);
                 }
@@ -343,9 +343,9 @@ NOTALBELOCK:
                     memcpy(max_key + right_off, right_cond->rhs_val.raw->data, col.len);
                     right_off += col.len;
                     for(int j = i + 1; j < index_meta_.col_num; ++j) {
-                        col = index_meta_.cols[j];
-                        setMinKey(max_key, right_off, col.len, col.type);
-                        right_off += col.len;
+                        auto& remain_col = index_meta_.cols[j];
+                        setMinKey(max_key, right_off, remain_col.len, remain_col.type);
+                        right_off += remain_col.len;
                     }
                     upper = pindex_handle_->lower_bound(max_key); 
                 }

@@ -6,7 +6,6 @@
 #include "execution/executor_hash_join.h"
 #include "state/state_item/op_state.h"
 #include "state/op_state_manager.h"
-#include "state/state_item/op_state.h"
 #include "execution_sort.h"
 #include "comp_ckpt_mgr.h"
 

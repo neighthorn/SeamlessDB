@@ -2,33 +2,49 @@
 
 #include <atomic>
 #include <queue>
+#include <mutex>
+#include <chrono>
 #include <condition_variable>
+#include "common/context.h"
 #include "executor_abstract.h"
 
 class GatherExecutor;
 class GatherOperatorState;
 
+/**
+ * Gather算子当前时刻的状态：
+ * 1. 当前算子的被调用次数
+ * 2. 当前时刻每个result_queue中的剩余未消耗tuple
+ * 3. 截止到目前为止，每个worker一共产生的tuple数量（儿子算子Next()接口的调用次数）
+ * Gather算子的记录代价：从上一次的checkpoint恢复到当前时刻的代价
+ * 1. 每个worker中上一次检查点没有记录而当前检查点需要记录的tuple代价总和
+ * Gather算子的恢复代价：
+ * 1. ti-t(last_ckpt) + max{child_rc_op} 
+ */
 struct GatherCheckpointInfo {
     std::chrono::time_point<std::chrono::system_clock> ck_timestamp_;
-    std::vector<int> result_buffer_curr_tuple_counts_;
-    std::vector<double> left_rc_ops_;
+    // std::vector<int> result_buffer_curr_tuple_counts_;
+    int64_t max_child_rc_op_;
     int state_change_time_;
 };
 
-// @TODO 支持并行IndexScan算子（在当前系统中SequentialScan也是走的IndexScan算子的接口）
-// gather 算子的不保证结果的顺序
+// 为了能够保证恢复的正确性，需要保证gather算子输出结果顺序的确定性，因此，在消费结果时，按照轮转的方式来依次消费每个worker的结果
 class GatherExecutor : public AbstractExecutor {
 public:
     int worker_thread_num_;    // 有多少个并行线程用于执行，为了简单，当前gather节点所在的主线程不进行实际的执行任务，只负责merge其他worker线程的结果
     // 为了防止多线程的竞争，每个线程都有自己的buffer，最后再合并到result_buffer_中
-    std::vector<std::queue<std::unique_ptr<Record>>> result_queues_;
-    std::vector<std::mutex> result_queues_mutex_;
+    // std::vector<std::queue<std::unique_ptr<Record>>> result_queues_;
+    std::vector<std::vector<std::unique_ptr<Record>>> result_queues_;
+    std::vector<int> consumed_sizes_;
+    std::vector<std::atomic<bool>> worker_is_end_;  // 记录每个worker是否已经结束
+    std::vector<std::atomic<size_t>> queue_sizes_;   // 记录每个worker的结果队列大小
+    int* result_buffer_curr_tuple_counts_;   // 记录当前时刻每个worker的结果队列大小，用于获取状态
+
     std::vector<std::shared_ptr<AbstractExecutor>> workers_;
     std::vector<std::thread> worker_threads_;   // worker线程
     std::mutex next_tuple_mutex_;    // 用于保护next_tuple_cv_和next_worker_index_
     std::condition_variable next_tuple_cv_;         // 用于通知主线程有新的结果
-    std::vector<std::atomic<bool>> worker_is_end_;  // 记录每个worker是否已经结束
-    std::vector<std::atomic<size_t>> queue_sizes_;   // 记录每个worker的结果队列大小
+    
     
     // 结果记录字段
     std::vector<ColMeta> cols_;
@@ -41,9 +57,11 @@ public:
 
     int state_change_time_;
 
+    Context* context_;
+
     GatherExecutor(int worker_thread_num, std::vector<std::shared_ptr<AbstractExecutor>>& workers, Context* context, int sql_id, int operator_id)
-        :AbstractExecutor(sql_id, operator_id), result_queues_(worker_thread_num), result_queues_mutex_(worker_thread_num),
-        worker_is_end_(worker_thread_num), queue_sizes_(worker_thread_num) {
+        :AbstractExecutor(sql_id, operator_id), result_queues_(worker_thread_num), consumed_sizes_(worker_thread_num),
+        worker_is_end_(worker_thread_num), queue_sizes_(worker_thread_num), context_(context) {
         worker_thread_num_ = worker_thread_num;
         workers_ = std::move(workers);
         assert(workers_.size() == worker_thread_num_);
@@ -55,18 +73,18 @@ public:
         //     result_queues_.emplace_back(std::queue<std::unique_ptr<Record>>());
         //     result_queues_mutex_.emplace_back(std::mutex());
         // }
-        std::cout << "result_queues_.size(): " << result_queues_.size() << ", result_queue_mutext.size(): " << result_queues_mutex_.size() << std::endl;
 
         for(int i = 0; i < worker_thread_num_; ++i) {
             worker_is_end_[i] = false;
             queue_sizes_[i] = 0;
+            consumed_sizes_[i] = 0;
         }
         
         // 所有的worker应该都是一样的算子，只是access的数据范围不同
         len_ = workers_[0]->tupleLen();
         cols_ = workers_[0]->cols();
 
-        ck_infos_.emplace_back(GatherCheckpointInfo{.ck_timestamp_ = std::chrono::high_resolution_clock::now(), .result_buffer_curr_tuple_counts_ = std::vector<int>(worker_thread_num_, 0), .left_rc_ops_ = std::vector<double>(worker_thread_num_, 0), .state_change_time_ = 0});
+        ck_infos_.emplace_back(GatherCheckpointInfo{.ck_timestamp_ = std::chrono::high_resolution_clock::now(), .max_child_rc_op_ = 0, .state_change_time_ = 0});
         exec_type_ = ExecutionType::GATHER;
         
         be_call_times_ = 0;
@@ -91,6 +109,9 @@ public:
             workers_[i].reset();
         }
         workers_.clear();
+        if(result_buffer_curr_tuple_counts_ != nullptr) {
+            delete[] result_buffer_curr_tuple_counts_;
+        }
     }
 
     void print_debug() {

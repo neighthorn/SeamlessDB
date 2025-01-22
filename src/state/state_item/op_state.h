@@ -23,6 +23,8 @@ constexpr int projection_state_size_min = operator_size_min + sizeof(bool) + siz
 constexpr int block_join_state_size_min = operator_size_min + projection_state_size_min + sizeof(int) * 7 + sizeof(bool) * 2 + sizeof(size_t) + index_scan_state_size_min;
 constexpr int hash_join_state_size_min = operator_size_min + projection_state_size_min + sizeof(int) * 5 + sizeof(bool) * 4 + index_scan_state_size_min;
 constexpr int sort_state_size_min = operator_size_min + sizeof(int) * 4 + sizeof(bool) * 2;
+// @TODO
+constexpr int gather_state_size_min = operator_size_min;
 // constexpr int hash_join_state_size_min = operator_size_min;
 
 struct CheckPointMeta {
@@ -287,4 +289,25 @@ public:
 
     std::vector<std::unique_ptr<Record>>* unsorted_records_;
     int* sorted_index_;
+};
+
+class GatherExecutor;
+class GatherOperatorState: public OperatorState {
+public:
+    GatherOperatorState();
+    GatherOperatorState(GatherExecutor *gather_op);
+    ~GatherOperatorState();
+    size_t serialize(char *dest) override;
+    bool deserialize(char *src, size_t size) override;
+    size_t getSize() override {
+        // std::cout << "GatherOperatorState getSize(): " << op_state_size_ << std::endl;
+        return op_state_size_;
+    }
+
+    int be_call_times_;
+    int subplan_num_;   // 有多少个子计划
+    int* subplan_call_times_;   // 每个子计划的调用次数
+    IndexScanOperatorState* subplan_states_;  // 每个子计划的状态
+
+    GatherExecutor *gather_op_;
 };

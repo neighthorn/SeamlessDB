@@ -1029,3 +1029,118 @@ void SortOperatorState::rebuild_sort_index(SortExecutor* sort_op, char* src, siz
     sort_op->sorted_index_ = new int[sort_op->num_records_];
     memcpy(sort_op_->sorted_index_, src + offset, sizeof(int) * sort_op_->num_records_);
 }
+
+GatherOperatorState::GatherOperatorState(): OperatorState(-1, -1, time(nullptr), ExecutionType::GATHER, false) {
+    gather_op_ = nullptr;
+    op_state_size_ = gather_state_size_min;
+    be_call_times_ = -1;
+}
+
+GatherOperatorState::GatherOperatorState(GatherExecutor* gather_op): 
+    OperatorState(gather_op->sql_id_, gather_op->operator_id_, time(nullptr), gather_op->exec_type_, gather_op->finished_begin_tuple_), gather_op_(gather_op) {
+    op_state_size_ = OperatorState::getSize();
+    
+    subplan_num_ = gather_op->worker_thread_num_;
+    op_state_size_ += sizeof(int);
+
+    be_call_times_ = gather_op->be_call_times_;
+    op_state_size_ += sizeof(int);
+    
+    subplan_call_times_ = new int[subplan_num_];
+    subplan_states_ = new IndexScanOperatorState[subplan_num_];
+
+    // Gather Executor在调用当前函数之前，已经获取了所有worker上的mutex，因此在整个state的构建过程中，都不会出现worker的修改
+    if(auto x = dynamic_cast<IndexScanExecutor *>(gather_op_->workers_[0].get())) {
+        for(int i = 0; i < subplan_num_; i++) {
+            subplan_call_times_[i] = gather_op->workers_[i]->be_call_times_;
+            op_state_size_ += sizeof(int);
+            subplan_states_[i] = IndexScanOperatorState(x);
+            op_state_size_ += subplan_states_[i].getSize();
+        }
+    } else {
+        std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
+    }
+
+    // serialize current unconsumed tuples in workers
+    for(int i = 0; i < gather_op_->worker_thread_num_; i++) {
+        op_state_size_ += sizeof(int);
+        op_state_size_ += (gather_op_->result_buffer_curr_tuple_counts_[i] - gather_op_->consumed_sizes_[i]) * gather_op_->len_;
+    }
+}
+
+GatherOperatorState::~GatherOperatorState() {
+    if(subplan_call_times_ != nullptr)
+        delete[] subplan_call_times_;
+    if(subplan_states_ != nullptr)
+        delete[] subplan_states_;
+}
+
+size_t GatherOperatorState::serialize(char *dest) {
+    size_t offset = OperatorState::serialize(dest);
+
+    memcpy(dest + offset, (char*)&subplan_num_, sizeof(int));
+    offset += sizeof(int);
+    memcpy(dest + offset, (char*)&be_call_times_, sizeof(int));
+    offset += sizeof(int);
+    for(int i = 0; i < subplan_num_; ++i) {
+        memcpy(dest + offset, (char*)&subplan_call_times_[i], sizeof(int));
+        offset += sizeof(int);
+    }
+    for(int i = 0; i < subplan_num_; ++i) {
+        size_t subplan_state_size = subplan_states_[i].serialize(dest + offset);
+        offset += subplan_state_size;
+    }
+
+    for(int i = 0; i < gather_op_->worker_thread_num_; i++) {
+        int tuple_num = gather_op_->result_buffer_curr_tuple_counts_[i] - gather_op_->consumed_sizes_[i];
+        memcpy(dest + offset, (char*)&tuple_num, sizeof(int));
+        offset += sizeof(int);
+        for(int j = gather_op_->consumed_sizes_[i]; j < gather_op_->result_buffer_curr_tuple_counts_[i]; j++) {
+            memcpy(dest + offset, gather_op_->result_queues_[i][j].get()->raw_data_, gather_op_->len_);
+            offset += gather_op_->len_;
+        }
+    }
+    assert(offset == op_state_size_);
+    return offset;
+}
+
+bool GatherOperatorState::deserialize(char* src, size_t size) {
+    if(size < OperatorState::getSize()) return false;
+
+    bool status = OperatorState::deserialize(src, OperatorState::getSize());
+    if(!status) return false;
+
+    size_t offset = OperatorState::getSize();
+    memcpy((char*)&subplan_num_, src + offset, sizeof(int));
+    offset += sizeof(int);
+    memcpy((char*)&be_call_times_, src + offset, sizeof(int));
+    offset += sizeof(int);
+    subplan_call_times_ = new int[subplan_num_];
+    for(int i = 0; i < subplan_num_; ++i) {
+        memcpy((char*)&subplan_call_times_[i], src + offset, sizeof(int));
+        offset += sizeof(int);
+    }
+    subplan_states_ = new IndexScanOperatorState[subplan_num_];
+    if(auto x = dynamic_cast<IndexScanExecutor *>(gather_op_->workers_[0].get())) {
+        for(int i = 0; i < subplan_num_; ++i) {
+            subplan_states_[i] = IndexScanOperatorState(x);
+            subplan_states_[i].deserialize(src + offset, size - offset);
+            offset += subplan_states_[i].getSize();
+        }
+    } else {
+        std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
+    }
+    for(int i = 0; i < gather_op_->worker_thread_num_; i++) {
+        int tuple_num;
+        memcpy((char*)&tuple_num, src + offset, sizeof(int));
+        offset += sizeof(int);
+        for(int j = 0; j < tuple_num; j++) {
+            auto record = std::make_unique<Record>(gather_op_->len_);
+            memcpy(record->raw_data_, src + offset, gather_op_->len_);
+            offset += gather_op_->len_;
+            gather_op_->result_queues_[i].push_back(std::move(record));
+        }
+    }
+    assert(offset == op_state_size_);
+    return true;
+}

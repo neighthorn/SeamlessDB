@@ -9,11 +9,39 @@
 void GatherExecutor::beginTuple() {
     if(is_in_recovery_ && finished_begin_tuple_) return;
 
-    // 开启worker_thread_num_个线程，每个线程负责一个subplan的执行
     for(int i = 0; i < worker_thread_num_; ++i) {
         workers_[i]->beginTuple();
     }
 
+    // 开启worker_thread_num_个线程，每个线程负责一个subplan的执行
+    for(int i = 0; i < worker_thread_num_; ++i) {
+        worker_threads_.push_back(std::thread([this, i](){
+            while(!workers_[i]->is_end()) {
+                auto record = workers_[i]->Next();
+                if(record == nullptr) {
+                    assert(0);
+                }
+                else {
+                    {
+                        std::lock_guard<std::mutex> lock(result_queues_mutex_[i]);
+                        result_queues_[i].emplace_back(std::move(record));
+                        queue_sizes_[i].fetch_add(1);
+                        // std::cout << "Worker " << i << " produce a record, result_queues[" << i << "].size()=" << result_queues_[i].size() << std::endl;
+                        // RwServerDebug::getInstance()->DEBUG_PRINT("[GatherExecutor]: worker[" + std::to_string(i) + "] produce a record, result_queues[" + std::to_string(i) + "].size()=" + std::to_string(queue_sizes_[i]));
+                    }
+                    next_tuple_cv_.notify_one();
+                }
+                workers_[i]->nextTuple();
+            }
+            worker_is_end_[i] = true;
+            std::cout << "Worker " << i << " finished!" << std::endl;
+        }));
+    }
+
+    nextTuple();
+}
+
+void GatherExecutor::launch_workers() {
     for(int i = 0; i < worker_thread_num_; ++i) {
         worker_threads_.push_back(std::thread([this, i](){
             while(!workers_[i]->is_end()) {
@@ -36,8 +64,6 @@ void GatherExecutor::beginTuple() {
             std::cout << "Worker " << i << " finished!" << std::endl;
         }));
     }
-
-    nextTuple();
 }
 
 // 保证结果输出顺序的确定性
@@ -47,18 +73,25 @@ void GatherExecutor::nextTuple() {
         return;
     }
 
-    std::unique_lock<std::mutex> lock(next_tuple_mutex_);
-    while(worker_is_end_[next_worker_index_] && queue_sizes_[next_worker_index_] == consumed_sizes_[next_worker_index_]) {
+    next_worker_index_ = (next_worker_index_ + 1) % worker_thread_num_;
+    // 判断当前worker是否已经结束，如果结束，则找到下一个未结束的worker
+    while(worker_is_end_[next_worker_index_] == true && queue_sizes_[next_worker_index_] == consumed_sizes_[next_worker_index_]) {
         next_worker_index_ = (next_worker_index_ + 1) % worker_thread_num_;
     }
+
+    // RwServerDebug::getInstance()->DEBUG_PRINT("[GatherExecutor]: nextTuple() next_worker_index_=" + std::to_string(next_worker_index_));
+    std::unique_lock<std::mutex> lock(result_queues_mutex_[next_worker_index_]);
     next_tuple_cv_.wait(lock, [this](){
+        if(is_end()) {
+            return true;
+        }
         if(queue_sizes_[next_worker_index_] > consumed_sizes_[next_worker_index_]) {
             return true;
         }
         return false;
     });
 
-    // // RwServerDebug::getInstance()->DEBUG_PRINT("[GatherExecutor]: nextTuple() wake up");
+    // RwServerDebug::getInstance()->DEBUG_PRINT("[GatherExecutor]: nextTuple() wake up");
     // // 找一个待消耗result最多的result buffer来输出next tuple
     // int max_unconsumed_worker_index = -1;
     // int max_unconsumed_tuple_count = -1;
@@ -82,9 +115,11 @@ void GatherExecutor::nextTuple() {
 }
 
 std::unique_ptr<Record> GatherExecutor::Next() {
-    // RwServerDebug::getInstance()->DEBUG_PRINT("[GatherExecutor]: Next() called");
+    std::lock_guard<std::mutex> lock(result_queues_mutex_[next_worker_index_]);
     std::unique_ptr<Record> record = std::move(result_queues_[next_worker_index_][consumed_sizes_[next_worker_index_]]);
     consumed_sizes_[next_worker_index_]++;
+    be_call_times_++;
+    if(state_open_) write_state_if_allow();
     return std::move(record);
 }
 
@@ -133,7 +168,7 @@ std::pair<bool, double> GatherExecutor::judge_state_reward(GatherCheckpointInfo*
     double rc_op = getRCop(curr_ck_info->ck_timestamp_);
 
     if(rc_op == 0) {
-        std::cerr << "[Error]: RCop is 0! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
+        // std::cerr << "[Error]: RCop is 0! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
         return {false, -1};
     }
 
@@ -193,7 +228,7 @@ int64_t GatherExecutor::getRCop(std::chrono::time_point<std::chrono::system_cloc
         }
     }
     
-    return rc_op;
+    return rc_op + max_child_rc_op;
 }
 
 void GatherExecutor::write_state() {

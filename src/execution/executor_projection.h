@@ -92,6 +92,9 @@ public:
         assert(!is_end());
         auto &prev_cols = prev_->cols();
         auto prev_rec = prev_->Next();
+        if(prev_rec == nullptr) {
+            dynamic_cast<GatherExecutor*>(prev_.get())->print_debug();
+        }
         auto &proj_cols = cols_;
         auto proj_rec = std::make_unique<Record>(len_);
         for (size_t proj_idx = 0; proj_idx < proj_cols.size(); proj_idx++) {

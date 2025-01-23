@@ -253,8 +253,7 @@ void rebuild_exec_plan_with_query_tree(Context* context, std::shared_ptr<PortalS
                 else {
                     exec_plan = nullptr;
                 }
-            }
-            else if(auto x = dynamic_cast<SortExecutor *>(exec_plan)) {
+            } else if(auto x = dynamic_cast<SortExecutor *>(exec_plan)) {
                 // RwServerDebug::getInstance()->DEBUG_PRINT("[REBUILD EXEC PLAN][SortExecutor][operator_id: " + std::to_string(x->operator_id_) + "][be_call_time: " + std::to_string(x->be_call_times_) + "][left child call times: " + std::to_string(x->left_child_call_times_) + "]");
                 bool find_match_checkpoint = false;
                 int checkpoint_index = -1;
@@ -336,8 +335,59 @@ void rebuild_exec_plan_with_query_tree(Context* context, std::shared_ptr<PortalS
                 else {
                     exec_plan = nullptr;
                 }
-            }
-            else {
+            } else if(auto x = dynamic_cast<GatherExecutor *>(exec_plan)) {
+                RwServerDebug::getInstance()->DEBUG_PRINT("[REBUILD EXEC PLAN][GatherExecutor][operator_id: " + std::to_string(x->operator_id_) + "]");
+                bool find_match_checkpoint = false;
+                int checkpoint_index = -1;
+                for(int i = last_checkpoint_index; i >= 0; i--) {
+                    if(op_checkpoints[i]->operator_id_ == x->operator_id_ && op_checkpoints[i]->op_state_time_ <= latest_time) {
+                        find_match_checkpoint = true;
+                        checkpoint_index = i;
+                        std::cout << "GatherOperator, op_id: " << x->operator_id_ << ", checkpoint index: " << checkpoint_index << "  " << __FILE__ << ":" << __LINE__ << std::endl;
+                        break;
+                    }
+                }
+
+                if(checkpoint_index == -1) {
+                    RwServerDebug::getInstance()->DEBUG_PRINT("[Warning]: Checkpoints Not Found! [GatherOperator] [op_id]: " + x->operator_id_);
+
+                    if(first_ckpt_op != nullptr) {
+                        break;
+                    }
+                    else {
+                        // TODO: 这里需要根据具体的operator类型来判断，暂时因为只有IndexScan所以不需要做任何处理，直接break
+                        break;
+                    }
+                }
+
+                last_checkpoint_index = checkpoint_index;
+                latest_time = op_checkpoints[checkpoint_index]->op_state_time_;
+                RwServerDebug::getInstance()->DEBUG_PRINT("[REBUILD EXEC PLAN][GatherExecutor][checkpoint_index: " + std::to_string(checkpoint_index) + "][operator_id: " + std::to_string(op_checkpoints[checkpoint_index]->operator_id_) + "][op_state_time: " + std::to_string(op_checkpoints[checkpoint_index]->op_state_time_) + "][op_state_size: " + std::to_string(op_checkpoints[checkpoint_index]->op_state_size_) + "]");
+                if(first_ckpt_op == nullptr) {
+                    first_ckpt_op = x;
+                }
+
+                std::unique_ptr<GatherOperatorState> gather_op_state = std::make_unique<GatherOperatorState>();
+                gather_op_state->deserialize(op_checkpoints[checkpoint_index]->op_state_addr_, op_checkpoints[checkpoint_index]->op_state_size_);
+                x->load_state_info(gather_op_state.get());
+
+                RwServerDebug::getInstance()->DEBUG_PRINT("[RECOVER EXEC PLAN][GatherExecutor][operator_id: " + std::to_string(x->operator_id_) + "][be_call_time: " + std::to_string(x->be_call_times_) + "][left child call times: " + std::to_string(x->left_child_call_times_));
+
+                for(int i = 0; i < x->worker_thread_num_; ++i) {
+                    if(auto child = dynamic_cast<BlockNestedLoopJoinExecutor *>(x->workers_[i].get())) {
+                        exec_plan = child;
+                    }
+                    else if(auto child = dynamic_cast<HashJoinExecutor *>(x->workers_[i].get())) {
+                        exec_plan = child;
+                    }
+                    else if(auto child = dynamic_cast<ProjectionExecutor *>(x->workers_[i].get())) {
+                        exec_plan = child;
+                    }
+                    else {
+                        exec_plan = nullptr;
+                    }
+                }
+            } else {
                 exec_plan = nullptr;
             }
         }
@@ -509,5 +559,23 @@ void recover_exec_plan_to_consistent_state(Context* context, AbstractExecutor* r
             x->nextTuple();
             x->be_call_times_ ++;
         }
+    }
+    else if(auto x = dynamic_cast<GatherExecutor *>(root)) {
+        if(x->finished_begin_tuple_ == false) {
+            /** Gather算子的finished_begin_tuple_比较特殊，指的是所有的worker线程都完成了beginTuple，而不是Gather算子的beginTuple函数是否执行完
+             * 因为在Gather算子中采用的是多线程并行的方式来进行儿子算子的处理，因此，Gather算子beginTuple执行完不代表所有算子的beginTuple都执行完了
+             * TODO: 如果儿子算子是IndexScan算子，则不存在finish_begin_tuple没有完成的情况，只有当儿子算子是其他算子的时候才会出现这种情况 ，当前不支持其他算子，所以还没有做处理
+             * */ 
+            x->beginTuple();
+        }
+        else {
+            x->launch_workers();
+        }
+
+        while(x->be_call_times_ < need_to_be_call_time) {
+            x->nextTuple();
+            x->be_call_times_ ++;
+        }
+
     }
 }

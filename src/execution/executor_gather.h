@@ -36,13 +36,13 @@ public:
     // std::vector<std::queue<std::unique_ptr<Record>>> result_queues_;
     std::vector<std::vector<std::unique_ptr<Record>>> result_queues_;
     std::vector<int> consumed_sizes_;
+    std::vector<std::mutex> result_queues_mutex_;
     std::vector<std::atomic<bool>> worker_is_end_;  // 记录每个worker是否已经结束
     std::vector<std::atomic<size_t>> queue_sizes_;   // 记录每个worker的结果队列大小
     int* result_buffer_curr_tuple_counts_;   // 记录当前时刻每个worker的结果队列大小，用于获取状态
 
     std::vector<std::shared_ptr<AbstractExecutor>> workers_;
     std::vector<std::thread> worker_threads_;   // worker线程
-    std::mutex next_tuple_mutex_;    // 用于保护next_tuple_cv_和next_worker_index_
     std::condition_variable next_tuple_cv_;         // 用于通知主线程有新的结果
     
     
@@ -61,7 +61,7 @@ public:
 
     GatherExecutor(int worker_thread_num, std::vector<std::shared_ptr<AbstractExecutor>>& workers, Context* context, int sql_id, int operator_id)
         :AbstractExecutor(sql_id, operator_id), result_queues_(worker_thread_num), consumed_sizes_(worker_thread_num),
-        worker_is_end_(worker_thread_num), queue_sizes_(worker_thread_num), context_(context) {
+        worker_is_end_(worker_thread_num), queue_sizes_(worker_thread_num), context_(context), result_queues_mutex_(worker_thread_num) {
         worker_thread_num_ = worker_thread_num;
         workers_ = std::move(workers);
         assert(workers_.size() == worker_thread_num_);
@@ -79,6 +79,9 @@ public:
             queue_sizes_[i] = 0;
             consumed_sizes_[i] = 0;
         }
+
+        next_worker_index_ = 0;
+        result_buffer_curr_tuple_counts_ = new int[worker_thread_num_];
         
         // 所有的worker应该都是一样的算子，只是access的数据范围不同
         len_ = workers_[0]->tupleLen();
@@ -115,7 +118,8 @@ public:
     }
 
     void print_debug() {
-        std::cout << "EndStatus for workers in GatherExecutor" << std::endl;
+        std::cout << "Status for workers in GatherExecutor" << std::endl;
+        std::cout << "Next worker index: " << next_worker_index_ << std::endl;
         for(int i = 0; i < worker_thread_num_; ++i) {
             std::cout << "Worker " << i << " is_end: " << workers_[i]->is_end() << std::endl;
         }
@@ -125,6 +129,8 @@ public:
         }
         assert(0);
     }
+
+    void launch_workers();
 
     std::string getType() override { return "Gather"; }
     

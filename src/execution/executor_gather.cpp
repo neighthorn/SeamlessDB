@@ -26,6 +26,9 @@ void GatherExecutor::beginTuple() {
                         std::lock_guard<std::mutex> lock(result_queues_mutex_[i]);
                         result_queues_[i].emplace_back(std::move(record));
                         queue_sizes_[i].fetch_add(1);
+                        if(workers_[i]->is_end()) {
+                            worker_is_end_[i] = true;
+                        }
                         // std::cout << "Worker " << i << " produce a record, result_queues[" << i << "].size()=" << result_queues_[i].size() << std::endl;
                         // RwServerDebug::getInstance()->DEBUG_PRINT("[GatherExecutor]: worker[" + std::to_string(i) + "] produce a record, result_queues[" + std::to_string(i) + "].size()=" + std::to_string(queue_sizes_[i]));
                     }
@@ -53,6 +56,9 @@ void GatherExecutor::launch_workers() {
                     {
                         result_queues_[i].emplace_back(std::move(record));
                         queue_sizes_[i].fetch_add(1);
+                        if(workers_[i]->is_end()) {
+                            worker_is_end_[i] = true;
+                        }
                         // std::cout << "Worker " << i << " produce a record, result_queues[" << i << "].size()=" << result_queues_[i].size() << std::endl;
                         // RwServerDebug::getInstance()->DEBUG_PRINT("[GatherExecutor]: worker[" + std::to_string(i) + "] produce a record, result_queues[" + std::to_string(i) + "].size()=" + std::to_string(queue_sizes_[i]));
                     }
@@ -68,7 +74,9 @@ void GatherExecutor::launch_workers() {
 
 // 保证结果输出顺序的确定性
 void GatherExecutor::nextTuple() {
-    // RwServerDebug::getInstance()->DEBUG_PRINT("[GatherExecutor]: nextTuple() called");
+    // if(consumed_sizes_[0] >= 15714269 && consumed_sizes_[1] >= 15714269)
+    //     RwServerDebug::getInstance()->DEBUG_PRINT("[GatherExecutor]: nextTuple() called");
+    
     if(is_end()) {
         return;
     }
@@ -79,7 +87,9 @@ void GatherExecutor::nextTuple() {
         next_worker_index_ = (next_worker_index_ + 1) % worker_thread_num_;
     }
 
-    // RwServerDebug::getInstance()->DEBUG_PRINT("[GatherExecutor]: nextTuple() next_worker_index_=" + std::to_string(next_worker_index_));
+    // if(consumed_sizes_[0] >= 15714269 && consumed_sizes_[1] >= 15714269)
+    //     RwServerDebug::getInstance()->DEBUG_PRINT("[GatherExecutor]: nextTuple() next_worker_index_=" + std::to_string(next_worker_index_));
+    
     std::unique_lock<std::mutex> lock(result_queues_mutex_[next_worker_index_]);
     next_tuple_cv_.wait(lock, [this](){
         if(is_end()) {
@@ -91,7 +101,8 @@ void GatherExecutor::nextTuple() {
         return false;
     });
 
-    // RwServerDebug::getInstance()->DEBUG_PRINT("[GatherExecutor]: nextTuple() wake up");
+    // if(consumed_sizes_[0] >= 15714269 && consumed_sizes_[1] >= 15714269)
+    //     RwServerDebug::getInstance()->DEBUG_PRINT("[GatherExecutor]: nextTuple() wake up");
     // // 找一个待消耗result最多的result buffer来输出next tuple
     // int max_unconsumed_worker_index = -1;
     // int max_unconsumed_tuple_count = -1;
@@ -120,16 +131,18 @@ std::unique_ptr<Record> GatherExecutor::Next() {
     consumed_sizes_[next_worker_index_]++;
     be_call_times_++;
     if(state_open_) write_state_if_allow();
-    return std::move(record);
+    return record;
 }
 
 bool GatherExecutor::is_end() const {
-    // RwServerDebug::getInstance()->DEBUG_PRINT("[GatherExecutor]: is_end() called");
+    // if(consumed_sizes_[0] >= 15714269 && consumed_sizes_[1] >= 15714269)
+    //     RwServerDebug::getInstance()->DEBUG_PRINT("[GatherExecutor]: is_end() called");
     // 当所有的worker线程都是is_end()并且所有的result buffer都已经消费完时，Gather算子才是end
     for(int i = 0; i < worker_thread_num_; ++i) {
         if(!worker_is_end_[i] || queue_sizes_[i] > consumed_sizes_[i]) {
             // std::cout << "worker[" << i << "] has not been consumed, workers[i].end=" << workers_[i]->is_end() << ", worker[i].result_count: " << result_queues_.size() << "\n";
-            // RwServerDebug::getInstance()->DEBUG_PRINT("[GatherExecutor]: worker[" + std::to_string(i) + "] has not been consumed, workers[i].end=" + std::to_string(workers_[i]->is_end()) + ", worker[i].result_count: " + std::to_string(queue_sizes_[i]));
+            // if(consumed_sizes_[i] >= 15714269)
+            //     RwServerDebug::getInstance()->DEBUG_PRINT("[GatherExecutor]: worker[" + std::to_string(i) + "] has not been consumed, workers[i].end=" + std::to_string(workers_[i]->is_end()) + ", worker_is_end_[i]=" + std::to_string(worker_is_end_[i]) + ", worker[i].result_count: " + std::to_string(queue_sizes_[i]) + ", consumed_size: " + std::to_string(consumed_sizes_[i]));
             return false;
         }
     }
@@ -168,12 +181,14 @@ std::pair<bool, double> GatherExecutor::judge_state_reward(GatherCheckpointInfo*
     double rc_op = getRCop(curr_ck_info->ck_timestamp_);
 
     if(rc_op == 0) {
-        // std::cerr << "[Error]: RCop is 0! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
+        std::cerr << "[Error]: RCop is 0! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
         return {false, -1};
     }
 
     double new_src_op = src_op / MB_ + src_op / RB_ + C_;
     double rew_op = rc_op / new_src_op - state_theta_;
+
+    // RwServerDebug::getInstance()->DEBUG_PRINT("[GatherExecutor]: src_op=" + std::to_string(src_op) + ", rc_op=" + std::to_string(rc_op) + ", new_src_op=" + std::to_string(new_src_op) + ", rew_op=" + std::to_string(rew_op));
 
     if(rew_op > 0) {
         if(dynamic_cast<IndexScanExecutor *>(workers_[0].get())) {
@@ -193,10 +208,10 @@ std::pair<bool, double> GatherExecutor::judge_state_reward(GatherCheckpointInfo*
             curr_ck_info->max_child_rc_op_ = max_child_rc_op;
             curr_ck_info->state_change_time_ = state_change_time_;
         }
-        if(state_change_time_ - latest_ck_info->state_change_time_ < 10) return {false, -1};
+        // if(state_change_time_ - latest_ck_info->state_change_time_ < 10) return {false, -1};
         return {true, src_op};
     }
-    return {true, 0};
+    return {false, 0};
 }
 
 int64_t GatherExecutor::getRCop(std::chrono::time_point<std::chrono::system_clock> curr_time) {
@@ -256,6 +271,7 @@ void GatherExecutor::write_state_if_allow(int type) {
     if(able_to_write) {
         // 首先获取所有的锁
         // TODO: this src_op is not correct
+        RwServerDebug::getInstance()->DEBUG_PRINT("A checkpoint for gather op is created.");
         context_->op_state_mgr_->add_operator_state_to_buffer(this, src_op);
         ck_infos_.push_back(curr_ck_info);
     }

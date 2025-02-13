@@ -26,7 +26,7 @@ public:
     void next();
 
     bool is_end() { 
-        if(rid_.page_no == end_.page_no && rid_.slot_no == end_.slot_no) return true;
+        if((rid_.page_no == end_.page_no && rid_.slot_no == end_.slot_no) || (rid_.record_no >= end_.record_no)) return true;
         return false;
      }
 

@@ -115,7 +115,7 @@ void IxNodeHandle::leaf_insert_continous_records(int pos, const char* extern_pag
     // find the record location whose order is pos-1
     int32_t prev_record_offset;
     // prev_record represents the record whose next_record_offset has to be updated
-    char* prev_record;
+    char* prev_record = nullptr;
     if(pos > 0) {
         prev_record_offset = *(int32_t*) (directory_slot - sizeof(int32_t));
         prev_record = records_ + prev_record_offset;
@@ -148,7 +148,8 @@ void IxNodeHandle::leaf_insert_continous_records(int pos, const char* extern_pag
 
     if(page_hdr_->tot_num_records_ - pos > 0) {
         // update the next_record_offset of the last inserted record
-        *(int32_t*)prev_record = *(int32_t*)(directory_slot + directory_size + file_hdr_->col_tot_len_);
+        // *(int32_t*)prev_record = *(int32_t*)(directory_slot + directory_size + file_hdr_->col_tot_len_);
+        *(int32_t*)prev_record = *(int32_t*)(directory_slot + file_hdr_->col_tot_len_);
     }
     else {
         // the last record, set the next_record_offset to -1

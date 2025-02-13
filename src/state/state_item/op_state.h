@@ -63,6 +63,8 @@ public:
     OperatorState();
     OperatorState(int sql_id, int operator_id, time_t op_state_time, ExecutionType exec_type, bool finish_begin_tuple) ;
 
+    virtual ~OperatorState() = default;
+
     virtual size_t  serialize(char *dest) ;
 
     virtual bool    deserialize(char *src, size_t size) ;
@@ -85,7 +87,7 @@ public:
 
 public:
     /*
-        恢复用
+        恢复用,指向其他位置的指针，不在当前析构函数中释放
     */
     char *op_state_addr_ = nullptr;
 };
@@ -97,6 +99,7 @@ public:
     IndexScanOperatorState();
 
     IndexScanOperatorState(IndexScanExecutor *index_scan_op);
+    ~IndexScanOperatorState() override {}
     
     size_t  serialize(char *dest) override;
 
@@ -126,7 +129,7 @@ public:
 
     ProjectionOperatorState(ProjectionExecutor* projection_op);
 
-    ~ProjectionOperatorState() {
+    ~ProjectionOperatorState() override {
         if(left_index_scan_state_ != nullptr) {
             delete left_index_scan_state_;
         }
@@ -164,6 +167,8 @@ public:
     BlockJoinOperatorState();
 
     BlockJoinOperatorState(BlockNestedLoopJoinExecutor *block_join_op) ;
+
+    ~BlockJoinOperatorState() override;
 
     size_t  serialize(char *dest) override;
 
@@ -220,6 +225,7 @@ public:
     HashJoinOperatorState();
 
     HashJoinOperatorState(HashJoinExecutor *hash_join_op);
+    ~HashJoinOperatorState() override {}
 
     size_t serialize(char *dest) override;
 
@@ -266,6 +272,7 @@ class SortOperatorState: public OperatorState {
 public:
     SortOperatorState();
     SortOperatorState(SortExecutor *sort_op);
+    ~SortOperatorState() override {}
     size_t serialize(char *dest) override;
     bool deserialize(char *src, size_t size) override;
     void rebuild_sort_records(SortExecutor *sort_op, char* src, size_t size);

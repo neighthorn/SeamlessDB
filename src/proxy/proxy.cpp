@@ -400,7 +400,7 @@ void run_proxy(Proxy* proxy) {
         proxy->rw_threads_.emplace_back([&rw_mutex_, &rw_cv_, i, proxy]() {
             try {
                 run_client(proxy->bench_mark_, proxy->rw_node_ip_, proxy->rw_node_port_, i);
-            } catch(ConnectionClosedException e) {
+            } catch(const ConnectionClosedException& e) {
                 conn_closed = true;
                 std::cout << "get connection close exception\n";
                 // std::unique_lock<std::mutex> lock(rw_mutex_);
@@ -444,7 +444,7 @@ void run_proxy(Proxy* proxy) {
             proxy->rw_threads_.emplace_back([i, proxy]() {
                 try {
                     reconnect_to_backup_rw(proxy->back_rw_ip_, proxy->back_rw_port_, i, proxy->bench_mark_);
-                } catch(ConnectionClosedException e) {
+                } catch(const ConnectionClosedException& e) {
                     std::cout << "get connection close exception\n";
                 }
             }); 

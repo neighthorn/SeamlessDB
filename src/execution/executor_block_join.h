@@ -38,6 +38,9 @@ class JoinBlock {
         size_t cur_pos_;
 
         JoinBlock(size_t max_size);
+        ~JoinBlock() {
+            buffer_.clear();
+        }
 
         void push_back(std::unique_ptr<Record> record);
 

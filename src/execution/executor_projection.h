@@ -111,7 +111,7 @@ public:
             curr_result_num_ ++;
             write_state_if_allow();
         }
-        return std::move(proj_rec);
+        return proj_rec;
     }
 
     ColMeta get_col_offset(const TabCol &target) override {

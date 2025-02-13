@@ -682,7 +682,7 @@ class DMLPlan : public Plan
             if(subplan_tag == PlanTag::T_Projection) {
                 subplan_ = ProjectionPlan::deserialize(src + off_subplan, sm_mgr);
             }
-            else if(subplan_tag == PlanTag::T_SeqScan || PlanTag::T_IndexScan) {
+            else if(subplan_tag == PlanTag::T_SeqScan || subplan_tag == PlanTag::T_IndexScan) {
                 subplan_ = ScanPlan::deserialize(src + off_subplan, sm_mgr);
             }
             else if(subplan_tag == PlanTag::T_Sort) {

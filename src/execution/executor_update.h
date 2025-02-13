@@ -39,8 +39,8 @@ class UpdateExecutor : public AbstractExecutor {
     }
     void beginTuple() override {}
     void nextTuple() override {}
-    size_t tupleLen() const override {}
-    bool is_end() const override {}
+    size_t tupleLen() const override { assert(0);  return -1;}
+    bool is_end() const override { assert(0); return false; }
     std::unique_ptr<Record> Next() override {
         auto pindex = tab_.get_primary_index_meta();
         int rid_tot_size = rids_.size();

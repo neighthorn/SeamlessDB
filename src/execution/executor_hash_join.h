@@ -32,6 +32,7 @@ public:
     std::unordered_map<std::string, size_t> checkpointed_indexes_;                      // 上一次检查点最后一次记录的index
     int left_hash_table_checkpointed_tuple_count_;
     int left_hash_table_curr_tuple_count_;
+    std::unique_ptr<Record> current_right_record_;  // 当前右儿子的记录
 
     bool is_end_;
     int state_change_time_;

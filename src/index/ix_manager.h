@@ -76,7 +76,7 @@ class IxManager {
         // max_number_of_records_ represents the max number of records in leaf page
         // |IxPageHdr| + record_len * (n+1) + (col_tot_len + |int32_t|) * (n + 1) <= PAGE_SIZE
         // we set the page_directory to n+1 in order to finish the split operation for LeafPage easier
-        int max_number_of_records = static_cast<int>((PAGE_SIZE - sizeof(IxPageHdr)) / (record_len + col_tot_len + sizeof(int)) - 1);
+        int max_number_of_records = static_cast<int>((PAGE_SIZE - sizeof(IxPageHdr)) / (record_len + col_tot_len + sizeof(int32_t)) - 1);
 
         IxFileHdr* fhdr = new IxFileHdr(IX_INIT_NUM_PAGES, IX_INIT_ROOT_PAGE,
                                 col_num, col_tot_len, btree_order, (btree_order + 1) * col_tot_len, record_len,

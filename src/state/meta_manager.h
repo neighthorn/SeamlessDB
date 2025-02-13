@@ -117,12 +117,6 @@ public:
     }
 
     ALWAYS_INLINE
-    offset_t GetTxnListBitmapAddr() {
-        // assert(txn_list_bitmap_addr != -1);
-        // return txn_list_bitmap_addr;
-    }
-
-    ALWAYS_INLINE
     offset_t GetTxnAddrByIndex(int index) {
         assert(txn_list_base_addr != -1);
         assert(txn_size != -1);

@@ -108,16 +108,24 @@ class AbstractExecutor {
         {
             case OP_EQ:
                 return left_value == right_value; 
+                break;
             case OP_NE: 
                 return left_value != right_value;
+                break;
             case OP_LT: 
                 return left_value < right_value;
+                break;
             case OP_GT: 
                 return left_value > right_value;
+                break;
             case OP_LE: 
                 return left_value <= right_value;
+                break;
             case OP_GE:
                 return left_value >= right_value;
+                break;
+            default:
+            break;
         }
         throw IncompatibleTypeError(coltype2str(left_value.type), coltype2str(right_value.type));
     }

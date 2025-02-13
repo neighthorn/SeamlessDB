@@ -37,8 +37,9 @@ class DeleteExecutor : public AbstractExecutor {
     }
     void beginTuple() override {}
     void nextTuple() override {}
-    size_t tupleLen() const override {}
-    bool is_end() const override {}
+    // cannot be accessed
+    size_t tupleLen() const override { assert(0);  return -1;}
+    bool is_end() const override { assert(0); return false; }
     
     void set_rids(std::vector<Rid> rids){rids_ = rids;}
     std::unique_ptr<Record> Next() override {

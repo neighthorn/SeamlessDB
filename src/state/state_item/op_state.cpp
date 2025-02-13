@@ -392,6 +392,18 @@ BlockJoinOperatorState::BlockJoinOperatorState(BlockNestedLoopJoinExecutor *bloc
     op_state_size_ = getSize();
 }
 
+BlockJoinOperatorState::~BlockJoinOperatorState() {
+    if(left_child_is_join_ == false) {
+        delete left_child_state_;
+    }
+    if(right_child_is_join_ == false) {
+        delete right_child_state_;
+    }
+    if(left_block_ != nullptr) {
+        delete left_block_;
+    }
+}
+
 size_t BlockJoinOperatorState::serialize(char *dest) {
     // RwServerDebug::getInstance()->DEBUG_PRINT("[BlockJoinOperatorState::serialize] op_id" + std::to_string(operator_id_) + ", state_size: " + std::to_string(op_state_size_));
 

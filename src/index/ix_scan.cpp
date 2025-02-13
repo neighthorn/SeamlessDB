@@ -23,6 +23,9 @@ void IxScan::next() {
     assert(!is_end());
     IxNodeHandle *node = ih_->fetch_node(rid_.page_no);
     assert(node->is_leaf_page());
+    // used for test
+    IxNodeHandle *end_node = ih_->fetch_node(end_.page_no);
+    assert(end_node->is_leaf_page());
     // assert(rid_.slot_no < node->get_size());
     ASSERT(rid_.slot_no < node->get_size(), "rid_.slot_no: " + std::to_string(rid_.slot_no) + ", node->get_size(): " + std::to_string(node->get_size()) + ", node->page_id: " << std::to_string(node->get_page_id().page_no));
     // increment slot no
@@ -34,5 +37,14 @@ void IxScan::next() {
     }
     ih_->buffer_pool_manager_->unpin_page(node->get_page_id(), false);
     delete node;
+    node = nullptr;
     rid_.record_no ++;
+
+    /**
+     * @TEST: 判断rid_.record_no是否和对应位置上的record_no相等
+     */
+    // node = ih_->fetch_node(rid_.page_no);
+    // if(rid_.record_no != node->leaf_get_record_no_at(rid_.slot_no)) {
+        // std::cerr << "rid_.record_no: " << rid_.record_no << ", node->leaf_get_record_no_at(rid_.slot_no): " << node->leaf_get_record_no_at(rid_.slot_no) << std::endl;
+    // }
 }

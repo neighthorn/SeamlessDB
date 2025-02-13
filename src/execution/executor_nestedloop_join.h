@@ -245,7 +245,8 @@ class NestedLoopJoinExecutor : public AbstractExecutor {
     }
     
     int checkpoint(char* dest) override {
-
+        assert(0);
+        return -1;
     }
 
     std::chrono::time_point<std::chrono::system_clock> get_latest_ckpt_time() override {

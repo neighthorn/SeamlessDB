@@ -507,7 +507,7 @@ Rid IxIndexHandle::upper_bound(const char *key) {
 
 Rid IxIndexHandle::leaf_end() const {
     IxNodeHandle *node = fetch_node(file_hdr_->last_leaf_);
-    Rid iid = {.page_no = file_hdr_->last_leaf_, .slot_no = node->leaf_get_tot_record_num(), .record_no = -1};
+    Rid iid = {.page_no = file_hdr_->last_leaf_, .slot_no = node->leaf_get_tot_record_num(), .record_no = file_hdr_->next_record_no_};
     buffer_pool_manager_->unpin_page(node->get_page_id(), false);  // unpin it!
     // Rid iid = 
     delete node;

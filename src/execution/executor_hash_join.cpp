@@ -2,6 +2,7 @@
 #include "executor_block_join.h"
 #include "executor_index_scan.h"
 #include "executor_projection.h"
+#include "executor_gather.h"
 #include "state/op_state_manager.h"
 #include "state/state_manager.h"
 #include "state/state_item/op_state.h"
@@ -92,6 +93,15 @@ void HashJoinExecutor::beginTuple() {
         right_rec = right_->Next();
     }
 
+    if(find_match_join_key(right_rec.get()) == hash_table_.end()) {
+        is_end_ = true;
+        finished_begin_tuple_ = true;
+        write_state_if_allow();
+        return;
+    }
+
+    current_right_record_ = std::move(right_rec);
+
     finished_begin_tuple_ = true;
     write_state_if_allow();
 }
@@ -128,7 +138,7 @@ void HashJoinExecutor::nextTuple(){
     std::unique_ptr<Record> right_rec;
     left_tuples_index_ ++;
     if(left_tuples_index_ < left_iter_->second.size()) {
-        // std::cout << "HashJoinExecutor::nextTuple(), left_tuple_index < left_iter->second.size()\n";
+        std::cout << "HashJoinExecutor::nextTuple(), left_tuple_index < left_iter->second.size()\n";
         return;
     }
 
@@ -148,6 +158,12 @@ void HashJoinExecutor::nextTuple(){
         right_rec = right_->Next();
     }
 
+    if(find_match_join_key(right_rec.get()) == hash_table_.end()) {
+        is_end_ = true;
+        return;
+    }
+
+    current_right_record_ = std::move(right_rec);
 }
 
 std::unique_ptr<Record> HashJoinExecutor::Next() {
@@ -156,10 +172,13 @@ std::unique_ptr<Record> HashJoinExecutor::Next() {
     // auto left_rec = left_->Next();
     const std::vector<std::unique_ptr<Record>>& record_vector = left_iter_->second;
     const std::unique_ptr<Record>& left_rec = left_iter_->second[left_tuples_index_];
-    auto right_rec = right_->Next();
+    // auto right_rec = right_->Next();
+    // if(right_rec == nullptr) {
+    //     dynamic_cast<GatherExecutor*>(right_.get())->print_debug();
+    // }
     auto res = std::make_unique<Record>(len_);
     memcpy(res->raw_data_, left_rec->raw_data_, left_rec->data_length_);
-    memcpy(res->raw_data_ + left_rec->data_length_, right_rec->raw_data_, right_rec->data_length_);
+    memcpy(res->raw_data_ + left_rec->data_length_, current_right_record_->raw_data_, current_right_record_->data_length_);
 
     be_call_times_ ++;
     state_change_time_ ++;

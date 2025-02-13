@@ -9,6 +9,7 @@
 #include "spdlog/sinks/basic_file_sink.h"
 
 #define PRINT_LOG 1
+#define TIME_OPEN 1
 
 class RwServerDebug {
 private:

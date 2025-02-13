@@ -6,6 +6,7 @@
 #include "index/ix.h"
 #include "system/sm.h"
 #include "state/state_item/op_state.h"
+#include "debug_log.h"
 
 // 索引查询的条件：(a,b,c) 遇到第一个非等值查询就停止
 
@@ -70,7 +71,6 @@ friend class IndexScanOperatorState;
         filter_conds_ = std::move(filter_conds);
         index_conds_ = std::move(index_conds);
         index_meta_ = *(tab_.get_primary_index_meta());
-        auto& index_cols = index_meta_.cols;
         // for()
 
         if(index_conds_.size() == 0) {
@@ -611,12 +611,17 @@ NOLOCK1:
     }
 
     void nextTuple() override {
+        // RwServerDebug::getInstance()->DEBUG_PRINT("IndexScanExecutor nextTuple() invoked");
+        // RwServerDebug::getInstance()->DEBUG_PRINT("Current Scan.curr_rid: " + std::to_string(scan_->rid().page_no) + ", " + std::to_string(scan_->rid().slot_no) + ", " + std::to_string(scan_->rid().record_no) + "; Current Scan.end_rid: " + std::to_string(scan_->end().page_no) + ", " + std::to_string(scan_->end().slot_no) + ", " + std::to_string(scan_->end().record_no));
         // check_runtime_conds();
-        assert(!is_end());
+        // assert(!is_end());
         // if(load_from_state_) {
         //     std::cout << "IndexScan Current location: " << rid_.page_no << ", " << rid_.slot_no << std::endl;
         //     load_from_state_ = false;
         // }
+        if(scan_->rid().record_no == upper_rid_.record_no) {
+            std::cout << "IndexScan: reach the end of the scan\n";
+        }
         Lock* lock = nullptr;
         auto& tab_cols_ = tab_.cols_;
         for (scan_->next(); !scan_->is_end(); scan_->next()) {
@@ -685,7 +690,7 @@ NOLOCK1:
             auto& proj_col = cols_[proj_idx];
             memcpy(proj_sel_record->raw_data_ + proj_col.offset, current_record_->raw_data_ + prev_col.offset, proj_col.len);
         }
-        return std::move(proj_sel_record);
+        return proj_sel_record;
         // return std::make_unique<Record>(*current_record_);   // 复制构造，代价稍微高一些
     }
 
@@ -742,13 +747,8 @@ NOLOCK1:
 
     int checkpoint(char* dest) override {
         // store the current IxScan
-        int offset = 0;
-        memcpy(dest + offset, &scan_->rid(), sizeof(Rid));
-        offset += sizeof(Rid);
-        memcpy(dest + offset, &scan_->end(), sizeof(Rid));
-        offset += sizeof(Rid);
-        
-        return offset;
+        assert(0);
+        return -1;
     }
 
     std::pair<bool, std::unique_ptr<Record>> mvcc_get_record(Rid rid) {

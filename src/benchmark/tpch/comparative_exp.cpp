@@ -126,6 +126,7 @@ std::string ComparativeExp::get_table_join_col(int tab_id) {
         default:
         break;
     }
+    return std::move("");
 }
 
 // void ComparativeExp::get_join_cond(int left_tab_id, int right_tab_id, std::vector<Condition>& join_conds) {

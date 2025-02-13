@@ -143,7 +143,7 @@ std::unique_ptr<SQLState> OperatorStateManager::read_sql_from_state() {
     }
 
     // RwServerDebug::getInstance()->DEBUG_PRINT("[READ SQL][THREAD ID: " + std::to_string(coro_sched_->t_id_) + "][SQLID: " + std::to_string(sql_state->sql_id) + "][SQL SIZE: " + std::to_string(sql_state->sql_size) + "][SQL: " + sql_state->sql + "] read sql from state node.");
-    return std::move(sql_state);
+    return sql_state;
 }
 
 
@@ -639,7 +639,7 @@ std::unique_ptr<CheckPointMeta> OperatorStateManager::read_op_checkpoint_meta() 
         std::cerr << "Failed to deserialize checkpoint meta.\n";
     }
 
-    return std::move(ck_meta);
+    return ck_meta;
 }
 
 std::vector<std::unique_ptr<OperatorState>> OperatorStateManager::read_op_checkpoints(CheckPointMeta *ck_meta) {
@@ -704,7 +704,7 @@ std::vector<std::unique_ptr<OperatorState>> OperatorStateManager::read_op_checkp
         op_states.push_back(std::move(op_stat));
     }
 
-    return std::move(op_states);
+    return op_states;
 }
 
 

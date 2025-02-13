@@ -230,7 +230,6 @@ void replay_log_for_resumption(SmManager* sm_mgr) {
     storage_service::GetPersistLsnRequest request;
     storage_service::GetPersistLsnResponse* response = new storage_service::GetPersistLsnResponse;
     brpc::Controller* cntl = new brpc::Controller;
-    brpc::CallId cid = cntl->call_id();
 
     stub.GetPersistLsn(cntl, &request, response, NULL);
     int persist_lsn = response->persist_lsn();

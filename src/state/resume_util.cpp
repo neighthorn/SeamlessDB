@@ -66,11 +66,11 @@ void rebuild_exec_plan_with_query_tree(Context* context, std::shared_ptr<PortalS
             }
             if(auto x = dynamic_cast<ProjectionExecutor *>(exec_plan)) {
                 if(x->is_root_) {
-                    bool find_match_checkpoint = false;  
+                    // bool find_match_checkpoint = false;  
                     int  checkpoint_index = -1;
                     for(int i = last_checkpoint_index; i >= 0; i--) {
                         if(op_checkpoints[i]->operator_id_ == x->operator_id_ && op_checkpoints[i]->op_state_time_ <= latest_time) {
-                            find_match_checkpoint = true;
+                            // find_match_checkpoint = true;
                             checkpoint_index = i;
                             break;
                         }
@@ -101,11 +101,11 @@ void rebuild_exec_plan_with_query_tree(Context* context, std::shared_ptr<PortalS
                 /*
                     find the latest checkpoint
                 */          
-                bool find_match_checkpoint = false;  
+                // bool find_match_checkpoint = false;  
                 int  checkpoint_index = -1;
                 for(int i = last_checkpoint_index; i >= 0; i--) {
                     if(op_checkpoints[i]->operator_id_ == x->operator_id_ && op_checkpoints[i]->op_state_time_ <= latest_time) {
-                        find_match_checkpoint = true;
+                        // find_match_checkpoint = true;
                         checkpoint_index = i;
                         break;
                     }
@@ -174,11 +174,11 @@ void rebuild_exec_plan_with_query_tree(Context* context, std::shared_ptr<PortalS
                 // 对于hash join来说，由于是增量记录状态，因此，除了找到最新的检查点之外，还需要找到之前所有的包含hash_table的检查点来重构hash_table
                 RwServerDebug::getInstance()->DEBUG_PRINT("[REBUILD EXEC PLAN][HashJoinExecutor][operator_id: " + std::to_string(x->operator_id_) + "]");
                 // find latest checkpoint   
-                bool find_match_checkpoint = false;
+                // bool find_match_checkpoint = false;
                 int checkpoint_index = -1;
                 for(int i = last_checkpoint_index; i >= 0; i--) {
                     if(op_checkpoints[i]->operator_id_ == x->operator_id_ && op_checkpoints[i]->op_state_time_ <= latest_time) {
-                        find_match_checkpoint = true;
+                        // find_match_checkpoint = true;
                         checkpoint_index = i;
                         std::cout << "HashJoinOperator, op_id: " << x->operator_id_ << ", checkpoint index: " << checkpoint_index << "  " << __FILE__ << ":" << __LINE__ << std::endl;
                         break;
@@ -255,11 +255,11 @@ void rebuild_exec_plan_with_query_tree(Context* context, std::shared_ptr<PortalS
                 }
             } else if(auto x = dynamic_cast<SortExecutor *>(exec_plan)) {
                 // RwServerDebug::getInstance()->DEBUG_PRINT("[REBUILD EXEC PLAN][SortExecutor][operator_id: " + std::to_string(x->operator_id_) + "][be_call_time: " + std::to_string(x->be_call_times_) + "][left child call times: " + std::to_string(x->left_child_call_times_) + "]");
-                bool find_match_checkpoint = false;
+                // bool find_match_checkpoint = false;
                 int checkpoint_index = -1;
                 for(int i = last_checkpoint_index; i >= 0; i--) {
                     if(op_checkpoints[i]->operator_id_ == x->operator_id_ && op_checkpoints[i]->op_state_time_ <= latest_time) {
-                        find_match_checkpoint = true;
+                        // find_match_checkpoint = true;
                         checkpoint_index = i;
                         std::cout << "SortOperator, op_id: " << x->operator_id_ << ", checkpoint index: " << checkpoint_index << "  " << __FILE__ << ":" << __LINE__ << std::endl;
                         break;
@@ -337,11 +337,11 @@ void rebuild_exec_plan_with_query_tree(Context* context, std::shared_ptr<PortalS
                 }
             } else if(auto x = dynamic_cast<GatherExecutor *>(exec_plan)) {
                 RwServerDebug::getInstance()->DEBUG_PRINT("[REBUILD EXEC PLAN][GatherExecutor][operator_id: " + std::to_string(x->operator_id_) + "]");
-                bool find_match_checkpoint = false;
+                // bool find_match_checkpoint = false;
                 int checkpoint_index = -1;
                 for(int i = last_checkpoint_index; i >= 0; i--) {
                     if(op_checkpoints[i]->operator_id_ == x->operator_id_ && op_checkpoints[i]->op_state_time_ <= latest_time) {
-                        find_match_checkpoint = true;
+                        // find_match_checkpoint = true;
                         checkpoint_index = i;
                         std::cout << "GatherOperator, op_id: " << x->operator_id_ << ", checkpoint index: " << checkpoint_index << "  " << __FILE__ << ":" << __LINE__ << std::endl;
                         break;

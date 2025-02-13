@@ -67,7 +67,6 @@ void BufferPool::fetch_page_from_rpc(Page* page, PageId page_id, frame_id_t fram
     storage_service::GetLatestPageRequest request;
     storage_service::GetLatestPageResponse* response = new storage_service::GetLatestPageResponse;
     brpc::Controller* cntl = new brpc::Controller;
-    brpc::CallId cid = cntl->call_id();
 
     request.add_page_id();
     request.mutable_page_id(0)->set_table_id(page_id.table_id);

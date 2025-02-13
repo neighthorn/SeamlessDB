@@ -38,7 +38,7 @@ public:
     lsn_t prev_lsn_;                /* 事务创建的前一条日志记录的lsn，用于undo */
     bool is_persisit_;              /* 是否是一个原子操作的结尾 */
 
-    ~RedoLogRecord() {}
+    virtual ~RedoLogRecord() {}
 
     // 把日志记录序列化到dest中
     virtual void serialize (char* dest) const {
@@ -86,7 +86,7 @@ public:
         log_tid_ = txn_id;
     }
 
-    ~CommitLogRecord() {}
+    ~CommitLogRecord() override {}
 
     void serialize(char* dest) {
         RedoLogRecord::serialize(dest);
@@ -113,7 +113,7 @@ public:
         log_tid_ = txn_id;
     }
 
-    ~AbortLogRecord() {}
+    ~AbortLogRecord() override {}
 
     void serialize(char* dest) {
         RedoLogRecord::serialize(dest);
@@ -156,7 +156,7 @@ public:
         log_tot_len_ += table_name_size_;
     }
 
-    ~UpdateRedoLogRecord() {
+    ~UpdateRedoLogRecord() override {
         if(table_name_ != nullptr) {
             delete[] table_name_;
         }
@@ -241,7 +241,7 @@ public:
         log_tot_len_ += table_name_size_;
     }
 
-    ~DeleteRedoLogRecord() {
+    ~DeleteRedoLogRecord() override {
         if(table_name_ != nullptr) {
             delete[] table_name_;
         }
@@ -325,7 +325,7 @@ public:
         log_tot_len_ += table_name_size_;
     }
 
-    ~InsertRedoLogRecord() {
+    ~InsertRedoLogRecord() override {
         if(key_ != nullptr) {
             delete[] key_;
         }

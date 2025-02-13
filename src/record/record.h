@@ -9,7 +9,7 @@
 
 class RecordHdr {
 public:
-    int32_t next_record_offset_;    // 这是干嘛的？
+    int32_t next_record_offset_;    // 当前record的下一个record的offset
     txn_id_t trx_id_;
     bool is_deleted_;
     file_id_t rollback_file_id_;

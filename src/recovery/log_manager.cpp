@@ -34,7 +34,6 @@ void LogManager::write_log_to_storage() {
     storage_service::LogWriteRequest request;
     storage_service::LogWriteResponse* response = new storage_service::LogWriteResponse;
     brpc::Controller* cntl = new brpc::Controller;
-    brpc::CallId cid = cntl->call_id();
 
     // char *log_data = new char[log_buffer_->offset_];
     int64_t curr_head;

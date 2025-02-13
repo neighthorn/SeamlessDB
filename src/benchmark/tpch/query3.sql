@@ -22,4 +22,4 @@ o_orderdate;
 
 
 select l_orderkey, l_extendedprice, l_discount, o_orderdate, o_shippriority from customer, orders, lineitem where c_custkey < 75000 and o_orderkey < 750000 and c_custkey = o_custkey and l_orderkey = o_orderkey and o_orderdate < '1995-03-01' and l_shipdate > '1996-06-01' order by l_orderkey;
-select l_orderkey, l_extendedprice, l_discount, o_orderdate, o_shippriority from customer, orders, lineitem where c_mktsegment = 'AUTOMOBILE' and c_custkey = o_custkey and l_orderkey = o_orderkey and o_orderdate < '1995-03-01' and l_shipdate > '1995-03-01' order by l_orderkey;
+select l_orderkey, l_extendedprice, l_discount, o_orderdate, o_shippriority from customer, orders, lineitem where c_mktsegment = 'AUTOMOBILE' and c_custkey = o_custkey and l_orderkey = o_orderkey and o_orderdate >= '1992-01-01' and o_orderdate < '1995-03-01' and l_shipdate >= '1995-04-01' and l_shipdate < '1998-12-01' order by l_orderkey;

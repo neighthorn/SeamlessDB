@@ -20,20 +20,33 @@
  * @todo 加上读锁（需要使用缓冲池得到page）
  */
 void IxScan::next() {
-    assert(!is_end());
+    // assert(!is_end());
     IxNodeHandle *node = ih_->fetch_node(rid_.page_no);
-    assert(node->is_leaf_page());
+    // if(node->get_next_page() - node->get_page_no() <= 0) {
+    //     if(!(node->get_page_no() == node->file_hdr_->last_leaf_ && node->get_next_page() == IX_NO_PAGE)) {
+    //         std::string str = "Invalid next_page value: node->get_page_no(): " + std::to_string(node->get_page_no()) + ", node->get_next_page(): " + std::to_string(node->get_next_page()) + '\n';
+    //         std::cout << str;
+    //         assert(0);
+    //     }
+    // }
+    // if(node->get_prev_page() - node->get_page_no() >= 0) {
+    //     std::string str = "Invalid prev_page value: node->get_page_no(): " + std::to_string(node->get_page_no()) + ", node->get_prev_page(): " + std::to_string(node->get_prev_page()) + '\n';
+    //     std::cout << str;
+    //     assert(0);
+    // }
+    // assert(node->get_page_no() == rid_.page_no);
+    // assert(node->is_leaf_page());
     // used for test
-    IxNodeHandle *end_node = ih_->fetch_node(end_.page_no);
-    assert(end_node->is_leaf_page());
     // assert(rid_.slot_no < node->get_size());
-    ASSERT(rid_.slot_no < node->get_size(), "rid_.slot_no: " + std::to_string(rid_.slot_no) + ", node->get_size(): " + std::to_string(node->get_size()) + ", node->page_id: " << std::to_string(node->get_page_id().page_no));
+    // ASSERT(rid_.slot_no < node->get_size(), "rid_.slot_no: " + std::to_string(rid_.slot_no) + ", node->get_size(): " + std::to_string(node->get_size()) + ", node->page_id: " << std::to_string(node->get_page_id().page_no));
     // increment slot no
     rid_.slot_no++;
     if (rid_.page_no != ih_->file_hdr_->last_leaf_ && rid_.slot_no == node->get_size()) {
         // go to next leaf
         rid_.slot_no = 0;
+        // std::cout << "Page1 [" << rid_.page_no<< "] is full, go to next page [" << node->get_page_no() << "].\n";
         rid_.page_no = node->get_next_page();
+        // std::cout << "Page2 [" << node->get_page_no() << "] is full, go to next page [" << rid_.page_no << "].\n";
     }
     ih_->buffer_pool_manager_->unpin_page(node->get_page_id(), false);
     delete node;

@@ -811,6 +811,12 @@ public:
 
         for(int o_orderdate_idx = 0; o_orderdate_idx < DATE_MAX_NUM; ++o_orderdate_idx) {
             RandomGenerator::generate_date_from_idx(o_orderdate, o_orderdate_idx);
+            std::cout << "o_orderdate: " << o_orderdate << "\n";
+
+            for(int i = 0; i < RandomGenerator::DATE_SIZE; ++i) {
+                std::cout << o_orderdate[i];
+            }
+            std::cout << std::endl;
 
             for(int record_idx = 0; record_idx < record_per_key && o_orderkey <= o_orderkey_max; ++record_idx) {
                 o_custkey = RandomGenerator::generate_random_int(1, c_custkey_max);

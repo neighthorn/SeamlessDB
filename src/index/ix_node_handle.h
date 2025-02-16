@@ -73,6 +73,15 @@ public:
 
     IxNodeHandle() = default;
     IxNodeHandle(IxFileHdr *file_hdr, Page *page);
+    ~IxNodeHandle() {
+        file_hdr_ = nullptr;
+        page_ = nullptr;
+        page_hdr_ = nullptr;
+        keys_ = nullptr;
+        child_nodes_ = nullptr;
+        records_ = nullptr;
+        page_directory_ = nullptr;
+    }
 
     /**
      * The following functions can be used for both LeafPage and InternalPage

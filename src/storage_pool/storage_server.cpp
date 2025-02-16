@@ -28,6 +28,75 @@ void load_data(std::string workload, int record_num, SmManager* sm_mgr, IxManage
     }
 }
 
+void test_leaf_pages(SmManager* sm_mgr_) {
+    // 在完成数据导入之后遍历orders表中所有的leaf page，打印每个leaf page的prev和next指针
+    // std::cout << "********TEST ORDERS LEAF PAGES**********\n";
+    // IxIndexHandle* index_handle = sm_mgr_->primary_index_.at("orders").get();
+    // auto lower = index_handle->leaf_begin();
+    // auto upper = index_handle->leaf_end();
+    // std::cout << "lower: " << lower.page_no << " " << lower.slot_no << " " << lower.record_no << "\n";
+    // std::cout << "upper: " << upper.page_no << " " << upper.slot_no << " " << upper.record_no << "\n";
+    // auto ix_scan = IxScan(index_handle, lower, upper);
+    // while(!ix_scan.is_end()) {
+    //     ix_scan.next();
+    // }
+    // delete index_handle;
+    // index_handle = nullptr;
+    // std::cout << "********TEST ORDERS LEAF PAGES**********\n\n";
+
+    // std::cout << "********TEST LINEITEM LEAF PAGES**********\n";
+    // auto index_handle = sm_mgr_->primary_index_.at("lineitem").get();
+    // auto lower = index_handle->leaf_begin();
+    // auto upper = index_handle->leaf_end();
+    // std::cout << "lower: " << lower.page_no << " " << lower.slot_no << " " << lower.record_no << "\n";
+    // std::cout << "upper: " << upper.page_no << " " << upper.slot_no << " " << upper.record_no << "\n";
+    // auto ix_scan = IxScan(index_handle, lower, upper);
+    // while(!ix_scan.is_end()) {
+    //     ix_scan.next();
+    // }
+    // delete index_handle;
+    // index_handle = nullptr;
+    // std::cout << "********TEST LINEITEM LEAF PAGES**********\n";
+
+
+    std::cout << "********TEST LINEITEM LEAF PAGES -- PARALLEL**********\n";
+    auto index_handle = sm_mgr_->primary_index_.at("lineitem").get();
+    auto lower = index_handle->leaf_begin();
+    char key[14];
+    int maxint = INT32_MAX;
+    memcpy(key, "1995-06-01", 10);
+    memcpy(key + 10, reinterpret_cast<char*>(&maxint), 4);
+    auto upper = index_handle->lower_bound(key);
+    std::cout << "lower: " << lower.page_no << " " << lower.slot_no << " " << lower.record_no << "\n";
+    std::cout << "upper: " << upper.page_no << " " << upper.slot_no << " " << upper.record_no << "\n";
+
+    auto lower2 = index_handle->upper_bound(key);
+    auto upper2 = index_handle->leaf_end();
+    std::cout << "lower2: " << lower2.page_no << " " << lower2.slot_no << " " << lower2.record_no << "\n";
+    std::cout << "upper2: " << upper2.page_no << " " << upper2.slot_no << " " << upper2.record_no << "\n";
+
+    auto ix_scan = IxScan(index_handle, lower, upper);
+    auto ix_scan2 = IxScan(index_handle, lower2, upper2);
+
+    std::thread t1([&ix_scan](){
+        std::cout << "thread1\n";
+        while(!ix_scan.is_end()) {
+            ix_scan.next();
+        }
+    });
+
+    std::thread t2([&ix_scan2](){
+        std::cout << "thread2\n";
+        while(!ix_scan2.is_end()) {
+            ix_scan2.next();
+        }
+    });
+
+    t1.join();
+    t2.join();
+    std::cout << "********TEST LINEITEM LEAF PAGES -- PARALLEL**********\n";
+}
+
 int main(int argc, char* argv[]) {
     std::string config_path = "../src/config/storage_server_config.json";
 
@@ -63,6 +132,8 @@ int main(int argc, char* argv[]) {
 
     std::cout << "begin load data\n";
     load_data(workload, record_num, sm_manager.get(), ix_manager.get(), mvcc_manager.get());
+
+    // test_leaf_pages(sm_manager.get());
     // auto log_manager = std::make_shared<LogManager>();
 
 // #ifdef ENABLE_LOG_STORE

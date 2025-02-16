@@ -52,6 +52,7 @@ public:
         join_key_size_ = 0;
         for(const auto& cond: conds) {
             auto left_col = *(left_->get_col(cols_, cond.lhs_col));
+            // std::cout << "join_key.col_name: " << left_col.name << std::endl;
             join_key_size_ += left_col.len;
         }
 

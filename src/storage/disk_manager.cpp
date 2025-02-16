@@ -20,8 +20,11 @@ void DiskManager::write_page(int fd, page_id_t page_no, const char *offset, int 
     // 2.调用write()函数
     // 注意write返回值与num_bytes不等时 throw InternalError("DiskManager::write_page Error");
 
-    lseek(fd, (int64_t)page_no * (int64_t)PAGE_SIZE, SEEK_SET);
-    ssize_t bytes_write = write(fd, offset, num_bytes);  // 这里的offset可以是uint_8*类型，也可以是char*类型
+    // lseek(fd, (int64_t)page_no * (int64_t)PAGE_SIZE, SEEK_SET);
+    // ssize_t bytes_write = write(fd, offset, num_bytes);  // 这里的offset可以是uint_8*类型，也可以是char*类型
+    off_t offset_in_file = (int64_t)page_no * (int64_t)PAGE_SIZE;
+    // pread/pwrite可以在不改变文件指针的情况下，从指定偏移量处读取或写入数据
+    ssize_t bytes_write = pwrite(fd, offset, num_bytes, offset_in_file);
     if (bytes_write != num_bytes) {
         throw InternalError("DiskManager::write_page Error");
     }
@@ -41,8 +44,11 @@ void DiskManager::read_page(int fd, page_id_t page_no, char *offset, int num_byt
     // 注意read返回值与num_bytes不等时，throw InternalError("DiskManager::read_page Error");
 
     // SEEK_SET 定位到文件头
-    lseek(fd, (int64_t)page_no * (int64_t)PAGE_SIZE, SEEK_SET);
-    ssize_t bytes_read = read(fd, offset, num_bytes);
+    // lseek(fd, (int64_t)page_no * (int64_t)PAGE_SIZE, SEEK_SET);
+    // ssize_t bytes_read = read(fd, offset, num_bytes);
+    off_t offset_in_file = (int64_t)page_no * (int64_t)PAGE_SIZE;
+    // pread/pwrite可以在不改变文件指针的情况下，从指定偏移量处读取或写入数据
+    ssize_t bytes_read = pread(fd, offset, num_bytes, offset_in_file);
     // 没有成功从buffer偏移处读取指定数字节
     if (bytes_read != num_bytes) {
         throw InternalError("DiskManager::read_page Error");

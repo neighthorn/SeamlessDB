@@ -219,19 +219,20 @@ void RandomGenerator::generate_date_from_idx(char* str, int idx) {
     else
         date += std::to_string(month) + "-01";
     assert(date.length() == DATE_SIZE);
-    memcpy(str, date.c_str(), DATE_SIZE);
     date[DATE_SIZE] = '\0';
+    std::cout << "DATE: " << date << std::endl;
+    memcpy(str, date.c_str(), DATE_SIZE);
 }
 
 void RandomGenerator::generate_random_mktsegment(char* str) {
-    static std::string mktsegment[] = {"AUTOMOBILE", "BUILDINGBU", "FURNITUREF", "MACHINERYM", "HOUSEHOLDH"};
+    static std::string mktsegment[] = {"AUTOMOBILE", "BUILDINGBU", "FURNITUREF", "HOUSEHOLDH", "MACHINERYM"};
     int idx = generate_random_int(0, 4);
     strncpy(str, mktsegment[idx].c_str(), 10);
     str[10] = '\0';
 }
 
 void RandomGenerator::generate_mktsegment_from_idx(char* str, int idx) {
-    static std::string mktsegment[] = {"AUTOMOBILE", "BUILDINGBU", "FURNITUREF", "MACHINERYM", "HOUSEHOLDH"};
+    static std::string mktsegment[] = {"AUTOMOBILE", "BUILDINGBU", "FURNITUREF", "HOUSEHOLDH", "MACHINERYM"};
     strncpy(str, mktsegment[idx].c_str(), 10);
     str[10] = '\0';
 }

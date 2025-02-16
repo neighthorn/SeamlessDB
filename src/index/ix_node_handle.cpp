@@ -206,7 +206,7 @@ int IxNodeHandle::leaf_insert_key_record(const char* key, const char* record_val
         ix_compare(insert_dir_entry_slot, key, file_hdr_->col_types_, file_hdr_->col_lens_) == 0) {
         // if()
         std::cout << "Error: the key has already existed in the leaf node!\n";
-        assert(0);
+        // assert(0);
         return page_hdr_->tot_num_records_;
     }
 

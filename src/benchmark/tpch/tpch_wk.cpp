@@ -84,6 +84,9 @@ void TPCHWK::load_data() {
         load table data
     */
 
+    tpch_load_table_data(Orders);
+    std::cout << "finish load orders\n";
+
     tpch_load_table_data(Customer);
     std::cout << "finish load customer\n";
 
@@ -101,9 +104,6 @@ void TPCHWK::load_data() {
 
     tpch_load_table_data(Part);
     std::cout << "finish load part\n";
-
-    tpch_load_table_data(Orders);
-    std::cout << "finish load orders\n";
 
     tpch_load_table_data(Supplier);
     std::cout << "finish load supplier\n";

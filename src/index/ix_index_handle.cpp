@@ -346,7 +346,7 @@ Rid IxIndexHandle::insert_entry(const char* key, const char* record_value, Trans
     }
 
     // find the leaf page that the key-value has to be inserted
-    auto [leaf_node, root_is_latched] = find_leaf_page(key, Operation::INSERT, transaction);
+    auto [leaf_node, root_is_latched] = find_leaf_page(key, Operation::INSERT, transaction, false);
     Page *leaf_page = leaf_node->page_;
 
     // printf("insert_entry: find leaf node=%d\n", leaf_node->get_page_no());
@@ -437,7 +437,7 @@ Rid IxIndexHandle::lower_bound(const char *key) {
     // printf("my_lower_bound key=%d\n", int_key);
     // std::cout << "lower_bound: key=" << *(int*)key << ", index's total page number: " << file_hdr_->num_pages_ << ", root_page: " << file_hdr_->root_page_ << "\n";
 
-    IxNodeHandle *node = find_leaf_page(key, Operation::FIND, nullptr).first;
+    IxNodeHandle *node = find_leaf_page(key, Operation::FIND, nullptr, false).first;
     int key_idx = node->leaf_directory_lower_bound(key);
     // int32_t offset = *(int32_t*)(node->leaf_get_directory_entry_at(key_idx) + file_hdr_->col_tot_len_);
 
@@ -477,7 +477,7 @@ Rid IxIndexHandle::upper_bound(const char *key) {
     // int int_key = *(int *)key;
     // printf("my_upper_bound key=%d\n", int_key);
 
-    IxNodeHandle *node = find_leaf_page(key, Operation::FIND, nullptr).first;
+    IxNodeHandle *node = find_leaf_page(key, Operation::FIND, nullptr, false).first;
     int key_idx = node->leaf_directory_upper_bound(key);
     // int32_t offset = *(int32_t*)(node->leaf_get_directory_entry_at(key_idx) + file_hdr_->col_tot_len_);
 

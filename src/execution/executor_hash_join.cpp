@@ -84,6 +84,7 @@ void HashJoinExecutor::beginTuple() {
     }
 
     auto right_rec = right_->Next();
+    right_child_call_times_ ++;
     while(!right_->is_end() && find_match_join_key(right_rec.get()) == hash_table_.end()) {
         right_->nextTuple();
         if(right_->is_end()) {
@@ -91,6 +92,7 @@ void HashJoinExecutor::beginTuple() {
             return;
         }
         right_rec = right_->Next();
+        right_child_call_times_ ++;
     }
 
     if(find_match_join_key(right_rec.get()) == hash_table_.end()) {
@@ -148,6 +150,7 @@ void HashJoinExecutor::nextTuple(){
         return;
     }
     right_rec = right_->Next();
+    right_child_call_times_ ++;
 
     while(!right_->is_end() && find_match_join_key(right_rec.get()) == hash_table_.end()) {
         right_->nextTuple();
@@ -156,6 +159,7 @@ void HashJoinExecutor::nextTuple(){
             return;
         }
         right_rec = right_->Next();
+        right_child_call_times_ ++;
     }
 
     if(find_match_join_key(right_rec.get()) == hash_table_.end()) {
@@ -369,7 +373,7 @@ void HashJoinExecutor::load_state_info(HashJoinOperatorState* state) {
     // if(auto x = dynamic_cast<IndexScanExecutor *>(right_.get())) {
     //     x->load_state_info(&(state->right_index_scan_state_));
     // }
-    if(state->right_child_is_join_ == false) {
+    if(state->right_child_is_stateful_ == false) {
         if(auto x = dynamic_cast<IndexScanExecutor *>(right_.get())) {
             // x->load_state_info(dynamic_cast<IndexScanOperatorState *>(state->right_child_state_));
             if(state->right_child_state_->finish_begin_tuple_ == false) {
@@ -413,7 +417,7 @@ void HashJoinExecutor::load_state_info(HashJoinOperatorState* state) {
     // 先build了哈希表，才能调用当前函数
     if(!initialized_) {
         // 如果哈希表没有构建完全，需要首先恢复左算子状态，哈希表在后面begintuple的时候再构建
-        if(state->left_child_is_join_ == false) {
+        if(state->left_child_is_stateful_ == false) {
             if(auto x = dynamic_cast<IndexScanExecutor *>(left_.get())) {
                 if(state->left_child_state_->finish_begin_tuple_ == false) {
                     x->beginTuple();

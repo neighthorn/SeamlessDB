@@ -325,7 +325,7 @@ std::pair<bool, size_t> OperatorStateManager::add_operator_state_to_buffer(Abstr
         */
         op_checkpoint_queue_.push(OpCheckpointBlock{.buffer = alloc_buffer, .size = actual_size});
 
-        // RwServerDebug::getInstance()->DEBUG_PRINT("[PUSH STATE][SIZE " + std::to_string(actual_size) + "] push state to local memory");
+        RwServerDebug::getInstance()->DEBUG_PRINT("[PUSH STATE][SIZE " + std::to_string(actual_size) + "] push state to local memory");
         /*
             notify
         */
@@ -411,8 +411,7 @@ std::pair<bool, size_t> OperatorStateManager::add_operator_state_to_buffer(Abstr
 
         op_checkpoint_queue_.push(OpCheckpointBlock{.buffer = alloc_buffer, .size = actual_size});
         op_checkpoint_not_empty_.notify_all();
-    }
-    else if(auto sort_op = dynamic_cast<SortExecutor *>(abstract_executor)) {
+    } else if(auto sort_op = dynamic_cast<SortExecutor *>(abstract_executor)) {
         SortOperatorState sort_join_state(sort_op);
         size_t sort_join_checkpoint_size = sort_join_state.getSize();
 
@@ -436,8 +435,7 @@ std::pair<bool, size_t> OperatorStateManager::add_operator_state_to_buffer(Abstr
 
         op_checkpoint_queue_.push(OpCheckpointBlock{.buffer = alloc_buffer, .size = actual_size});
         op_checkpoint_not_empty_.notify_all();
-    }
-    else if(auto projection_op = dynamic_cast<ProjectionExecutor *>(abstract_executor)) {
+    } else if(auto projection_op = dynamic_cast<ProjectionExecutor *>(abstract_executor)) {
         assert(projection_op->is_root_);
         ProjectionOperatorState projection_state(projection_op);
         size_t projection_checkpoint_size = projection_state.getSize();
@@ -458,6 +456,30 @@ std::pair<bool, size_t> OperatorStateManager::add_operator_state_to_buffer(Abstr
 
         actual_size = projection_state.serialize(alloc_buffer);
         assert(actual_size == projection_checkpoint_size);
+        write_status = true;
+
+        op_checkpoint_queue_.push(OpCheckpointBlock{.buffer = alloc_buffer, .size = actual_size});
+        op_checkpoint_not_empty_.notify_all();
+    } else if(auto gather_op = dynamic_cast<GatherExecutor *>(abstract_executor)) {
+        GatherOperatorState gather_state(gather_op);
+        size_t gather_checkpoint_size = gather_state.getSize();
+
+        // if(add_cktp_cnts == 13) std::cout << "GatherOperatorState size: " << gather_checkpoint_size << std::endl;
+
+        char* alloc_buffer;
+        do {
+            auto [status, buffer] = op_checkpoint_buffer_allocator_->Alloc(gather_checkpoint_size);
+            if(status) {
+                alloc_buffer = buffer;
+                break;
+            } else {
+                std::cout << "waiting for free buffer.\n";
+                op_checkpoint_not_full_.wait(lock);
+            }
+        }while(true);
+
+        actual_size = gather_state.serialize(alloc_buffer);
+        assert(actual_size == gather_checkpoint_size);
         write_status = true;
 
         op_checkpoint_queue_.push(OpCheckpointBlock{.buffer = alloc_buffer, .size = actual_size});
@@ -518,6 +540,7 @@ void OperatorStateManager::write_operator_state_to_state_node() {
         assert(0);
     }
 
+    RwServerDebug::getInstance()->DEBUG_PRINT("[WRITE CHECKPOINT( " + std::to_string(ck_meta_->checkpoint_num) + ") INFO FINISHED]");
     /*
         update checkpoint meta
     */

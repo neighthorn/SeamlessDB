@@ -528,7 +528,12 @@ IxNodeHandle *IxIndexHandle::fetch_node(int page_no) const {
     /**
      * TODO: 需要把InternalPage固定在buffer中
     */
+    // 统计fetch paeg的时间
+    // auto start = std::chrono::high_resolution_clock::now();
     Page *page = buffer_pool_manager_->fetch_page(PageId{table_meta_.table_id_, page_no});
+    // auto end = std::chrono::high_resolution_clock::now();
+    // auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+    // std::cout << "fetch_page time: " << duration.count() << "us\n";
     // IxNodeHandle node(&file_hdr_, page);
     IxNodeHandle *node = new IxNodeHandle(file_hdr_, page);
     // auto node = std::make_unique<IxNodeHandle>(&file_hdr_, page);

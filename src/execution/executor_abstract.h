@@ -19,6 +19,7 @@ class AbstractExecutor {
     int     operator_id_;
 
     int left_child_call_times_;
+    int right_child_call_times_;
     int be_call_times_;
     
     bool finished_begin_tuple_; // whether the beginTuple() has been finished

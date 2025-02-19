@@ -161,7 +161,7 @@ bool IndexScanOperatorState::deserialize(char *src, size_t size) {
 
 ProjectionOperatorState::ProjectionOperatorState() : OperatorState(-1, -1, time(nullptr), ExecutionType::PROJECTION, false) {
     projection_op_ = nullptr;
-    is_left_child_join_ = false;
+    is_left_child_stateful_ = true;
     left_index_scan_state_ = nullptr;
     op_state_size_ = OperatorState::getSize() + sizeof(bool);
 }
@@ -175,21 +175,23 @@ ProjectionOperatorState::ProjectionOperatorState(ProjectionExecutor* projection_
     left_index_scan_state_ = nullptr;
 
     if(auto x = dynamic_cast<IndexScanExecutor *>(projection_op_->prev_.get())) {
-        is_left_child_join_ = false;
+        is_left_child_stateful_ = false;
         left_index_scan_state_ = new IndexScanOperatorState(x);
         op_state_size_ += left_index_scan_state_->getSize();
         op_state_size_ += sizeof(bool);
     } else if(dynamic_cast<BlockNestedLoopJoinExecutor *>(projection_op_->prev_.get())) {
-        is_left_child_join_ = true;
+        is_left_child_stateful_ = true;
         op_state_size_ += sizeof(bool);
     } else if(dynamic_cast<HashJoinExecutor *>(projection_op_->prev_.get())) {
-        is_left_child_join_ = true;
+        is_left_child_stateful_ = true;
         op_state_size_ += sizeof(bool);
     } else if(dynamic_cast<SortExecutor *>(projection_op_->prev_.get())) {
-        is_left_child_join_ = true;
+        is_left_child_stateful_ = true;
         op_state_size_ += sizeof(bool);
-    }
-     else {
+    } else if(dynamic_cast<GatherExecutor *>(projection_op_->prev_.get())) {
+        is_left_child_stateful_ = true;
+        op_state_size_ += sizeof(bool);
+    } else {
         std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
     }
     // std::cout << "final op_state_size: " << "\n";
@@ -201,9 +203,9 @@ size_t ProjectionOperatorState::serialize(char *dest) {
     size_t offset = OperatorState::serialize(dest);
     memcpy(dest + offset, (char *)&left_child_call_times_, sizeof(int));
     offset += sizeof(int);
-    memcpy(dest + offset, (char *)&is_left_child_join_, sizeof(bool));
+    memcpy(dest + offset, (char *)&is_left_child_stateful_, sizeof(bool));
     offset += sizeof(bool);
-    if(is_left_child_join_) {
+    if(is_left_child_stateful_) {
         assert(offset == op_state_size_);
         return offset;
     } else {
@@ -231,9 +233,9 @@ bool ProjectionOperatorState::deserialize(char *src, size_t size) {
 
     memcpy((char *)&left_child_call_times_, src + offset, sizeof(int));
     offset += sizeof(int);
-    memcpy((char *)&is_left_child_join_, src + offset, sizeof(bool));
+    memcpy((char *)&is_left_child_stateful_, src + offset, sizeof(bool));
     offset += sizeof(bool);
-    if(is_left_child_join_) {
+    if(is_left_child_stateful_) {
         return true;
     } else {
         left_index_scan_state_ = new IndexScanOperatorState();
@@ -623,11 +625,11 @@ HashJoinOperatorState::HashJoinOperatorState(): OperatorState(-1, -1, time(nullp
     be_call_times_ = -1;
     left_child_call_times_ = -1;
 
-    left_child_is_join_ = false;
+    left_child_is_stateful_ = true;
     // left_index_scan_state_ = IndexScanOperatorState();
     left_child_state_ = nullptr;
 
-    right_child_is_join_ = false;
+    right_child_is_stateful_ = true;
     // right_index_scan_state_ = IndexScanOperatorState();
     right_child_state_ = nullptr;
 
@@ -663,48 +665,47 @@ HashJoinOperatorState::HashJoinOperatorState(HashJoinExecutor* hash_join_op):
     // state_size += sizeof(bool);
     op_state_size_ += sizeof(bool);
     if(auto x = dynamic_cast<IndexScanExecutor *>(hash_join_op_->left_.get())) {
-        left_child_is_join_ = false;
+        left_child_is_stateful_ = false;
         if(left_hash_table_size_ > 0) {
             // left_index_scan_state_ = IndexScanOperatorState(x);
             left_child_state_ = new IndexScanOperatorState(x);
             op_state_size_ += left_child_state_->getSize();
         }
-    } else if(auto x = dynamic_cast<BlockNestedLoopJoinExecutor *>(hash_join_op_->left_.get())) {
-        left_child_is_join_ = true;
-        // left_index_scan_state_ = IndexScanOperatorState();
-    } else if(auto x = dynamic_cast<HashJoinExecutor *>(hash_join_op_->left_.get())) {
-        left_child_is_join_ = true;
-        // left_index_scan_state_ = IndexScanOperatorState();
+    } else if(dynamic_cast<BlockNestedLoopJoinExecutor *>(hash_join_op_->left_.get())) {
+        left_child_is_stateful_ = true;
+    } else if(dynamic_cast<HashJoinExecutor *>(hash_join_op_->left_.get())) {
+        left_child_is_stateful_ = true;
     } else if (auto x = dynamic_cast<ProjectionExecutor *>(hash_join_op_->left_.get())) {
-        left_child_is_join_ = false;
+        left_child_is_stateful_ = false;
         if(left_hash_table_size_ > 0) {
             left_child_state_ = new ProjectionOperatorState(x);
             op_state_size_ += left_child_state_->getSize();
         }
-    } else {
+    } else if(dynamic_cast<GatherExecutor *>(hash_join_op_->left_.get())) {
+        left_child_is_stateful_ = true;
+    }
+     else {
         std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
     }
 
     // right exec info
     op_state_size_ += sizeof(bool);
     if(auto x = dynamic_cast<IndexScanExecutor *>(hash_join_op_->right_.get())) {
-        // std::cout << "HashJoin: right child is index scan" << std::endl;
-        right_child_is_join_ = false;
-        // right_index_scan_state_ = IndexScanOperatorState(x);
+        right_child_is_stateful_ = false;
         right_child_state_ = new IndexScanOperatorState(x);
         op_state_size_ += right_child_state_->getSize();
     } else if(dynamic_cast<BlockNestedLoopJoinExecutor *>(hash_join_op_->right_.get())) {
-        right_child_is_join_ = true;
-        // right_index_scan_state_ = IndexScanOperatorState();
+        right_child_is_stateful_ = true;
     } else if(dynamic_cast<HashJoinExecutor *>(hash_join_op_->right_.get())) {
-        right_child_is_join_ = true;
-        // right_index_scan_state_ = IndexScanOperatorState();
+        right_child_is_stateful_ = true;
     } else if (auto x = dynamic_cast<ProjectionExecutor *>(hash_join_op_->right_.get())) {
-        right_child_is_join_ = false;
-        // std::cout << "HashJoin: right child is projection" << std::endl;
+        right_child_is_stateful_ = false;
         right_child_state_ = new ProjectionOperatorState(x);
         op_state_size_ += right_child_state_->getSize();
-    } else {
+    } else if(dynamic_cast<GatherExecutor *>(hash_join_op_->right_.get())) {
+        right_child_is_stateful_ = true;
+    }
+    else {
         std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
     }
 
@@ -727,9 +728,9 @@ size_t HashJoinOperatorState::serialize(char *dest) {
     offset += sizeof(int);
     memcpy(dest + offset, (char *)&left_child_call_times_, sizeof(int));
     offset += sizeof(int);
-    memcpy(dest + offset, (char *)&left_child_is_join_, sizeof(bool));
+    memcpy(dest + offset, (char *)&left_child_is_stateful_, sizeof(bool));
     offset += sizeof(bool);
-    memcpy(dest + offset, (char *)&right_child_is_join_, sizeof(bool));
+    memcpy(dest + offset, (char *)&right_child_is_stateful_, sizeof(bool));
     offset += sizeof(bool);
     memcpy(dest + offset, (char *)&left_tuples_index_, sizeof(int));
     offset += sizeof(int);
@@ -760,7 +761,7 @@ size_t HashJoinOperatorState::serialize(char *dest) {
         }
         assert(incremental_tuples_count == left_hash_table_size_);
 
-        if(left_child_is_join_ == false) {
+        if(left_child_is_stateful_ == false) {
             // serialize left operator
             size_t left_index_scan_size = left_child_state_->serialize(dest + offset);
             offset += left_index_scan_size;
@@ -772,7 +773,7 @@ size_t HashJoinOperatorState::serialize(char *dest) {
     memcpy(dest + incremental_tuples_count_off, (char*)&left_hash_table_size_, sizeof(int));
 
     // serialize right operator
-    if(right_child_is_join_ == false) {
+    if(right_child_is_stateful_ == false) {
         size_t right_index_scan_size = right_child_state_->serialize(dest + offset);
         offset += right_index_scan_size;
     }
@@ -802,9 +803,9 @@ bool HashJoinOperatorState::deserialize(char* src, size_t size) {
     offset += sizeof(int);
     memcpy((char *)&left_child_call_times_, src + offset, sizeof(int));
     offset += sizeof(int);
-    memcpy((char *)&left_child_is_join_, src + offset, sizeof(bool));
+    memcpy((char *)&left_child_is_stateful_, src + offset, sizeof(bool));
     offset += sizeof(bool);
-    memcpy((char *)&right_child_is_join_, src + offset, sizeof(bool));
+    memcpy((char *)&right_child_is_stateful_, src + offset, sizeof(bool));
     offset += sizeof(bool);
     memcpy((char *)&left_tuples_index_, src + offset, sizeof(int));
     offset += sizeof(int);
@@ -819,7 +820,7 @@ bool HashJoinOperatorState::deserialize(char* src, size_t size) {
         // 跳过哈希表，哈希表在rebuild_hash_table中重新构建
         offset += left_hash_table_size_ * left_record_len_;
 
-        if(!left_child_is_join_) {
+        if(!left_child_is_stateful_) {
             //  如果左儿子不是join算子，那么需要反序列化左儿子的状态
             ExecutionType child_exec_type = *reinterpret_cast<ExecutionType*>(src + offset + EXECTYPE_OFFSET);
             if(child_exec_type == ExecutionType::INDEX_SCAN) {
@@ -836,7 +837,7 @@ bool HashJoinOperatorState::deserialize(char* src, size_t size) {
         }
     }
 
-    if(right_child_is_join_ == false) {
+    if(right_child_is_stateful_ == false) {
         ExecutionType child_exec_type = *reinterpret_cast<ExecutionType*>(src + offset + EXECTYPE_OFFSET);
         if(child_exec_type == ExecutionType::INDEX_SCAN) {
             right_child_state_ = new IndexScanOperatorState();
@@ -1058,25 +1059,42 @@ GatherOperatorState::GatherOperatorState(GatherExecutor* gather_op):
     be_call_times_ = gather_op->be_call_times_;
     op_state_size_ += sizeof(int);
     
-    subplan_call_times_ = new int[subplan_num_];
-    subplan_states_ = new IndexScanOperatorState[subplan_num_];
-
-    // Gather Executor在调用当前函数之前，已经获取了所有worker上的mutex，因此在整个state的构建过程中，都不会出现worker的修改
-    if(auto x = dynamic_cast<IndexScanExecutor *>(gather_op_->workers_[0].get())) {
+    result_begin_index_ = new int[subplan_num_];
+    result_end_index_ = new int[subplan_num_];
+    if(dynamic_cast<IndexScanExecutor *>(gather_op->workers_[0].get())) {
+        child_is_stateful_ = false;
+        subplan_states_ = new IndexScanOperatorState[subplan_num_];
         for(int i = 0; i < subplan_num_; i++) {
-            subplan_call_times_[i] = gather_op->workers_[i]->be_call_times_;
-            op_state_size_ += sizeof(int);
-            subplan_states_[i] = IndexScanOperatorState(x);
-            op_state_size_ += subplan_states_[i].getSize();
+            {
+                // 如果子算子节点为indexscan算子，那么原子获取{scan算子状态，result_begin_index, result_end_index}
+                std::lock_guard<std::mutex> lock(gather_op->result_queues_mutex_[i]);
+                subplan_states_[i] = IndexScanOperatorState(dynamic_cast<IndexScanExecutor *>(gather_op->workers_[i].get()));
+                op_state_size_ += subplan_states_[i].getSize();
+                result_begin_index_[i] = gather_op->consumed_sizes_[i];
+                result_end_index_[i] = gather_op->result_buffer_curr_tuple_counts_[i];
+            }
         }
-    } else {
-        std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
+    } 
+    else {
+        child_is_stateful_ = true;
+        subplan_call_times_ = new int[subplan_num_];
+        for(int i = 0; i < subplan_num_; ++i) {
+            {
+                // 如果子算子节点为非indexscan算子，那么原子获取{call_times, result_begin_index, result_end_index}
+                std::lock_guard<std::mutex> lock(gather_op->result_queues_mutex_[i]);
+                subplan_call_times_[i] = gather_op->workers_[i]->be_call_times_;
+                op_state_size_ += sizeof(int);
+                result_begin_index_[i] = gather_op->consumed_sizes_[i];
+                result_end_index_[i] = gather_op->result_buffer_curr_tuple_counts_[i];
+            }
+            
+        }
     }
 
     // serialize current unconsumed tuples in workers
     for(int i = 0; i < gather_op_->worker_thread_num_; i++) {
         op_state_size_ += sizeof(int);
-        op_state_size_ += (gather_op_->result_buffer_curr_tuple_counts_[i] - gather_op_->consumed_sizes_[i]) * gather_op_->len_;
+        op_state_size_ += (result_end_index_[i] - result_begin_index_[i]) * gather_op_->len_;
     }
 }
 
@@ -1088,30 +1106,43 @@ GatherOperatorState::~GatherOperatorState() {
 }
 
 size_t GatherOperatorState::serialize(char *dest) {
+    // @TODO
     size_t offset = OperatorState::serialize(dest);
 
     memcpy(dest + offset, (char*)&subplan_num_, sizeof(int));
     offset += sizeof(int);
     memcpy(dest + offset, (char*)&be_call_times_, sizeof(int));
     offset += sizeof(int);
-    for(int i = 0; i < subplan_num_; ++i) {
-        memcpy(dest + offset, (char*)&subplan_call_times_[i], sizeof(int));
-        offset += sizeof(int);
+    memcpy(dest + offset, (char*)&child_is_stateful_, sizeof(bool));
+    offset + sizeof(bool);
+
+    if(child_is_stateful_ == true) {
+        for(int i = 0; i < subplan_num_; ++i) {
+            // serialize subplan states
+            size_t subplan_state_size = subplan_states_[i].serialize(dest + offset);
+            offset += subplan_state_size;
+        }
     }
-    for(int i = 0; i < subplan_num_; ++i) {
-        size_t subplan_state_size = subplan_states_[i].serialize(dest + offset);
-        offset += subplan_state_size;
+    else {
+        for(int i = 0; i < subplan_num_; ++i) {
+            // serialize call times
+            memcpy(dest + offset, (char*)&subplan_call_times_[i], sizeof(int));
+            offset += sizeof(int);
+        }
     }
 
-    for(int i = 0; i < gather_op_->worker_thread_num_; i++) {
-        int tuple_num = gather_op_->result_buffer_curr_tuple_counts_[i] - gather_op_->consumed_sizes_[i];
-        memcpy(dest + offset, (char*)&tuple_num, sizeof(int));
+    for(int i = 0; i < subplan_num_; ++i) {
+        // serialize tuples count
+        int tuple_num = result_end_index_[i] - result_begin_index_[i];
+        memcpy(dest + offset, (char*)&tuple_num, sizeof(int));   
         offset += sizeof(int);
-        for(int j = gather_op_->consumed_sizes_[i]; j < gather_op_->result_buffer_curr_tuple_counts_[i]; j++) {
-            memcpy(dest + offset, gather_op_->result_queues_[i][j].get()->raw_data_, gather_op_->len_);
+        // serialize tuples in result_queues_[i], index: [result_begin_index_[i], result_end_index_[i])
+        for(int j = result_begin_index_[i]; j < result_end_index_[i]; j++) {
+            memcpy(dest + offset, gather_op_->result_queues_[i][j]->raw_data_, gather_op_->len_);
             offset += gather_op_->len_;
         }
     }
+
     assert(offset == op_state_size_);
     return offset;
 }
@@ -1127,32 +1158,59 @@ bool GatherOperatorState::deserialize(char* src, size_t size) {
     offset += sizeof(int);
     memcpy((char*)&be_call_times_, src + offset, sizeof(int));
     offset += sizeof(int);
-    subplan_call_times_ = new int[subplan_num_];
-    for(int i = 0; i < subplan_num_; ++i) {
-        memcpy((char*)&subplan_call_times_[i], src + offset, sizeof(int));
-        offset += sizeof(int);
-    }
-    subplan_states_ = new IndexScanOperatorState[subplan_num_];
-    if(auto x = dynamic_cast<IndexScanExecutor *>(gather_op_->workers_[0].get())) {
+    memcpy((char*)&child_is_stateful_, src + offset, sizeof(bool));
+    offset += sizeof(bool);
+
+    if(child_is_stateful_ == true) {
+        subplan_states_ = new IndexScanOperatorState[subplan_num_];
         for(int i = 0; i < subplan_num_; ++i) {
-            subplan_states_[i] = IndexScanOperatorState(x);
             subplan_states_[i].deserialize(src + offset, size - offset);
             offset += subplan_states_[i].getSize();
         }
-    } else {
-        std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
     }
-    for(int i = 0; i < gather_op_->worker_thread_num_; i++) {
-        int tuple_num;
-        memcpy((char*)&tuple_num, src + offset, sizeof(int));
+    else {
+        // 这里虽然反序列化了subplan_call_times，但是实际上在gather_op中没有使用，因为目前gather的子算子都是indexscan算子，没有单独记录状态
+        subplan_call_times_ = new int[subplan_num_];
+        for(int i = 0; i < subplan_num_; ++i) {
+            memcpy((char*)&subplan_call_times_[i], src + offset, sizeof(int));
+            offset += sizeof(int);
+        }
+    }
+
+    // 当前函数中跳过deserialize tuple，在rebuild_result_queues中构建
+    for(int i = 0; i < subplan_num_; ++i) {
+        int tuple_num = *reinterpret_cast<int*>(src + offset);
+        offset += sizeof(int);
+        offset += tuple_num * gather_op_->len_;
+    }
+
+    assert(offset == op_state_size_);
+    return true;
+}
+
+void GatherOperatorState::rebuild_result_queues(GatherExecutor* gather_op, char* src, size_t size) {
+    if(gather_op_ == nullptr) {
+        gather_op_ = gather_op;
+    }
+
+    int offset = OperatorState::getSize() + sizeof(int) * 2 + sizeof(bool);
+    if(child_is_stateful_ == true) {
+        offset += index_scan_state_size_min * subplan_num_;
+    }
+    else {
+        offset += sizeof(int) * subplan_num_;
+    }
+
+    for(int i = 0; i < subplan_num_; ++i) {
+        int tuple_num = *reinterpret_cast<int*>(src + offset);
+        gather_op_->queue_sizes_[i] = tuple_num;
         offset += sizeof(int);
         for(int j = 0; j < tuple_num; j++) {
             auto record = std::make_unique<Record>(gather_op_->len_);
             memcpy(record->raw_data_, src + offset, gather_op_->len_);
-            offset += gather_op_->len_;
             gather_op_->result_queues_[i].push_back(std::move(record));
+            offset += gather_op_->len_;
         }
     }
-    assert(offset == op_state_size_);
-    return true;
 }
+

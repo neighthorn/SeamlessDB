@@ -17,7 +17,7 @@ constexpr int CheckPointMetaSize = 4096;
 /*
     预估计的state size最小值：非准确
 */
-constexpr int operator_size_min = sizeof(int) * 2 + sizeof(size_t) + sizeof(time_t) + sizeof(ExecutionType);
+constexpr int operator_size_min = sizeof(int) * 2 + sizeof(size_t) + sizeof(time_t) + sizeof(ExecutionType) + sizeof(bool);
 constexpr int index_scan_state_size_min = operator_size_min + sizeof(Rid) * 3 + sizeof(bool);
 constexpr int projection_state_size_min = operator_size_min + sizeof(bool) + sizeof(int);
 constexpr int block_join_state_size_min = operator_size_min + projection_state_size_min + sizeof(int) * 7 + sizeof(bool) * 2 + sizeof(size_t) + index_scan_state_size_min;
@@ -51,6 +51,7 @@ struct CheckPointMeta {
     size_t  op_state_size_;
     time_t  op_state_time_;
     ExecutionType exec_type_;
+    bool finish_begin_tuple_;
 
     其中op_state_size需要根据具体的operator进行计算
 */
@@ -148,7 +149,11 @@ public:
     如果儿子节点为join算子，只需要记录当前算子的be_call_time，儿子节点的be_call_time应该和当前节点的be_call_time一致
     如果儿子节点为scan算子，需要一起记录scan算子的状态
     */
-    bool is_left_child_join_;       
+    // bool is_left_child_join_; 
+    /**
+     * if the left child operator is a stateful operator, it record and resume its state independently
+     * */      
+    bool is_left_child_stateful_;
     int left_child_call_times_;    // left child的be_call_times, 和当前算子的be_call_times一致
 
     ProjectionExecutor *projection_op_;
@@ -246,11 +251,19 @@ public:
     int left_child_call_times_;
     bool is_hash_table_built_;       // whether the hash table has been built, the same as initialized_ in HashJoinExecutor
 
-    bool left_child_is_join_;
+    // bool left_child_is_join_;
+    /**
+     * if the left child is a stateful operator, it record and resume its state independently
+     */
+    bool left_child_is_stateful_;
     // IndexScanOperatorState left_index_scan_state_;
     OperatorState* left_child_state_;
     
-    bool right_child_is_join_;
+    // bool right_child_is_join_;
+    /**
+     * if the right child is a stateful operator, it record and resume its state independently
+     */
+    bool right_child_is_stateful_;
     // IndexScanOperatorState right_index_scan_state_;
     OperatorState* right_child_state_;
 
@@ -306,6 +319,7 @@ public:
     ~GatherOperatorState();
     size_t serialize(char *dest) override;
     bool deserialize(char *src, size_t size) override;
+    void rebuild_result_queues(GatherExecutor *gather_op, char* src, size_t size);
     size_t getSize() override {
         // std::cout << "GatherOperatorState getSize(): " << op_state_size_ << std::endl;
         return op_state_size_;
@@ -313,8 +327,13 @@ public:
 
     int be_call_times_;
     int subplan_num_;   // 有多少个子计划
+
+    // 每个儿子的call_time, state, result_begin_index, result_end_index应该原子获取
     int* subplan_call_times_;   // 每个子计划的调用次数
+    bool child_is_stateful_;    // 子算子是否为stateful算子，如果不是则需要序列化/反序列化子算子的状态（subplan_states_)
     IndexScanOperatorState* subplan_states_;  // 每个子计划的状态
+    int* result_begin_index_;
+    int* result_end_index_;
 
     GatherExecutor *gather_op_;
 };

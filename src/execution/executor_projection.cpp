@@ -19,7 +19,7 @@ void ProjectionExecutor::load_state_info(ProjectionOperatorState *proj_op_state)
         checkpointed_result_num_ = be_call_times_;
     }
 
-    if(proj_op_state->is_left_child_join_ == false) {
+    if(proj_op_state->is_left_child_stateful_ == false) {
         if(auto x = dynamic_cast<IndexScanExecutor *>(prev_.get())) {
             if(proj_op_state->left_index_scan_state_->finish_begin_tuple_ == false) {
                 x->beginTuple();

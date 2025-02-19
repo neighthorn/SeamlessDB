@@ -75,6 +75,7 @@ public:
 
         be_call_times_ = 0;
         left_child_call_times_ = 0;
+        right_child_call_times_ = 0;
 
         finished_begin_tuple_ = false; 
         is_in_recovery_ = false;

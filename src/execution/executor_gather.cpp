@@ -208,6 +208,8 @@ std::pair<bool, double> GatherExecutor::judge_state_reward(GatherCheckpointInfo*
             curr_ck_info->max_child_rc_op_ = max_child_rc_op;
             curr_ck_info->state_change_time_ = state_change_time_;
         }
+        RwServerDebug::getInstance()->DEBUG_PRINT("[GatherExecutor]: [delta result num]: " + std::to_string(result_buffer_curr_tuple_counts_[0] - consumed_sizes_[0]) \
+            + " [Rew_op]: " + std::to_string(rew_op) + " [state_size]: " + std::to_string(src_op) + " [Src_op]: " + std::to_string(new_src_op) + " [Rc_op]: " + std::to_string(rc_op) + " [State Theta]: " + std::to_string(state_theta_));
         // if(state_change_time_ - latest_ck_info->state_change_time_ < 10) return {false, -1};
         return {true, src_op};
     }
@@ -271,7 +273,6 @@ void GatherExecutor::write_state_if_allow(int type) {
     if(able_to_write) {
         // 首先获取所有的锁
         // TODO: this src_op is not correct
-        RwServerDebug::getInstance()->DEBUG_PRINT("A checkpoint for gather op is created.");
         context_->op_state_mgr_->add_operator_state_to_buffer(this, src_op);
         ck_infos_.push_back(curr_ck_info);
     }
@@ -293,6 +294,7 @@ void GatherExecutor::load_state_info(GatherOperatorState* state) {
                 x->load_state_info(&state->subplan_states_[i]);
                 x->nextTuple();
             }
+            worker_is_end_[i] = x->is_end();
         }
         else {
             std::cerr << "[Error]: GatherExecutor only support IndexScanExecutor as worker!" << std::endl;

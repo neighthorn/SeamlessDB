@@ -281,7 +281,7 @@ void BlockNestedLoopJoinExecutor::beginTuple() {
     */
     left_child_call_times_ += left_block_->size_;
     state_change_time_ += left_block_->size_;
-    write_state_if_allow();
+    // write_state_if_allow();
         
     // 2. 初始化 isend并开启循环寻找第一个符合要求的节点
     isend = false;

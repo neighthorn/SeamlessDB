@@ -110,6 +110,21 @@ IndexScanOperatorState::IndexScanOperatorState(IndexScanExecutor *index_scan_op)
 
     op_state_size_ = getSize();
 }
+
+void IndexScanOperatorState::set_state(IndexScanExecutor* index_scan_op) {
+    sql_id_             = index_scan_op->sql_id_;
+    operator_id_        = index_scan_op->operator_id_;
+    op_state_size_      = index_scan_state_size_min;
+    op_state_time_      = time(nullptr);
+    exec_type_          = index_scan_op->exec_type_;
+    finish_begin_tuple_ = index_scan_op->finished_begin_tuple_;
+
+    index_scan_op_      = index_scan_op;
+    lower_rid_          = index_scan_op->lower_rid_;
+    upper_rid_          = index_scan_op->upper_rid_;
+    current_rid_        = index_scan_op->rid_;
+    is_seq_scan_        = index_scan_op->is_seq_scan_;
+}
     
 size_t  IndexScanOperatorState::serialize(char *dest) {
     // RwServerDebug::getInstance()->DEBUG_PRINT("Serialize IndexScanOperatorState: op_id=" + std::to_string(operator_id_));
@@ -260,11 +275,12 @@ BlockJoinOperatorState::BlockJoinOperatorState() : OperatorState(-1, -1, time(nu
     left_block_cursor_ = -1;
     left_child_call_times_ = -1;
     be_call_times_ = -1;
+    right_child_call_times_ = -1;
 
-    left_child_is_join_ = false;
+    left_child_is_stateful_ = false;
     // left_index_scan_state_ = IndexScanOperatorState();
 
-    right_child_is_join_ = false;
+    right_child_is_stateful_ = false;
     // right_index_scan_state_ = IndexScanOperatorState();
 
     /*
@@ -295,6 +311,7 @@ BlockJoinOperatorState::BlockJoinOperatorState(BlockNestedLoopJoinExecutor *bloc
     left_block_cursor_      = block_join_op_->left_block_->cur_pos_;
     left_child_call_times_  = block_join_op_->left_child_call_times_;
     be_call_times_          = block_join_op_->be_call_times_;
+    right_child_call_times_ = block_join_op_->right_child_call_times_;
 
     // RwServerDebug::getInstance()->DEBUG_PRINT("left_block_id_: " + std::to_string(left_block_id_));
     // RwServerDebug::getInstance()->DEBUG_PRINT("left block max size: " + std::to_string(left_block_max_size_));
@@ -303,31 +320,34 @@ BlockJoinOperatorState::BlockJoinOperatorState(BlockNestedLoopJoinExecutor *bloc
     // RwServerDebug::getInstance()->DEBUG_PRINT("be_call_times_: " + std::to_string(be_call_times_));
 
 
-    state_size += sizeof(int) * 4 + sizeof(size_t);
+    state_size += sizeof(int) * 5 + sizeof(size_t);
 
     /*
         left exec is join
     */
     if(dynamic_cast<BlockNestedLoopJoinExecutor *>(block_join_op_->left_.get())) {
-        left_child_is_join_ = true;
+        left_child_is_stateful_ = true;
         // left_index_scan_state_ = IndexScanOperatorState();
         state_size += sizeof(bool);
     } else if(auto x = dynamic_cast<IndexScanExecutor *>(block_join_op_->left_.get())){
-        left_child_is_join_ = false;
+        left_child_is_stateful_ = false;
         // left_index_scan_state_ = IndexScanOperatorState(x);
         left_child_state_ = new IndexScanOperatorState(x);
         state_size += sizeof(bool) + left_child_state_->getSize();
     } else if(dynamic_cast<HashJoinExecutor *>(block_join_op_->left_.get())) {
-        left_child_is_join_ = true;
+        left_child_is_stateful_ = true;
         // left_index_scan_state_ = IndexScanOperatorState();
         state_size += sizeof(bool);
     } else if(auto x = dynamic_cast<ProjectionExecutor *>(block_join_op_->left_.get())) {
-        left_child_is_join_ = false;
+        left_child_is_stateful_ = false;
         // left_index_scan_state_ = IndexScanOperatorState();
         left_child_state_ = new ProjectionOperatorState(x);
         state_size += sizeof(bool) + left_child_state_->getSize();
-    }
-    else {
+    } else if(dynamic_cast<GatherExecutor *>(block_join_op_->left_.get())) {
+        left_child_is_stateful_ = true;
+        // left_index_scan_state_ = IndexScanOperatorState();
+        state_size += sizeof(bool);
+    } else {
         std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
     }
 
@@ -339,26 +359,26 @@ BlockJoinOperatorState::BlockJoinOperatorState(BlockNestedLoopJoinExecutor *bloc
         right exec is join
     */
     // right_index_scan_state_ = IndexScanOperatorState();
-    if(auto x = dynamic_cast<BlockNestedLoopJoinExecutor *>(block_join_op_->right_.get())) {
-        right_child_is_join_ = true;
+    if(dynamic_cast<BlockNestedLoopJoinExecutor *>(block_join_op_->right_.get())) {
+        right_child_is_stateful_ = true;
         state_size += sizeof(bool);
     } else if(auto x = dynamic_cast<IndexScanExecutor *>(block_join_op_->right_.get())) {
-        right_child_is_join_ = false;
+        right_child_is_stateful_ = false;
         // right_index_scan_state_ = IndexScanOperatorState(x);
         right_child_state_ = new IndexScanOperatorState(x);
         state_size += sizeof(bool) + right_child_state_->getSize();
-    } 
-    else if(auto x = dynamic_cast<HashJoinExecutor *>(block_join_op_->right_.get())) {
-        right_child_is_join_ = true;
+    } else if(dynamic_cast<HashJoinExecutor *>(block_join_op_->right_.get())) {
+        right_child_is_stateful_ = true;
         state_size += sizeof(bool);
-    }
-    else if(auto x = dynamic_cast<ProjectionExecutor *>(block_join_op_->right_.get())) {
-        right_child_is_join_ = false;
+    } else if(auto x = dynamic_cast<ProjectionExecutor *>(block_join_op_->right_.get())) {
+        right_child_is_stateful_ = false;
         right_child_state_ = new ProjectionOperatorState(x);
         state_size += sizeof(bool) + right_child_state_->getSize();
         // std::cout << "right child projection state size: " << right_child_state_->getSize() << std::endl;
-    }
-    else {
+    } else if(dynamic_cast<GatherExecutor *>(block_join_op_->right_.get())) {
+        right_child_is_stateful_ = true;
+        state_size += sizeof(bool);
+    } else {
         std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
     }
 
@@ -395,10 +415,10 @@ BlockJoinOperatorState::BlockJoinOperatorState(BlockNestedLoopJoinExecutor *bloc
 }
 
 BlockJoinOperatorState::~BlockJoinOperatorState() {
-    if(left_child_is_join_ == false) {
+    if(left_child_is_stateful_ == false) {
         delete left_child_state_;
     }
-    if(right_child_is_join_ == false) {
+    if(right_child_is_stateful_ == false) {
         delete right_child_state_;
     }
     if(left_block_ != nullptr) {
@@ -423,14 +443,16 @@ size_t BlockJoinOperatorState::serialize(char *dest) {
     offset += sizeof(int);
     memcpy(dest + offset, (char *)&be_call_times_, sizeof(int));
     offset += sizeof(int);
+    memcpy(dest + offset, (char *)&right_child_call_times_, sizeof(int));
+    offset += sizeof(int);
 
     /*
         left child is join
     */
-    memcpy(dest + offset, (char *)&left_child_is_join_, sizeof(bool));
+    memcpy(dest + offset, (char *)&left_child_is_stateful_, sizeof(bool));
     offset += sizeof(bool);
     // size_t left_index_scan_size = left_index_scan_state_.serialize(dest + offset);
-    if(left_child_is_join_ == false) {
+    if(left_child_is_stateful_ == false) {
         // RwServerDebug::getInstance()->DEBUG_PRINT("left child is not join, expect projection/index scan serialization following");
         size_t left_index_scan_size = left_child_state_->serialize(dest + offset);
         offset += left_index_scan_size;
@@ -442,9 +464,9 @@ size_t BlockJoinOperatorState::serialize(char *dest) {
     /*
         right child is join
     */
-    memcpy(dest + offset, (char *)&right_child_is_join_, sizeof(bool));
+    memcpy(dest + offset, (char *)&right_child_is_stateful_, sizeof(bool));
     offset += sizeof(bool);
-    if(right_child_is_join_ == false) {
+    if(right_child_is_stateful_ == false) {
         // RwServerDebug::getInstance()->DEBUG_PRINT("right child is not join, expect projection/index scan serialization following");
         size_t right_index_scan_size = right_child_state_->serialize(dest + offset);
         offset += right_index_scan_size;
@@ -515,6 +537,8 @@ bool BlockJoinOperatorState::deserialize(char *src, size_t size) {
     offset += sizeof(int);
     memcpy((char *)&be_call_times_, src + offset, sizeof(int));
     offset += sizeof(int);
+    memcpy((char *)&right_child_call_times_, src + offset, sizeof(int));
+    offset += sizeof(int);
 
     // RwServerDebug::getInstance()->DEBUG_PRINT("This line is number: " + std::string(__FILE__)  + ":" + std::to_string(__LINE__));
 
@@ -530,9 +554,9 @@ bool BlockJoinOperatorState::deserialize(char *src, size_t size) {
     */
     // std::cout << "This line is number: " << __FILE__  << ":" << __LINE__ << std::endl;
     // RwServerDebug::getInstance()->DEBUG_PRINT("offset= " + std::to_string(offset));
-    memcpy((char *)&left_child_is_join_, src + offset, sizeof(bool));
+    memcpy((char *)&left_child_is_stateful_, src + offset, sizeof(bool));
     offset += sizeof(bool);
-    if(left_child_is_join_ == false) {
+    if(left_child_is_stateful_ == false) {
         // RwServerDebug::getInstance()->DEBUG_PRINT("left child is not join, expect projection/index scan deserialization following");
         // left_index_scan_state_.deserialize(src + offset, left_index_scan_state_.getSize());
         ExecutionType child_exec_type = *reinterpret_cast<ExecutionType*>(src + offset + EXECTYPE_OFFSET);
@@ -558,10 +582,10 @@ bool BlockJoinOperatorState::deserialize(char *src, size_t size) {
         deserialize right child
     */
     // std::cout << "This line is number: " << __FILE__  << ":" << __LINE__ << std::endl;
-    memcpy((char *)&right_child_is_join_, src + offset, sizeof(bool));
+    memcpy((char *)&right_child_is_stateful_, src + offset, sizeof(bool));
     offset += sizeof(bool);
     // std::cout << "This line is number: " << __FILE__  << ":" << __LINE__ << std::endl;
-    if(right_child_is_join_ == false) {
+    if(right_child_is_stateful_ == false) {
         // RwServerDebug::getInstance()->DEBUG_PRINT("right child is not join, expect projection/index scan deserialization following");
         ExecutionType child_exec_type = *reinterpret_cast<ExecutionType*>(src + offset + EXECTYPE_OFFSET);
         if(child_exec_type == ExecutionType::INDEX_SCAN) {
@@ -624,6 +648,7 @@ HashJoinOperatorState::HashJoinOperatorState(): OperatorState(-1, -1, time(nullp
     hash_table_contained_ = false;
     be_call_times_ = -1;
     left_child_call_times_ = -1;
+    right_child_call_times_ = -1;
 
     left_child_is_stateful_ = true;
     // left_index_scan_state_ = IndexScanOperatorState();
@@ -647,6 +672,7 @@ HashJoinOperatorState::HashJoinOperatorState(HashJoinExecutor* hash_join_op):
 
     be_call_times_ = hash_join_op->be_call_times_;
     left_child_call_times_ = hash_join_op->left_child_call_times_;
+    right_child_call_times_ = hash_join_op->right_child_call_times_;
     left_record_len_ = hash_join_op_->left_->tupleLen();
     left_hash_table_size_ = hash_join_op_->left_hash_table_curr_tuple_count_ - hash_join_op_->left_hash_table_checkpointed_tuple_count_;
     left_tuples_index_ = hash_join_op_->left_tuples_index_;
@@ -659,7 +685,7 @@ HashJoinOperatorState::HashJoinOperatorState(HashJoinExecutor* hash_join_op):
     if(left_hash_table_size_ > 0) hash_table_contained_ = true;
     else hash_table_contained_ = false;
 
-    op_state_size_ += sizeof(bool) * 2 + sizeof(int) * 5;
+    op_state_size_ += sizeof(bool) * 2 + sizeof(int) * 6;
 
     // left exec info
     // state_size += sizeof(bool);
@@ -727,6 +753,8 @@ size_t HashJoinOperatorState::serialize(char *dest) {
     memcpy(dest + offset, (char *)&be_call_times_, sizeof(int));
     offset += sizeof(int);
     memcpy(dest + offset, (char *)&left_child_call_times_, sizeof(int));
+    offset += sizeof(int);
+    memcpy(dest + offset, (char *)&right_child_call_times_, sizeof(int));
     offset += sizeof(int);
     memcpy(dest + offset, (char *)&left_child_is_stateful_, sizeof(bool));
     offset += sizeof(bool);
@@ -803,6 +831,8 @@ bool HashJoinOperatorState::deserialize(char* src, size_t size) {
     offset += sizeof(int);
     memcpy((char *)&left_child_call_times_, src + offset, sizeof(int));
     offset += sizeof(int);
+    memcpy((char *)&right_child_call_times_, src + offset, sizeof(int));
+    offset += sizeof(int);
     memcpy((char *)&left_child_is_stateful_, src + offset, sizeof(bool));
     offset += sizeof(bool);
     memcpy((char *)&right_child_is_stateful_, src + offset, sizeof(bool));
@@ -872,7 +902,7 @@ void HashJoinOperatorState::rebuild_hash_table(HashJoinExecutor* hash_join_op, c
     assert(hash_table_contained_ == true);
 
     left_hash_table_ = &hash_join_op_->hash_table_;
-    int offset = OperatorState::getSize() + sizeof(bool) * 4 + sizeof(int) * 5;
+    int offset = OperatorState::getSize() + sizeof(bool) * 4 + sizeof(int) * 6;
 
     char* join_key = new char[hash_join_op_->join_key_size_];
     for(int i = 0; i < left_hash_table_size_; i++) {
@@ -1047,17 +1077,28 @@ GatherOperatorState::GatherOperatorState(): OperatorState(-1, -1, time(nullptr),
     gather_op_ = nullptr;
     op_state_size_ = gather_state_size_min;
     be_call_times_ = -1;
+    next_worker_index_ = -1;
 }
 
 GatherOperatorState::GatherOperatorState(GatherExecutor* gather_op): 
     OperatorState(gather_op->sql_id_, gather_op->operator_id_, time(nullptr), gather_op->exec_type_, gather_op->finished_begin_tuple_), gather_op_(gather_op) {
     op_state_size_ = OperatorState::getSize();
     
+    // std::cout << "before subplan_num_, op_state_size_=" << op_state_size_ << std::endl;
     subplan_num_ = gather_op->worker_thread_num_;
     op_state_size_ += sizeof(int);
 
+    // std::cout << "before be_call_times_, op_state_size_=" << op_state_size_ << std::endl;
     be_call_times_ = gather_op->be_call_times_;
     op_state_size_ += sizeof(int);
+
+    // std::cout << "before next_worker_index_, op_state_size_=" << op_state_size_ << std::endl;
+    next_worker_index_ = gather_op->next_worker_index_;
+    op_state_size_ += sizeof(int);
+
+    // child_is_stateful_
+    // std::cout << "before child_is_stateful_, op_state_size_=" << op_state_size_ << std::endl;
+    op_state_size_ += sizeof(bool);
     
     result_begin_index_ = new int[subplan_num_];
     result_end_index_ = new int[subplan_num_];
@@ -1068,7 +1109,8 @@ GatherOperatorState::GatherOperatorState(GatherExecutor* gather_op):
             {
                 // 如果子算子节点为indexscan算子，那么原子获取{scan算子状态，result_begin_index, result_end_index}
                 std::lock_guard<std::mutex> lock(gather_op->result_queues_mutex_[i]);
-                subplan_states_[i] = IndexScanOperatorState(dynamic_cast<IndexScanExecutor *>(gather_op->workers_[i].get()));
+                // subplan_states_[i] = IndexScanOperatorState(dynamic_cast<IndexScanExecutor *>(gather_op->workers_[i].get()));
+                subplan_states_[i].set_state(dynamic_cast<IndexScanExecutor *>(gather_op->workers_[i].get()));
                 op_state_size_ += subplan_states_[i].getSize();
                 result_begin_index_[i] = gather_op->consumed_sizes_[i];
                 result_end_index_[i] = gather_op->result_buffer_curr_tuple_counts_[i];
@@ -1091,6 +1133,9 @@ GatherOperatorState::GatherOperatorState(GatherExecutor* gather_op):
         }
     }
 
+    // tuple length
+    op_state_size_ += sizeof(int);
+
     // serialize current unconsumed tuples in workers
     for(int i = 0; i < gather_op_->worker_thread_num_; i++) {
         op_state_size_ += sizeof(int);
@@ -1099,26 +1144,41 @@ GatherOperatorState::GatherOperatorState(GatherExecutor* gather_op):
 }
 
 GatherOperatorState::~GatherOperatorState() {
-    if(subplan_call_times_ != nullptr)
+    if(child_is_stateful_ == true) {
         delete[] subplan_call_times_;
-    if(subplan_states_ != nullptr)
+    }
+    else {
         delete[] subplan_states_;
+    }
+    if(result_begin_index_ != nullptr) {
+        delete[] result_begin_index_;
+    }
+    if(result_end_index_ != nullptr) {
+        delete[] result_end_index_;
+    }
 }
 
 size_t GatherOperatorState::serialize(char *dest) {
-    // @TODO
+    // std::cout << "***************Gather Serialization**************" << std::endl;
     size_t offset = OperatorState::serialize(dest);
 
+    // std::cout << "serialize subplan_num_: " << subplan_num_ << ", offset=" << offset << std::endl;
     memcpy(dest + offset, (char*)&subplan_num_, sizeof(int));
     offset += sizeof(int);
+    // std::cout << "serialize be_call_times_: " << be_call_times_ << ", offset=" << offset << std::endl;
     memcpy(dest + offset, (char*)&be_call_times_, sizeof(int));
     offset += sizeof(int);
+    // std::cout << "serialize next_worker_index_: " << next_worker_index_ << ", offset=" << offset << std::endl;
+    memcpy(dest + offset, (char*)&next_worker_index_, sizeof(int));
+    offset += sizeof(int);
+    // std::cout << "serialize child_is_stateful_: " << child_is_stateful_ << ", offset=" << offset << std::endl;
     memcpy(dest + offset, (char*)&child_is_stateful_, sizeof(bool));
-    offset + sizeof(bool);
+    offset += sizeof(bool);
 
-    if(child_is_stateful_ == true) {
+    if(child_is_stateful_ == false) {
         for(int i = 0; i < subplan_num_; ++i) {
             // serialize subplan states
+            // std::cout << "serialize subplan_states_[" << i << "], offset=" << offset << std::endl;
             size_t subplan_state_size = subplan_states_[i].serialize(dest + offset);
             offset += subplan_state_size;
         }
@@ -1126,16 +1186,23 @@ size_t GatherOperatorState::serialize(char *dest) {
     else {
         for(int i = 0; i < subplan_num_; ++i) {
             // serialize call times
+            // std::cout << "serialize subplan_call_times_[" << i << "], offset=" << offset << std::endl;
             memcpy(dest + offset, (char*)&subplan_call_times_[i], sizeof(int));
             offset += sizeof(int);
         }
     }
 
+    // std::cout << "serialize tuple length: " << gather_op_->len_ << ", offset=" << offset << std::endl;
+    memcpy(dest + offset, (char*)&gather_op_->len_, sizeof(int));
+    offset += sizeof(int);
+
     for(int i = 0; i < subplan_num_; ++i) {
         // serialize tuples count
         int tuple_num = result_end_index_[i] - result_begin_index_[i];
+        // std::cout << "serialize tuple_num: " << tuple_num << ", offset=" << offset << std::endl;
         memcpy(dest + offset, (char*)&tuple_num, sizeof(int));   
         offset += sizeof(int);
+        // std::cout << "serialize tuples, offset=" << offset << std::endl;
         // serialize tuples in result_queues_[i], index: [result_begin_index_[i], result_end_index_[i])
         for(int j = result_begin_index_[i]; j < result_end_index_[i]; j++) {
             memcpy(dest + offset, gather_op_->result_queues_[i][j]->raw_data_, gather_op_->len_);
@@ -1150,20 +1217,28 @@ size_t GatherOperatorState::serialize(char *dest) {
 bool GatherOperatorState::deserialize(char* src, size_t size) {
     if(size < OperatorState::getSize()) return false;
 
+    // std::cout << "*****************GatherOperatorState::deserialize***************" << std::endl;
     bool status = OperatorState::deserialize(src, OperatorState::getSize());
     if(!status) return false;
 
     size_t offset = OperatorState::getSize();
     memcpy((char*)&subplan_num_, src + offset, sizeof(int));
+    // std::cout << "deserialize subplan_num_: " << subplan_num_ << ", offset=" << offset << std::endl;
     offset += sizeof(int);
     memcpy((char*)&be_call_times_, src + offset, sizeof(int));
+    // std::cout << "deserialize be_call_times_: " << be_call_times_ << ", offset=" << offset << std::endl;
+    offset += sizeof(int);
+    memcpy((char*)&next_worker_index_, src + offset, sizeof(int));
+    // std::cout << "deserialize next_worker_index_: " << next_worker_index_ << ", offset=" << offset << std::endl;
     offset += sizeof(int);
     memcpy((char*)&child_is_stateful_, src + offset, sizeof(bool));
+    // std::cout << "deserialize child_is_stateful_: " << child_is_stateful_ << ", offset=" << offset << std::endl;
     offset += sizeof(bool);
 
-    if(child_is_stateful_ == true) {
+    if(child_is_stateful_ == false) {
         subplan_states_ = new IndexScanOperatorState[subplan_num_];
         for(int i = 0; i < subplan_num_; ++i) {
+            // std::cout << "deserialize subplan_states_[" << i << "], offset=" << offset << std::endl;
             subplan_states_[i].deserialize(src + offset, size - offset);
             offset += subplan_states_[i].getSize();
         }
@@ -1172,16 +1247,24 @@ bool GatherOperatorState::deserialize(char* src, size_t size) {
         // 这里虽然反序列化了subplan_call_times，但是实际上在gather_op中没有使用，因为目前gather的子算子都是indexscan算子，没有单独记录状态
         subplan_call_times_ = new int[subplan_num_];
         for(int i = 0; i < subplan_num_; ++i) {
+            // std::cout << "deserialize subplan_call_times_[" << i << "], offset=" << offset << std::endl;
             memcpy((char*)&subplan_call_times_[i], src + offset, sizeof(int));
             offset += sizeof(int);
         }
     }
 
+    int len = *reinterpret_cast<int*>(src + offset);
+    // std::cout << "deserialize tuple length: " << len << ", offset=" << offset << std::endl;
+    offset += sizeof(int);
+
     // 当前函数中跳过deserialize tuple，在rebuild_result_queues中构建
     for(int i = 0; i < subplan_num_; ++i) {
         int tuple_num = *reinterpret_cast<int*>(src + offset);
+        // std::cout << "deserialize tuple_num: " << tuple_num << ", offset=" << offset << std::endl;
         offset += sizeof(int);
-        offset += tuple_num * gather_op_->len_;
+        // @TODO: deserialize的时候gatherop是空指针，提前记录len
+        // std::cout << "deserialize tuples, offset=" << offset << std::endl;
+        offset += tuple_num * len;
     }
 
     assert(offset == op_state_size_);
@@ -1193,17 +1276,19 @@ void GatherOperatorState::rebuild_result_queues(GatherExecutor* gather_op, char*
         gather_op_ = gather_op;
     }
 
-    int offset = OperatorState::getSize() + sizeof(int) * 2 + sizeof(bool);
-    if(child_is_stateful_ == true) {
+    int offset = OperatorState::getSize() + sizeof(int) * 3 + sizeof(bool);
+    if(child_is_stateful_ == false) {
         offset += index_scan_state_size_min * subplan_num_;
     }
     else {
         offset += sizeof(int) * subplan_num_;
     }
 
+    offset += sizeof(int);
     for(int i = 0; i < subplan_num_; ++i) {
         int tuple_num = *reinterpret_cast<int*>(src + offset);
         gather_op_->queue_sizes_[i] = tuple_num;
+        std::cout << "rebuild_result_queues: tuple_num: " << tuple_num << std::endl;
         offset += sizeof(int);
         for(int j = 0; j < tuple_num; j++) {
             auto record = std::make_unique<Record>(gather_op_->len_);

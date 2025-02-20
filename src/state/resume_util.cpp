@@ -450,6 +450,7 @@ void recover_query_tree_state(AbstractExecutor* exec_plan, AbstractExecutor*& ne
 
         std::unique_ptr<GatherOperatorState> gather_op_state = std::make_unique<GatherOperatorState>();
         gather_op_state->deserialize(op_checkpoints[checkpoint_index]->op_state_addr_, op_checkpoints[checkpoint_index]->op_state_size_);
+        gather_op_state->rebuild_result_queues(x, op_checkpoints[checkpoint_index]->op_state_addr_, op_checkpoints[checkpoint_index]->op_state_size_);
         x->load_state_info(gather_op_state.get());
 
         RwServerDebug::getInstance()->DEBUG_PRINT("[RECOVER EXEC PLAN][GatherExecutor][operator_id: " + std::to_string(x->operator_id_) + "][be_call_time: " + std::to_string(x->be_call_times_) + "][left child call times: " + std::to_string(x->left_child_call_times_));
@@ -642,7 +643,11 @@ void recover_exec_plan_to_consistent_state(Context* context, AbstractExecutor* r
             recover_exec_plan_to_consistent_state(context, x->right_.get(), x->right_child_call_times_);
             x->beginTuple();
         }
+        else {
+            recover_exec_plan_to_consistent_state(context, x->right_.get(), x->right_child_call_times_);
+        }
         
+        // @TODO: 如果当前HashJoin算子已经完成了beginTuple，并且右儿子是Gather算子，那么Gather算子需要调用launch_workers函数
         std::cout << "HashJoinOp: " << x->operator_id_ << ", x->be_call_times: " << x->be_call_times_ << ", need_to_be_call_time: " << need_to_be_call_time << std::endl;
         // 将当前算子恢复到被调用次数为need_to_be_call_time的状态
         while(x->be_call_times_ < need_to_be_call_time) {

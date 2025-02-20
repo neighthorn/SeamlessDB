@@ -126,10 +126,13 @@ void GatherExecutor::nextTuple() {
 }
 
 std::unique_ptr<Record> GatherExecutor::Next() {
-    std::lock_guard<std::mutex> lock(result_queues_mutex_[next_worker_index_]);
-    std::unique_ptr<Record> record = std::move(result_queues_[next_worker_index_][consumed_sizes_[next_worker_index_]]);
-    consumed_sizes_[next_worker_index_]++;
-    be_call_times_++;
+    std::unique_ptr<Record> record;
+    {
+        std::lock_guard<std::mutex> lock(result_queues_mutex_[next_worker_index_]);
+        record = std::move(result_queues_[next_worker_index_][consumed_sizes_[next_worker_index_]]);
+        consumed_sizes_[next_worker_index_]++;
+        be_call_times_++;
+    }
     if(state_open_) write_state_if_allow();
     return record;
 }

@@ -101,6 +101,8 @@ public:
 
     IndexScanOperatorState(IndexScanExecutor *index_scan_op);
     ~IndexScanOperatorState() override {}
+
+    void set_state(IndexScanExecutor* index_scan_op);
     
     size_t  serialize(char *dest) override;
 
@@ -199,12 +201,14 @@ public:
     int     left_block_cursor_;
     int     left_child_call_times_;
     int     be_call_times_;
+    // 每次重新调用right child的begintuple的时候需要清零right_child_call_times_
+    int     right_child_call_times_;
 
-    bool    left_child_is_join_;
+    bool    left_child_is_stateful_;
     // IndexScanOperatorState  left_index_scan_state_;
     OperatorState* left_child_state_;
 
-    bool    right_child_is_join_;
+    bool    right_child_is_stateful_;
     // IndexScanOperatorState  right_index_scan_state_;
     OperatorState* right_child_state_;
 
@@ -249,6 +253,7 @@ public:
     bool hash_table_contained_;     // whether the incremental hash table is contained in the state
     int be_call_times_;             // the number of times the operator has been called
     int left_child_call_times_;
+    int right_child_call_times_;
     bool is_hash_table_built_;       // whether the hash table has been built, the same as initialized_ in HashJoinExecutor
 
     // bool left_child_is_join_;
@@ -332,8 +337,10 @@ public:
     int* subplan_call_times_;   // 每个子计划的调用次数
     bool child_is_stateful_;    // 子算子是否为stateful算子，如果不是则需要序列化/反序列化子算子的状态（subplan_states_)
     IndexScanOperatorState* subplan_states_;  // 每个子计划的状态
-    int* result_begin_index_;
-    int* result_end_index_;
+    int* result_begin_index_ = nullptr;
+    int* result_end_index_ = nullptr;
+
+    int next_worker_index_;
 
     GatherExecutor *gather_op_;
 };

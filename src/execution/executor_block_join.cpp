@@ -680,7 +680,7 @@ void BlockNestedLoopJoinExecutor::load_state_info(BlockJoinOperatorState *block_
         /*
             先恢复儿子节点
         */
-        if(block_join_op->left_child_is_join_ == false) {
+        if(block_join_op->left_child_is_stateful_ == false) {
             if(auto x = dynamic_cast<IndexScanExecutor *>(left_.get())) {
                 if(block_join_op->left_child_state_->finish_begin_tuple_ == false) {
                     std::cout << "BlockNestedLoopJoinExecutor::load_state_info: IndexScanExecutor beginTuple\n";
@@ -705,7 +705,7 @@ void BlockNestedLoopJoinExecutor::load_state_info(BlockJoinOperatorState *block_
                 std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
             }
         }
-        if(block_join_op->right_child_is_join_ == false) {
+        if(block_join_op->right_child_is_stateful_ == false) {
             if(auto x = dynamic_cast<IndexScanExecutor *>(right_.get())) {
                 if(block_join_op->right_child_state_->finish_begin_tuple_ == false) {
                     x->beginTuple();
@@ -740,6 +740,7 @@ void BlockNestedLoopJoinExecutor::load_state_info(BlockJoinOperatorState *block_
         left_block_ = left_blocks_->Next();
 
         left_child_call_times_ = block_join_op->left_child_call_times_;
+        right_child_call_times_ = block_join_op->right_child_call_times_;
         be_call_times_ = block_join_op->be_call_times_;
         isend = false;
         // find_next_valid_tuple();

@@ -401,6 +401,7 @@ void HashJoinExecutor::load_state_info(HashJoinOperatorState* state) {
 
     left_tuples_index_ = state->left_tuples_index_;
     left_child_call_times_ = state->left_child_call_times_;
+    right_child_call_times_ = state->right_child_call_times_;
     be_call_times_ = state->be_call_times_;
     is_end_ = false;
     finished_begin_tuple_ = state->finish_begin_tuple_;

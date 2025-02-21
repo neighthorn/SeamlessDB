@@ -695,6 +695,7 @@ void recover_exec_plan_to_consistent_state(Context* context, AbstractExecutor* r
         std::cout << "Recover GatherOp: " << x->operator_id_ << ", x->be_call_times: " << x->be_call_times_ << ", need_to_be_call_time: " << need_to_be_call_time << std::endl;
         while(x->be_call_times_ < need_to_be_call_time) {
             x->nextTuple();
+            x->Next_without_output();
             x->be_call_times_ ++;
         }
 

@@ -151,6 +151,10 @@ public:
     }
     std::unique_ptr<Record> Next() override;
 
+    void Next_without_output() {
+        consumed_sizes_[next_worker_index_]++;
+    }
+
     bool is_end() const override;
 
     int checkpoint(char* dest) override { return -1; };

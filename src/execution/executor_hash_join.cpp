@@ -282,9 +282,12 @@ std::pair<bool, double> HashJoinExecutor::judge_state_reward(HashJoinCheckpointI
             }
         }
         curr_ck_info->state_change_time_ = state_change_time_;
-        RwServerDebug::getInstance()->DEBUG_PRINT("[HashJoinExecutor][op_id: " + std::to_string(operator_id_) + "]: [delta_hash_table_tuple_count]: " + std::to_string(left_hash_table_curr_tuple_count_ - latest_ck_info->left_hash_table_curr_tuple_count_) \
-        + " [Rew_op]: " + std::to_string(rew_op) + " [state_size]: " + std::to_string(src_op) + " [Src_op]: " + std::to_string(new_src_op) + " [Rc_op]: " + std::to_string(rc_op) + " [State Theta]: " + std::to_string(state_theta_));
         if(state_change_time_ - latest_ck_info->state_change_time_ < 10) return {false, -1};
+        // RwServerDebug::getInstance()->DEBUG_PRINT("[HashJoinExecutor][op_id: " + std::to_string(operator_id_) + "]: [delta_hash_table_tuple_count]: " + std::to_string(left_hash_table_curr_tuple_count_ - latest_ck_info->left_hash_table_curr_tuple_count_) \
+        // + " [Rew_op]: " + std::to_string(rew_op) + " [state_size]: " + std::to_string(src_op) + " [Src_op]: " + std::to_string(new_src_op) + " [Rc_op]: " + std::to_string(rc_op) + " [State Theta]: " + std::to_string(state_theta_));
+        // 打印当前算子状态中如下信息：哈希表中tuple个数，被调用次数，儿子算子调用次数，儿子算子的右儿子调用次数
+        RwServerDebug::getInstance()->DEBUG_PRINT("[HashJoinExecutor][op_id: " + std::to_string(operator_id_) + "]: [hash_table_tuple_count]: " + std::to_string(left_hash_table_curr_tuple_count_) \
+        + " [be_call_times]: " + std::to_string(be_call_times_) + " [left_child_call_times]: " + std::to_string(left_child_call_times_) + " [left->right_child_call_times]: " + std::to_string(left_->right_child_call_times_));
         return {true, src_op};
     }
 

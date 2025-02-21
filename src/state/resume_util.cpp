@@ -688,6 +688,7 @@ void recover_exec_plan_to_consistent_state(Context* context, AbstractExecutor* r
             x->beginTuple();
         }
         else {
+            std::cout << "Recover GatherOp, operator_id: " << x->operator_id_ << ": launch_workers\n";
             x->launch_workers();
         }
 

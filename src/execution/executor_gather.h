@@ -44,6 +44,9 @@ public:
     std::vector<std::shared_ptr<AbstractExecutor>> workers_;
     std::vector<std::thread> worker_threads_;   // worker线程
     std::condition_variable next_tuple_cv_;         // 用于通知主线程有新的结果
+
+    bool debug_print_on_;
+    int finished_worker_num_;
     
     
     // 结果记录字段
@@ -100,6 +103,9 @@ public:
 
         std::cout << "GatherExecutor init" << std::endl;
         std::cout << "worker_thread_num: " << worker_thread_num_ << std::endl;
+
+        debug_print_on_ = false;
+        finished_worker_num_ = 0;
     }
 
     ~GatherExecutor() {

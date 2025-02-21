@@ -1183,6 +1183,8 @@ size_t GatherOperatorState::serialize(char *dest) {
         for(int i = 0; i < subplan_num_; ++i) {
             // serialize subplan states
             // std::cout << "serialize subplan_states_[" << i << "], offset=" << offset << std::endl;
+            // std::cout << "indexscan[" << i << "]: curr_rid={.page_no=" << subplan_states_[i].current_rid_.page_no << ", .slot_no=" << subplan_states_[i].current_rid_.slot_no << "}" << std::endl;
+            RwServerDebug::getInstance()->DEBUG_PRINT("[GatherOperator]: indexscan[" + std::to_string(i) + "]: curr_rid={.page_no=" + std::to_string(subplan_states_[i].current_rid_.page_no) + ", .slot_no=" + std::to_string(subplan_states_[i].current_rid_.slot_no) + "}");
             size_t subplan_state_size = subplan_states_[i].serialize(dest + offset);
             offset += subplan_state_size;
         }
@@ -1203,6 +1205,7 @@ size_t GatherOperatorState::serialize(char *dest) {
     for(int i = 0; i < subplan_num_; ++i) {
         // serialize tuples count
         int tuple_num = result_end_index_[i] - result_begin_index_[i];
+        // std::cout << "subplan[" << i << "]: tuple_num=" << tuple_num << std::endl;
         // std::cout << "serialize tuple_num: " << tuple_num << ", offset=" << offset << std::endl;
         memcpy(dest + offset, (char*)&tuple_num, sizeof(int));   
         offset += sizeof(int);
@@ -1221,7 +1224,7 @@ size_t GatherOperatorState::serialize(char *dest) {
 bool GatherOperatorState::deserialize(char* src, size_t size) {
     if(size < OperatorState::getSize()) return false;
 
-    // std::cout << "*****************GatherOperatorState::deserialize***************" << std::endl;
+    std::cout << "*****************GatherOperatorState::deserialize***************" << std::endl;
     bool status = OperatorState::deserialize(src, OperatorState::getSize());
     if(!status) return false;
 
@@ -1245,6 +1248,7 @@ bool GatherOperatorState::deserialize(char* src, size_t size) {
             // std::cout << "deserialize subplan_states_[" << i << "], offset=" << offset << std::endl;
             subplan_states_[i].deserialize(src + offset, size - offset);
             offset += subplan_states_[i].getSize();
+            std::cout << "indexscan[" << i << "]: curr_rid={.page_no=" << subplan_states_[i].current_rid_.page_no << ", .slot_no=" << subplan_states_[i].current_rid_.slot_no << "}" << std::endl;
         }
     }
     else {
@@ -1292,7 +1296,7 @@ void GatherOperatorState::rebuild_result_queues(GatherExecutor* gather_op, char*
     for(int i = 0; i < subplan_num_; ++i) {
         int tuple_num = *reinterpret_cast<int*>(src + offset);
         gather_op_->queue_sizes_[i] = tuple_num;
-        std::cout << "rebuild_result_queues: tuple_num: " << tuple_num << std::endl;
+        // std::cout << "subplan[" << i << "]: tuple_num=" << tuple_num << std::endl;
         offset += sizeof(int);
         for(int j = 0; j < tuple_num; j++) {
             auto record = std::make_unique<Record>(gather_op_->len_);

@@ -103,6 +103,8 @@ public:
     ~IndexScanOperatorState() override {}
 
     void set_state(IndexScanExecutor* index_scan_op);
+
+    void print_state();
     
     size_t  serialize(char *dest) override;
 

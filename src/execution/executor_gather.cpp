@@ -13,6 +13,8 @@ void GatherExecutor::beginTuple() {
         workers_[i]->beginTuple();
     }
 
+    finished_begin_tuple_ = true;
+
     // 开启worker_thread_num_个线程，每个线程负责一个subplan的执行
     for(int i = 0; i < worker_thread_num_; ++i) {
         worker_threads_.push_back(std::thread([this, i](){
@@ -54,6 +56,7 @@ void GatherExecutor::launch_workers() {
                 }
                 else {
                     {
+                        std::lock_guard<std::mutex> lock(result_queues_mutex_[i]);
                         result_queues_[i].emplace_back(std::move(record));
                         queue_sizes_[i].fetch_add(1);
                         if(workers_[i]->is_end()) {

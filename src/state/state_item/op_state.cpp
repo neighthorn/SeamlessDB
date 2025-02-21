@@ -125,6 +125,10 @@ void IndexScanOperatorState::set_state(IndexScanExecutor* index_scan_op) {
     current_rid_        = index_scan_op->rid_;
     is_seq_scan_        = index_scan_op->is_seq_scan_;
 }
+
+void IndexScanOperatorState::print_state() {
+    std::cout << "IndexScanOperatorState: op_id=" << operator_id_  << ", current_rid: " << current_rid_.page_no << ", " << current_rid_.slot_no << std::endl;
+}
     
 size_t  IndexScanOperatorState::serialize(char *dest) {
     // RwServerDebug::getInstance()->DEBUG_PRINT("Serialize IndexScanOperatorState: op_id=" + std::to_string(operator_id_));

@@ -639,7 +639,9 @@ void recover_exec_plan_to_consistent_state(Context* context, AbstractExecutor* r
             // 如果未完成beginTuple，则需要首先将左子树恢复到一致性状态，然后将左儿子恢复到调用次数为left_child_call_times_的状态，再完成beginTuple
             // 如果已经完成了beginTuple，则无需恢复左子树的状态
             std::cout << "Recover: HashJoinExecutor beginTuple, operator_id: " << x->operator_id_ << std::endl;
+            std::cout << "Recover left child, left_child_call_times_: " << x->left_child_call_times_ << std::endl;
             recover_exec_plan_to_consistent_state(context, x->left_.get(), x->left_child_call_times_);
+            std::cout << "Recover right child, right_child_call_times_: " << x->right_child_call_times_ << std::endl;
             recover_exec_plan_to_consistent_state(context, x->right_.get(), x->right_child_call_times_);
             x->beginTuple();
         }
@@ -677,7 +679,7 @@ void recover_exec_plan_to_consistent_state(Context* context, AbstractExecutor* r
         }
     }
     else if(auto x = dynamic_cast<GatherExecutor *>(root)) {
-        std::cout << "Recover GatherExecutor, operator_id: " << x->operator_id_ << std::endl;
+        // std::cout << "Recover GatherExecutor, operator_id: " << x->operator_id_ << std::endl;
         if(x->finished_begin_tuple_ == false) {
             /** Gather算子的finished_begin_tuple_比较特殊，指的是所有的worker线程都完成了beginTuple，而不是Gather算子的beginTuple函数是否执行完
              * 因为在Gather算子中采用的是多线程并行的方式来进行儿子算子的处理，因此，Gather算子beginTuple执行完不代表所有算子的beginTuple都执行完了
@@ -689,6 +691,7 @@ void recover_exec_plan_to_consistent_state(Context* context, AbstractExecutor* r
             x->launch_workers();
         }
 
+        std::cout << "Recover GatherOp: " << x->operator_id_ << ", x->be_call_times: " << x->be_call_times_ << ", need_to_be_call_time: " << need_to_be_call_time << std::endl;
         while(x->be_call_times_ < need_to_be_call_time) {
             x->nextTuple();
             x->be_call_times_ ++;

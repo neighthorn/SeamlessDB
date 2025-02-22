@@ -41,6 +41,8 @@ public:
     std::vector<std::atomic<size_t>> queue_sizes_;   // 记录每个worker的结果队列大小
     int* result_buffer_curr_tuple_counts_;   // 记录当前时刻每个worker的结果队列大小，用于获取状态
 
+    std::atomic<bool> paused_;
+
     std::vector<std::shared_ptr<AbstractExecutor>> workers_;
     std::vector<std::thread> worker_threads_;   // worker线程
     std::condition_variable next_tuple_cv_;         // 用于通知主线程有新的结果
@@ -101,8 +103,8 @@ public:
         context_ = context;
         state_change_time_ = 0;
 
-        std::cout << "GatherExecutor init" << std::endl;
-        std::cout << "worker_thread_num: " << worker_thread_num_ << std::endl;
+        // std::cout << "GatherExecutor init" << std::endl;
+        // std::cout << "worker_thread_num: " << worker_thread_num_ << std::endl;
 
         debug_print_on_ = false;
         finished_worker_num_ = 0;

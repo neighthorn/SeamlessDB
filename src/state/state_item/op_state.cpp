@@ -1184,7 +1184,7 @@ size_t GatherOperatorState::serialize(char *dest) {
             // serialize subplan states
             // std::cout << "serialize subplan_states_[" << i << "], offset=" << offset << std::endl;
             // std::cout << "indexscan[" << i << "]: curr_rid={.page_no=" << subplan_states_[i].current_rid_.page_no << ", .slot_no=" << subplan_states_[i].current_rid_.slot_no << "}" << std::endl;
-            RwServerDebug::getInstance()->DEBUG_PRINT("[GatherOperator]: indexscan[" + std::to_string(i) + "]: curr_rid={.page_no=" + std::to_string(subplan_states_[i].current_rid_.page_no) + ", .slot_no=" + std::to_string(subplan_states_[i].current_rid_.slot_no) + "}");
+            // RwServerDebug::getInstance()->DEBUG_PRINT("[GatherOperator]: indexscan[" + std::to_string(i) + "]: curr_rid={.page_no=" + std::to_string(subplan_states_[i].current_rid_.page_no) + ", .slot_no=" + std::to_string(subplan_states_[i].current_rid_.slot_no) + "}");
             size_t subplan_state_size = subplan_states_[i].serialize(dest + offset);
             offset += subplan_state_size;
         }
@@ -1224,7 +1224,7 @@ size_t GatherOperatorState::serialize(char *dest) {
 bool GatherOperatorState::deserialize(char* src, size_t size) {
     if(size < OperatorState::getSize()) return false;
 
-    std::cout << "*****************GatherOperatorState::deserialize***************" << std::endl;
+    // std::cout << "*****************GatherOperatorState::deserialize***************" << std::endl;
     bool status = OperatorState::deserialize(src, OperatorState::getSize());
     if(!status) return false;
 
@@ -1248,7 +1248,7 @@ bool GatherOperatorState::deserialize(char* src, size_t size) {
             // std::cout << "deserialize subplan_states_[" << i << "], offset=" << offset << std::endl;
             subplan_states_[i].deserialize(src + offset, size - offset);
             offset += subplan_states_[i].getSize();
-            std::cout << "indexscan[" << i << "]: curr_rid={.page_no=" << subplan_states_[i].current_rid_.page_no << ", .slot_no=" << subplan_states_[i].current_rid_.slot_no << "}" << std::endl;
+            // std::cout << "indexscan[" << i << "]: curr_rid={.page_no=" << subplan_states_[i].current_rid_.page_no << ", .slot_no=" << subplan_states_[i].current_rid_.slot_no << "}" << std::endl;
         }
     }
     else {

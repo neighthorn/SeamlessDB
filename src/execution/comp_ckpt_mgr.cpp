@@ -68,6 +68,18 @@ void CompCkptManager::update_operator_cost() {
 
 }
 
+void CompCkptManager::pause_query_tree() {
+    for(auto& pair: operators_) {
+        if(auto x = dynamic_cast<GatherExecutor *>(pair.second->current_op_.get())) {
+            x->paused_ = true;
+            for(int i = 0; i < x->worker_thread_num_; ++i) {
+                // 通过获取mutex，保证所有的worker线程都已经暂停
+                std::lock_guard<std::mutex> lk(x->result_queues_mutex_[i]);
+            }
+        }
+    }
+}
+
 void CompCkptManager::solve_mip(OperatorStateManager* op_state_mgr) {
     if(cost_model_ == 2) {
         auto curr_time = std::chrono::high_resolution_clock::now();
@@ -91,6 +103,9 @@ void CompCkptManager::solve_mip(OperatorStateManager* op_state_mgr) {
             last_ckpt_time_ = curr_time;
         }
     }
+
+    pause_query_tree();
+    
     int n = operators_.size();
     double min_cost = std::numeric_limits<double>::max();
     std::vector<int> best_solutions;

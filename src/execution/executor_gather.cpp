@@ -19,6 +19,10 @@ void GatherExecutor::beginTuple() {
     for(int i = 0; i < worker_thread_num_; ++i) {
         worker_threads_.push_back(std::thread([this, i](){
             while(!workers_[i]->is_end()) {
+                while(paused_) {
+                    
+                    std::this_thread::yield();
+                }
                 auto record = workers_[i]->Next();
                 if(record == nullptr) {
                     assert(0);

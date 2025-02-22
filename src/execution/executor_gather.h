@@ -108,6 +108,9 @@ public:
 
         debug_print_on_ = false;
         finished_worker_num_ = 0;
+        
+        // 在cost_model_>=1的情况下，需要修改paused_为true，用于暂停所有的worker线程
+        paused_ = false;
     }
 
     ~GatherExecutor() {

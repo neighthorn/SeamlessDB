@@ -41,6 +41,7 @@ public:
     void add_new_query_tree(std::shared_ptr<AbstractExecutor> root_op);
     void update_operator_ancestors(std::shared_ptr<AbstractExecutor> op, std::deque<std::shared_ptr<AbstractExecutor>>& ancestors);
     void update_operator_cost();
+    void pause_query_tree();
     void solve_mip(OperatorStateManager* op_state_mgr);
     void create_ckpts(const std::vector<int>& best_solutions);
     void create_ckpts(OperatorStateManager* op_state_mgr_);

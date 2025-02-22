@@ -70,7 +70,12 @@ public:
 
     void beginTuple() override { 
         // if(finished_begin_tuple_)  return;
-        prev_->beginTuple(); finished_begin_tuple_ = true; 
+        if(is_in_recovery_ == false)
+            prev_->beginTuple(); 
+        else
+            prev_->nextTuple();
+        
+        finished_begin_tuple_ = true; 
     }
 
     void nextTuple() override {

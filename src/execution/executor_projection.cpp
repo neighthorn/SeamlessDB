@@ -13,6 +13,7 @@ void ProjectionExecutor::load_state_info(ProjectionOperatorState *proj_op_state)
     be_call_times_ = proj_op_state->left_child_call_times_;
     left_child_call_times_ = be_call_times_;
     finished_begin_tuple_ = proj_op_state->finish_begin_tuple_;
+    is_in_recovery_ = true;
 
     if(is_root_) {
         curr_result_num_ = be_call_times_;

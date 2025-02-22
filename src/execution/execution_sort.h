@@ -69,6 +69,7 @@ public:
         if(is_in_recovery_ && finished_begin_tuple_)  return;
 
         if(is_in_recovery_ == false) prev_->beginTuple();
+        else prev_->nextTuple();
 
         if(prev_->is_end()) {
             is_sorted_ = true;

@@ -5,6 +5,7 @@
 #include "executor_block_join.h"
 #include "state/op_state_manager.h"
 #include "state/state_item/op_state.h"
+#include "comp_ckpt_mgr.h"
 
 void GatherExecutor::beginTuple() {
     if(is_in_recovery_ && finished_begin_tuple_) return;
@@ -275,6 +276,11 @@ void GatherExecutor::write_state() {
 
 void GatherExecutor::write_state_if_allow(int type) {
     if(state_open_ == 0) return;
+
+    if(cost_model_ >= 1) {
+        CompCkptManager::get_instance()->solve_mip(context_->op_state_mgr_);
+        return;
+    }
 
     GatherCheckpointInfo curr_ck_info = {.ck_timestamp_ = std::chrono::high_resolution_clock::now()};
     auto [able_to_write, src_op] = judge_state_reward(&curr_ck_info);

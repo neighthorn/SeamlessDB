@@ -954,6 +954,13 @@ SortOperatorState::SortOperatorState(SortExecutor* sort_op):
     sorted_index_ = sort_op->sorted_index_;
     unsorted_records_count_ = sort_op->num_records_ - sort_op->checkpointed_tuple_num_;
     op_state_size_ += sizeof(int);
+
+    if(cost_model_ >= 1) {
+        for(int i = sort_op_->checkpointed_tuple_num_; i < sort_op_->num_records_; i++) {
+            if((*unsorted_records_)[i] == nullptr) unsorted_records_count_ --;
+        }
+    }
+
     op_state_size_ += unsorted_records_count_ * tuple_len_;
 
     op_state_size_ += sizeof(bool);
@@ -990,6 +997,7 @@ size_t SortOperatorState::serialize(char *dest) {
 
     // serialize unsorted records
     for(int i = sort_op_->checkpointed_tuple_num_; i < sort_op_->num_records_; i++) {
+        if((*unsorted_records_)[i] == nullptr) continue;
         memcpy(dest + offset, (*unsorted_records_)[i]->raw_data_, tuple_len_);
         offset += tuple_len_;
     }

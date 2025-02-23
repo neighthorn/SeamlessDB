@@ -208,7 +208,10 @@ std::unordered_map<std::string, std::vector<std::unique_ptr<Record>>>::const_ite
     assert(offset == join_key_size_);
 
     left_iter_ = hash_table_.find(std::string(key, join_key_size_));
-    left_tuples_index_ = 0;
+    if(left_iter_ == hash_table_.end())
+        left_tuples_index_ = -1;
+    else
+        left_tuples_index_ = 0;
 
     delete[] key;
     return left_iter_;

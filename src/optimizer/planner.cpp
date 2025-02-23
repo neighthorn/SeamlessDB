@@ -369,6 +369,8 @@ std::cout << "ConvertScanToParallelScan: WorkerNum: " << worker_num << std::endl
         break;
     }
 
+    current_plan_id_ --; // 由于scan plan已经生成，所以需要减1
+
     // 3. 生成并行scan plan
     std::vector<std::shared_ptr<Plan>> parallel_scan_plans;
     for(int i = 0; i < worker_num; ++i) {

@@ -47,6 +47,10 @@ void CompCkptManager::update_operator_ancestors(std::shared_ptr<AbstractExecutor
         update_operator_ancestors(x->left_, ancestors);
         update_operator_ancestors(x->right_, ancestors);
     }
+    else if(auto x = dynamic_cast<GatherExecutor *>(op.get())) {
+        for(int i = 0; i < x->worker_thread_num_; ++i) 
+            update_operator_ancestors(x->workers_[i], ancestors);
+    }
 
     ancestors.pop_back();
 }
@@ -202,9 +206,19 @@ void CompCkptManager::solve_mip(OperatorStateManager* op_state_mgr) {
             best_solutions = current_solutions;
         }
     }
-    // std::cout << "operator cnt: " << n << ", solution cnt: " << pow(2, n) << ", valid_solution cnt: " << valid_sol_cnt << "\n";
+    std::cout << "operator cnt: " << n << ", solution cnt: " << pow(2, n) << ", valid_solution cnt: " << valid_sol_cnt << "\n";
+    auto mlp_end_time = std::chrono::high_resolution_clock::now();
+    auto mlp_cost = std::chrono::duration_cast<std::chrono::microseconds>(mlp_end_time - curr_time).count();
+
+    std::cout << "MLP cost: " << mlp_cost << "us\n";
 
     create_ckpts(best_solutions);
+
+    for(auto& pair: operators_) {
+        if(auto x = dynamic_cast<GatherExecutor *>(pair.second->current_op_.get())) {
+            x->paused_ = false;
+        }
+    }
 }
 
 void CompCkptManager::create_ckpts(const std::vector<int>& best_solutions) {

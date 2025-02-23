@@ -55,6 +55,7 @@ public:
         context_ = context;
         finished_begin_tuple_ = false;
         state_change_time_ = 0;
+        is_in_recovery_ = false;
     }
 
     void set_root() { 

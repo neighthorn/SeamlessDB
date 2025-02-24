@@ -28,7 +28,7 @@ for P, cnt in param_sets:
         subprocess.run(["bash", "/root/SeamlessDB/scripts/run_test.sh", str(P)], stdout=proxy_file)
     
     # sleep 1000 秒
-    time.sleep(1000)
+    time.sleep(200)
 
     # if(hasattr(os, 'fsync')):
     #     active_file.flush()
@@ -60,7 +60,7 @@ for cnt in range(1, 4):
     with open(f"proxy_0_{cnt}.txt", "w") as proxy_file:
         subprocess.run(["./bin/proxy", "ro"], stdout=proxy_file)
     
-    time.sleep(700)
+    time.sleep(200)
 
     # if(hasattr(os, 'fsync')):
     #     active_file.flush()
@@ -94,7 +94,7 @@ for cnt in range(1, 4):
     with open(f"no_ckpt_proxy_{cnt}.txt", "w") as proxy_file:
         subprocess.run(["./bin/proxy", "ro"], stdout=proxy_file)
     
-    time.sleep(700)
+    time.sleep(200)
 
     # if(hasattr(os, 'fsync')):
     #     active_file.flush()

@@ -251,6 +251,9 @@ std::shared_ptr<GatherPlan> Planner::convert_scan_to_parallel_scan(std::shared_p
     if(scan_plan->tag != T_IndexScan) {
         return nullptr;
     }
+    if(scan_plan->index_conds_.size() == 0) {
+        return nullptr;
+    }
 
 std::cout << "ConvertScanToParallelScan" << std::endl;
     // 按照index_conds来进行scan range的划分

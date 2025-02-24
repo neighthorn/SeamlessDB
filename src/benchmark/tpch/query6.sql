@@ -8,4 +8,4 @@ and l_shipdate < date '[DATE]' + interval '1' year //一年内
 and l_discount between [DISCOUNT] - 0.01 and [DISCOUNT] + 0.01 //between
 and l_quantity < [QUANTITY]; // QUANTITY在区间[24, 25]中随机选择
 
-select l_extendedprice, l_discount from lineitem where l_shipdate < '1993-01-01';
+select l_extendedprice, l_discount from lineitem where l_shipdate >= '1995-01-01' and l_shipdate < '1996-01-01';

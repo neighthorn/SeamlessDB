@@ -19,7 +19,7 @@ public:
 
 class Proxy {
 public:
-    Proxy(std::string workload, int rw_thread_num, int record_num) {
+    Proxy(std::string workload, int rw_thread_num, int record_num, std::string tpch_query) {
         rw_node_thread_num_ = rw_thread_num;
         workload_ = workload;
         std::cout << "workload: " << workload_ << "\n";
@@ -35,6 +35,7 @@ public:
         else if(workload_.compare("tpch") == 0) {
             bench_mark_ = new TPCHWK(nullptr, nullptr, record_num, nullptr);
             bench_mark_->init_transaction(rw_node_thread_num_);
+            dynamic_cast<TPCHWK*>(bench_mark_)->set_query(tpch_query);
         } 
         else {
             std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;

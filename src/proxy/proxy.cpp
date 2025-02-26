@@ -511,6 +511,7 @@ int main(int argc, char** argv) {
     }
 
     std::string config_path = "../src/config/proxy_config.json";
+    std::string tpch_query = "";
 
     cJSON* cjson = parse_json_file(config_path);
     cJSON* rw_node;
@@ -520,6 +521,7 @@ int main(int argc, char** argv) {
     }
     else {
         rw_node = cJSON_GetObjectItem(cjson, "ro_node");
+        tpch_query = cJSON_GetObjectItem(rw_node, "tpch_query")->valuestring;
         node_type = 1;
     }
 
@@ -527,7 +529,7 @@ int main(int argc, char** argv) {
     int record_num = cJSON_GetObjectItem(rw_node, "record_num")->valueint;
     int thread_num = cJSON_GetObjectItem(rw_node, "thread_num")->valueint;
     resumption_open = cJSON_GetObjectItem(rw_node, "resumption_open")->valueint;
-    Proxy* proxy = new Proxy(workload, thread_num, record_num);
+    Proxy* proxy = new Proxy(workload, thread_num, record_num, tpch_query);
     client_num = thread_num;
 
     proxy->rw_node_ip_ = cJSON_GetObjectItem(rw_node, "ip")->valuestring;

@@ -16,6 +16,7 @@ public:
     void init_transaction(int thread_num) override;
     NativeTransaction* generate_transaction(int thread_index) override;
     NativeTransaction* get_transaction(int thread_index) override;
+    void set_query(std::string query);
 
     SmManager* sm_mgr_;
     IxManager* ix_mgr_;

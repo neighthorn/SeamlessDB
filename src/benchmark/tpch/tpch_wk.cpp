@@ -193,6 +193,14 @@ void TPCHWK::init_transaction(int thread_num) {
     }
 }
 
+void TPCHWK::set_query(std::string query) {
+    for(int i = 0; i < thread_num_; ++i) {
+        queries_example[i]->queries.push_back("begin;");
+        queries_example[i]->queries.push_back(query);
+        queries_example[i]->queries.push_back("commit;");
+    }
+}
+
 NativeTransaction* TPCHWK::generate_transaction(int thread_index) {
     if(thread_index >= thread_num_) {
         return nullptr;

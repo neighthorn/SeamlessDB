@@ -48,4 +48,6 @@ public:
 
     static CompCkptManager* ckpt_mgr_;
     std::chrono::time_point<std::chrono::system_clock> last_ckpt_time_;
+    std::vector<int> valid_solutions_;
+    bool first_solve_;
 };

@@ -62,6 +62,9 @@ void CompCkptManager::add_new_query_tree(std::shared_ptr<AbstractExecutor> root_
     operators_[root_op->operator_id_] = std::make_unique<Operator>(root_op);
     update_operator_ancestors(dynamic_cast<ProjectionExecutor *>(root_op.get())->prev_, current_ops);
     current_ops.pop_back();
+
+    first_solve_ = false;
+    valid_solutions_.clear();
 }
 
 CompCkptManager::CompCkptManager() {
@@ -116,32 +119,45 @@ void CompCkptManager::solve_mip(OperatorStateManager* op_state_mgr) {
     std::chrono::time_point<std::chrono::system_clock> curr_time = std::chrono::high_resolution_clock::now();
     int valid_sol_cnt = 0;
 
-    for(int i = 0; i < std::pow(2, n); ++i) {
-        std::vector<int> current_solutions(n, 0);
-        double current_cost = 0.0;
-        bool valid_solution = true;
+    if(first_solve_ == false) {
+        for(int i = 0; i < std::pow(2, n); ++i) {
+            std::vector<int> current_solutions(n, 0);
+            double current_cost = 0.0;
+            bool valid_solution = true;
 
-        for(int j = n - 1; j >= 0; j--) {
-            if(i & (1 << j)) {
-                // 节点j选择了go back
-                current_solutions[j] = 1;
-                bool find_go_back_anc = false;
+            for(int j = n - 1; j >= 0; j--) {
+                if(i & (1 << j)) {
+                    // 节点j选择了go back
+                    current_solutions[j] = 1;
+                    bool find_go_back_anc = false;
 
-                auto curr_op = operators_.find(j);
-                for(auto anc: curr_op->second->ancestors_) {
-                    // 找到最近的op的 ancestor.parent choose Dumpstate or root
-                    if(auto x = dynamic_cast<ProjectionExecutor *>(anc.get())) {
-                        if(x->is_root_) {
-                            auto latest_anc_ckpt_time = anc->get_latest_ckpt_time();
-                            current_cost += std::chrono::duration_cast<std::chrono::microseconds>(curr_time - latest_anc_ckpt_time).count();
-                            find_go_back_anc = true;
-                            break;    
+                    auto curr_op = operators_.find(j);
+                    for(auto anc: curr_op->second->ancestors_) {
+                        // 找到最近的op的 ancestor.parent choose Dumpstate or root
+                        if(auto x = dynamic_cast<ProjectionExecutor *>(anc.get())) {
+                            if(x->is_root_) {
+                                auto latest_anc_ckpt_time = anc->get_latest_ckpt_time();
+                                current_cost += std::chrono::duration_cast<std::chrono::microseconds>(curr_time - latest_anc_ckpt_time).count();
+                                find_go_back_anc = true;
+                                break;    
+                            }
+                            else {
+                                auto anc_operator = operators_.find(anc->operator_id_);
+                                // ancestor的parent
+                                auto anc_par = anc_operator->second->ancestors_[0];
+                                // 如果ancestor的parent选择了DumpState
+                                if(current_solutions[anc_par->operator_id_] == 0) {
+                                    // resume cost应该是重做到anc 最近一个检查点的开销
+                                    auto latest_anc_ckpt_time = anc->get_latest_ckpt_time();
+                                    current_cost += std::chrono::duration_cast<std::chrono::microseconds>(curr_time - latest_anc_ckpt_time).count();
+                                    find_go_back_anc = true;
+                                    break;
+                                }
+                            }
                         }
                         else {
                             auto anc_operator = operators_.find(anc->operator_id_);
-                            // ancestor的parent
                             auto anc_par = anc_operator->second->ancestors_[0];
-                            // 如果ancestor的parent选择了DumpState
                             if(current_solutions[anc_par->operator_id_] == 0) {
                                 // resume cost应该是重做到anc 最近一个检查点的开销
                                 auto latest_anc_ckpt_time = anc->get_latest_ckpt_time();
@@ -150,65 +166,151 @@ void CompCkptManager::solve_mip(OperatorStateManager* op_state_mgr) {
                                 break;
                             }
                         }
+                        
                     }
-                    else {
-                        auto anc_operator = operators_.find(anc->operator_id_);
-                        auto anc_par = anc_operator->second->ancestors_[0];
-                        if(current_solutions[anc_par->operator_id_] == 0) {
-                            // resume cost应该是重做到anc 最近一个检查点的开销
-                            auto latest_anc_ckpt_time = anc->get_latest_ckpt_time();
-                            current_cost += std::chrono::duration_cast<std::chrono::microseconds>(curr_time - latest_anc_ckpt_time).count();
-                            find_go_back_anc = true;
-                            break;
+
+                    if(find_go_back_anc == false && !dynamic_cast<IndexScanExecutor *>(curr_op->second->current_op_.get())) {
+                        current_cost += std::chrono::duration_cast<std::chrono::microseconds>(curr_time - curr_op->second->current_op_->get_latest_ckpt_time()).count();
+                    }
+
+                    // current_cost += operators_.find(j)->second->resume_cost_;
+                }
+                else {
+                    // 节点j选择了dumpstate
+                    current_solutions[j] = 0;
+
+                    auto curr_op = operators_.find(j);
+                    // 剪枝条件：如果算子是stateless算子，则如果其父亲选择了go back，那么该算子也必须选择go back
+                    if(auto x = dynamic_cast<ProjectionExecutor *>(curr_op->second->current_op_.get())) {
+                        if(!x->is_root_) {
+                            auto par = curr_op->second->ancestors_[0];
+                            if(current_solutions[par->operator_id_] == 1) {
+                                valid_solution = false;
+                                break;
+                            }
                         }
                     }
-                    
-                }
-
-                if(find_go_back_anc == false && !dynamic_cast<IndexScanExecutor *>(curr_op->second->current_op_.get())) {
-                    current_cost += std::chrono::duration_cast<std::chrono::microseconds>(curr_time - curr_op->second->current_op_->get_latest_ckpt_time()).count();
-                }
-
-                // current_cost += operators_.find(j)->second->resume_cost_;
-            }
-            else {
-                // 节点j选择了dumpstate
-                current_solutions[j] = 0;
-
-                auto curr_op = operators_.find(j);
-                // 剪枝条件：如果算子是stateless算子，则如果其父亲选择了go back，那么该算子也必须选择go back
-                if(auto x = dynamic_cast<ProjectionExecutor *>(curr_op->second->current_op_.get())) {
-                    if(!x->is_root_) {
+                    else if(auto x = dynamic_cast<IndexScanExecutor *>(curr_op->second->current_op_.get())) {
                         auto par = curr_op->second->ancestors_[0];
                         if(current_solutions[par->operator_id_] == 1) {
                             valid_solution = false;
                             break;
                         }
                     }
-                }
-                else if(auto x = dynamic_cast<IndexScanExecutor *>(curr_op->second->current_op_.get())) {
-                    auto par = curr_op->second->ancestors_[0];
-                    if(current_solutions[par->operator_id_] == 1) {
-                        valid_solution = false;
-                        break;
-                    }
-                }
 
-                if(valid_solution == true)
-                    current_cost += curr_op->second->current_op_->get_curr_suspend_cost();
-                else break;
+                    if(valid_solution == true)
+                        current_cost += curr_op->second->current_op_->get_curr_suspend_cost();
+                    else break;
+                }
+            }
+
+            valid_sol_cnt += valid_solution == true;
+            if(valid_solution && current_cost < min_cost) {
+                min_cost = current_cost;
+                best_solutions = current_solutions;
+            }
+            if(valid_solution) valid_solutions_.push_back(i);
+        }
+        first_solve_ = true;
+    }
+    else {
+        for(int i: valid_solutions_) {
+            std::vector<int> current_solutions(n, 0);
+            double current_cost = 0.0;
+            bool valid_solution = true;
+
+            for(int j = n - 1; j >= 0; j--) {
+                if(i & (1 << j)) {
+                    // 节点j选择了go back
+                    current_solutions[j] = 1;
+                    bool find_go_back_anc = false;
+
+                    auto curr_op = operators_.find(j);
+                    for(auto anc: curr_op->second->ancestors_) {
+                        // 找到最近的op的 ancestor.parent choose Dumpstate or root
+                        if(auto x = dynamic_cast<ProjectionExecutor *>(anc.get())) {
+                            if(x->is_root_) {
+                                auto latest_anc_ckpt_time = anc->get_latest_ckpt_time();
+                                current_cost += std::chrono::duration_cast<std::chrono::microseconds>(curr_time - latest_anc_ckpt_time).count();
+                                find_go_back_anc = true;
+                                break;    
+                            }
+                            else {
+                                auto anc_operator = operators_.find(anc->operator_id_);
+                                // ancestor的parent
+                                auto anc_par = anc_operator->second->ancestors_[0];
+                                // 如果ancestor的parent选择了DumpState
+                                if(current_solutions[anc_par->operator_id_] == 0) {
+                                    // resume cost应该是重做到anc 最近一个检查点的开销
+                                    auto latest_anc_ckpt_time = anc->get_latest_ckpt_time();
+                                    current_cost += std::chrono::duration_cast<std::chrono::microseconds>(curr_time - latest_anc_ckpt_time).count();
+                                    find_go_back_anc = true;
+                                    break;
+                                }
+                            }
+                        }
+                        else {
+                            auto anc_operator = operators_.find(anc->operator_id_);
+                            auto anc_par = anc_operator->second->ancestors_[0];
+                            if(current_solutions[anc_par->operator_id_] == 0) {
+                                // resume cost应该是重做到anc 最近一个检查点的开销
+                                auto latest_anc_ckpt_time = anc->get_latest_ckpt_time();
+                                current_cost += std::chrono::duration_cast<std::chrono::microseconds>(curr_time - latest_anc_ckpt_time).count();
+                                find_go_back_anc = true;
+                                break;
+                            }
+                        }
+                        
+                    }
+
+                    if(find_go_back_anc == false && !dynamic_cast<IndexScanExecutor *>(curr_op->second->current_op_.get())) {
+                        current_cost += std::chrono::duration_cast<std::chrono::microseconds>(curr_time - curr_op->second->current_op_->get_latest_ckpt_time()).count();
+                    }
+
+                    // current_cost += operators_.find(j)->second->resume_cost_;
+                }
+                else {
+                    // 节点j选择了dumpstate
+                    current_solutions[j] = 0;
+
+                    auto curr_op = operators_.find(j);
+                    // 剪枝条件：如果算子是stateless算子，则如果其父亲选择了go back，那么该算子也必须选择go back
+                    if(auto x = dynamic_cast<ProjectionExecutor *>(curr_op->second->current_op_.get())) {
+                        if(!x->is_root_) {
+                            auto par = curr_op->second->ancestors_[0];
+                            if(current_solutions[par->operator_id_] == 1) {
+                                valid_solution = false;
+                                break;
+                            }
+                        }
+                    }
+                    else if(auto x = dynamic_cast<IndexScanExecutor *>(curr_op->second->current_op_.get())) {
+                        auto par = curr_op->second->ancestors_[0];
+                        if(current_solutions[par->operator_id_] == 1) {
+                            valid_solution = false;
+                            break;
+                        }
+                    }
+
+                    if(valid_solution == true)
+                        current_cost += curr_op->second->current_op_->get_curr_suspend_cost();
+                    else break;
+                }
+            }
+
+            valid_sol_cnt += valid_solution == true;
+            if(valid_solution && current_cost < min_cost) {
+                min_cost = current_cost;
+                best_solutions = current_solutions;
             }
         }
-
-        valid_sol_cnt += valid_solution == true;
-        if(valid_solution && current_cost < min_cost) {
-            min_cost = current_cost;
-            best_solutions = current_solutions;
-        }
     }
+    
     std::cout << "operator cnt: " << n << ", solution cnt: " << pow(2, n) << ", valid_solution cnt: " << valid_sol_cnt << "\n";
     auto mlp_end_time = std::chrono::high_resolution_clock::now();
     auto mlp_cost = std::chrono::duration_cast<std::chrono::microseconds>(mlp_end_time - curr_time).count();
+
+    last_ckpt_time_ = mlp_end_time;
 
     std::cout << "MLP cost: " << mlp_cost << "us\n";
 

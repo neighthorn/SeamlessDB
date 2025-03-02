@@ -538,6 +538,7 @@ int C_ = 1000;
 int cost_model_ = 0;
 int interval_ = 0;
 bool write_ckpt_ = true;
+bool pause_query_tree_ = false;
 
 void ComparativeExp::normal_exec() {
     std::cout << "************************ normal_exec ************************" << std::endl;

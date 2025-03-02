@@ -42,6 +42,9 @@ public:
     void update_operator_ancestors(std::shared_ptr<AbstractExecutor> op, std::deque<std::shared_ptr<AbstractExecutor>>& ancestors);
     void update_operator_cost();
     void pause_query_tree();
+    void launch_query_tree();
+    /** used for ablation study, invoked when cost_model_ == 1 and pause_query_tree_ == true */
+    void query_tree_level_ckpt();
     void solve_mip(OperatorStateManager* op_state_mgr);
     void create_ckpts(const std::vector<int>& best_solutions);
     void create_ckpts(OperatorStateManager* op_state_mgr_);

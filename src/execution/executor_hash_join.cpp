@@ -349,10 +349,14 @@ void HashJoinExecutor::write_state() {
 }
 
 void HashJoinExecutor::write_state_if_allow(int type) {
-    if(cost_model_ >= 1) {
+    if(cost_model_ == 1 || cost_model_ == 2) {
         CompCkptManager::get_instance()->solve_mip(context_->op_state_mgr_);
         return;
     }
+    else if(cost_model_ == 3 && type == 0) {
+        CompCkptManager::get_instance()->query_tree_level_ckpt();
+    }
+    
     // if(type == 1) return;
     HashJoinCheckpointInfo curr_ckpt_info = {.ck_timestamp_ = std::chrono::high_resolution_clock::now(), .left_hash_table_curr_tuple_count_ = left_hash_table_curr_tuple_count_};
     if(state_open_) {

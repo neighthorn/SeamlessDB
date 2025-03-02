@@ -87,6 +87,26 @@ void CompCkptManager::pause_query_tree() {
     }
 }
 
+void CompCkptManager::launch_query_tree() {
+    for(auto& pair: operators_) {
+        if(auto x = dynamic_cast<GatherExecutor *>(pair.second->current_op_.get())) {
+            x->paused_ = false;
+        }
+    }
+}
+
+void CompCkptManager::query_tree_level_ckpt() {
+    pause_query_tree();
+
+    for(auto& pair: operators_) {
+        if(auto x = dynamic_cast<GatherExecutor *>(pair.second->current_op_.get())) {
+            x->write_state_if_allow(2);
+        }
+    }
+    
+    launch_query_tree();
+}
+
 void CompCkptManager::solve_mip(OperatorStateManager* op_state_mgr) {
     if(cost_model_ == 2) {
         auto curr_time = std::chrono::high_resolution_clock::now();

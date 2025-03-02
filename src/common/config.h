@@ -162,6 +162,7 @@ extern int      node_type_;
 extern int      MB_;
 extern int      RB_;
 extern int      C_;
-extern int      cost_model_;    // 0 代表seamlessDB, 1 代表对比工作, 2 代表周期性创建检查点
+extern int      cost_model_;    // 0 代表seamlessDB, 1 代表对比工作, 2 代表周期性创建检查点, 3 代表seamlessDB-P，也就是pause整个query tree然后对每个op应用seamlessDB的cost model
 extern int      interval_;      // 创建检查点的间隔
 extern bool     write_ckpt_;    // 1 代表正常使用cost model正常创建检查点，0 代表只使用cost model不创建检查点
+extern bool     pause_query_tree_;  // 1 代表write_state_if_allow()前暂停整个查询树，0 代表只需要阻塞当前算子

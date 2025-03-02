@@ -43,6 +43,7 @@ int C_ = 1000;
 int cost_model_ = 0;
 int interval_ = 0;
 bool write_ckpt_ = true;
+bool pause_query_tree_ = false;
 
 int back_up_resumption_ = 0;
 
@@ -861,8 +862,11 @@ int main(int argc, char** argv) {
     C_ = cJSON_GetObjectItem(node, "C")->valueint;
     interval_ = cJSON_GetObjectItem(node, "interval")->valueint;
     int write_ckpt_num = cJSON_GetObjectItem(node, "write_ckpt")->valueint;
+    // int pause_query_tree = cJSON_GetObjectItem(node, "pause_query_tree")->valueint;
     if(write_ckpt_num == 1) write_ckpt_ = true;
     else write_ckpt_ = false;
+    // if(pause_query_tree == 1) pause_query_tree_ = true;
+    // else pause_query_tree_ = false;
     std::string cost_model_str = cJSON_GetObjectItem(node, "cost_model")->valuestring;
     if(cost_model_str.compare("SeamlessDB") == 0) {
         std::cout << "seamlessdb\n";
@@ -875,6 +879,10 @@ int main(int argc, char** argv) {
     else if(cost_model_str.compare("IntervalCkpt") == 0) {
         std::cout << "interval ckpt\n";
         cost_model_ = 2;
+    }
+    else if(cost_model_str.compare("SeamlessDB-P") == 0) {
+        std::cout << "seamlessdb-p\n";
+        cost_model_ = 3;
     }
     parallel_factor = cJSON_GetObjectItem(node, "parallel_factor")->valueint;
 

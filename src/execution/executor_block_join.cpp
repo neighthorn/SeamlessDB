@@ -621,9 +621,12 @@ void BlockNestedLoopJoinExecutor::write_state() {
 
 */
 void BlockNestedLoopJoinExecutor::write_state_if_allow(int type) {
-    if(cost_model_ >= 1) {
+    if(cost_model_ == 1 || cost_model_ == 2) {
         CompCkptManager::get_instance()->solve_mip(context_->op_state_mgr_);
         return;
+    }
+    else if(cost_model_ == 3 && type == 0) {
+        CompCkptManager::get_instance()->query_tree_level_ckpt();
     }
 
     // RwServerDebug::getInstance()->DEBUG_PRINT("This line is number: " + std::string(__FILE__)  + ":" + std::to_string(__LINE__));

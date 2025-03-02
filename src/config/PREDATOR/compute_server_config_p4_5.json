@@ -24,6 +24,7 @@
         "workload": "tpch",
         "cost_model": "PREDATOR",
         "parallel_factor": 4,
+        "pause_query_tree": 0,
         "interval": 5,
         "write_ckpt": 1,
         "record_num": 10,

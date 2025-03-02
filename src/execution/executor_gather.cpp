@@ -21,7 +21,6 @@ void GatherExecutor::beginTuple() {
         worker_threads_.push_back(std::thread([this, i](){
             while(!workers_[i]->is_end()) {
                 while(paused_) {
-                    
                     std::this_thread::yield();
                 }
                 auto record = workers_[i]->Next();
@@ -277,9 +276,12 @@ void GatherExecutor::write_state() {
 void GatherExecutor::write_state_if_allow(int type) {
     if(state_open_ == 0) return;
 
-    if(cost_model_ >= 1) {
+    if(cost_model_ == 1 || cost_model_ == 2) {
         CompCkptManager::get_instance()->solve_mip(context_->op_state_mgr_);
         return;
+    }
+    else if(cost_model_ == 3 && type == 0) {
+        CompCkptManager::get_instance()->query_tree_level_ckpt();
     }
 
     GatherCheckpointInfo curr_ck_info = {.ck_timestamp_ = std::chrono::high_resolution_clock::now()};

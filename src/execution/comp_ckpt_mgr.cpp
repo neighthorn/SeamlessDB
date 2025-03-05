@@ -139,7 +139,7 @@ void CompCkptManager::solve_mip(OperatorStateManager* op_state_mgr) {
     std::chrono::time_point<std::chrono::system_clock> curr_time = std::chrono::high_resolution_clock::now();
     int valid_sol_cnt = 0;
 
-    if(first_solve_ == false) {
+    if(first_solve_ == false || n <= 20) {
         for(int i = 0; i < std::pow(2, n); ++i) {
             std::vector<int> current_solutions(n, 0);
             double current_cost = 0.0;

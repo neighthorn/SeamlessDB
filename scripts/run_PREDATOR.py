@@ -4,10 +4,10 @@ import subprocess
 
 # 生成新的参数集: <query, parallel_factor, interval, cnt>
 # queries = [ "Q6", "Q10"]
-queries = ["Q3"]
-parallel_factors = [8]
+queries = ["Q5"]
+parallel_factors = [1,2,4,8]
 intervals = [3, 5, 10]
-cnts = [1, 2]
+cnts = [1, 2, 3]
 
 param_sets = [(q, p, i, c) for q in queries for p in parallel_factors for i in intervals for c in cnts]
 

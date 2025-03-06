@@ -533,6 +533,10 @@ void OperatorStateManager::write_operator_state_to_state_node() {
     //         }
     //     } break;
     // }
+
+    if((int64_t)remote_offset + (int64_t)op_next_write_offset_ + (int64_t)op_checkpoint_block.size >= PER_THREAD_JOIN_BLOCK_SIZE) {
+        op_next_write_offset_ = CheckPointMetaSize;
+    }
     
     if(!coro_sched_->RDMAWriteSync(0, op_checkpoint_qp_, op_checkpoint_block.buffer, remote_offset + op_next_write_offset_, op_checkpoint_block.size)) {
         std::cout << "write size: " << op_checkpoint_block.size /1024/1024 << "MB\n";

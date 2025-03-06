@@ -28,7 +28,7 @@
         "write_ckpt": 1,
         "record_num": 10,
         "state_open": 1,
-        "state_theta": 0.16,
+        "state_theta": 1,
         "buffer_pool_size": 1310720,
         "src_scale_factor": 0.9,
         "block_size": 1000,

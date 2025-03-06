@@ -9,6 +9,6 @@
         "plan_buf_size_GB": 1,
         "cursor_buf_size_GB": 1,
         "join_plan_buf_size_GB": 2,
-        "join_block_buf_size_GB": 5
+        "join_block_buf_size_GB": 15
     }
 }

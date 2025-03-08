@@ -482,8 +482,16 @@ std::pair<bool, size_t> OperatorStateManager::add_operator_state_to_buffer(Abstr
         assert(actual_size == gather_checkpoint_size);
         write_status = true;
 
+        int tmp_size = actual_size;
+        for(int i = 0; i < gather_state.subplan_num_; ++i) {
+            if(gather_op->persisted_result_indexs_[i] > gather_state.result_begin_index_[i])
+                tmp_size -= gather_op->len_ * (gather_op->persisted_result_indexs_[i] - gather_state.result_begin_index_[i]);
+            gather_op->persisted_result_indexs_[i] = gather_state.result_end_index_[i];
+        }
+
         op_checkpoint_queue_.push(OpCheckpointBlock{.buffer = alloc_buffer, .size = actual_size});
         op_checkpoint_not_empty_.notify_all();
+        actual_size = tmp_size;
     }
     else {
         std::cerr << "[Error]: Not Implemented! [Location]: " << __FILE__  << ":" << __LINE__ << std::endl;
@@ -534,46 +542,49 @@ void OperatorStateManager::write_operator_state_to_state_node() {
     //     } break;
     // }
 
-    if((int64_t)remote_offset + (int64_t)op_next_write_offset_ + (int64_t)op_checkpoint_block.size >= PER_THREAD_JOIN_BLOCK_SIZE) {
+    if((int64_t)op_next_write_offset_ + (int64_t)op_checkpoint_block.size >= PER_THREAD_JOIN_BLOCK_SIZE) {
         op_next_write_offset_ = CheckPointMetaSize;
     }
     
-    if(!coro_sched_->RDMAWriteSync(0, op_checkpoint_qp_, op_checkpoint_block.buffer, remote_offset + op_next_write_offset_, op_checkpoint_block.size)) {
+    if(!coro_sched_->RDMAWriteSync(0, op_checkpoint_qp_, op_checkpoint_block.buffer, (int64_t)remote_offset + (int64_t)op_next_write_offset_, op_checkpoint_block.size)) {
         std::cout << "write size: " << op_checkpoint_block.size /1024/1024 << "MB\n";
         RDMA_LOG(ERROR) << "Failed to write operator state into state_node.";
         assert(0);
     }
 
-    RwServerDebug::getInstance()->DEBUG_PRINT("[WRITE CHECKPOINT( " + std::to_string(ck_meta_->checkpoint_num) + ") INFO FINISHED]");
     /*
         update checkpoint meta
     */
-    std::unique_lock<std::mutex> op_meta_lock(op_meta_latch_);
+    {
+        std::lock_guard<std::mutex> op_meta_lock(op_meta_latch_);
 
     // std::cout << "op_checkpoint_block.size: " << op_checkpoint_block.size << "\n";
-    ck_meta_->checkpoint_num ++;
-    ck_meta_->total_size += op_checkpoint_block.size;    
+        ck_meta_->checkpoint_num ++;
+        ck_meta_->total_size += op_checkpoint_block.size;    
+            
+        write_op_checkpoint_meta();
+        // std::cout << "op_checkpoint_block_size: " << op_checkpoint_block.size << "\n";
+
+        /*
+            update next_write_offset_
+        */
+        int prev_offset = op_next_write_offset_;
+        if((int64_t)op_next_write_offset_ + (int64_t) op_checkpoint_block.size >= PER_THREAD_JOIN_BLOCK_SIZE) op_next_write_offset_ = CheckPointMetaSize;
+        op_next_write_offset_ += op_checkpoint_block.size;
         
-    write_op_checkpoint_meta();
-    // std::cout << "op_checkpoint_block_size: " << op_checkpoint_block.size << "\n";
 
-    /*
-        update next_write_offset_
-    */
-    int prev_offset = op_next_write_offset_;
-    op_next_write_offset_ += op_checkpoint_block.size;
-    
+        /*
+            free buffer
+        */
+        op_checkpoint_buffer_allocator_->Free(op_checkpoint_block.size);
+        op_checkpoint_not_full_.notify_all();
+    }
 
-    /*
-        free buffer
-    */
-    op_checkpoint_buffer_allocator_->Free(op_checkpoint_block.size);
-
+    RwServerDebug::getInstance()->DEBUG_PRINT("[WRITE CHECKPOINT( " + std::to_string(ck_meta_->checkpoint_num) + ") INFO FINISHED, checkpoint_total_size = " + std::to_string(ck_meta_->total_size) + "]");
     // RwServerDebug::getInstance()->DEBUG_PRINT("[WRITE OP STATE INFO][T_ID: " + std::to_string(coro_sched_->t_id_) + " buffer: " + std::to_string(reinterpret_cast<uintptr_t>(op_checkpoint_block.buffer)) + ", remote offset: " + std::to_string(prev_offset) + ", size: " + std::to_string(op_checkpoint_block.size));
     /*
         notify
     */
-    op_checkpoint_not_full_.notify_all();
 }
 
 void OperatorStateManager::write_op_state_thread() {

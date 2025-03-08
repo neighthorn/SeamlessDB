@@ -497,7 +497,7 @@ std::shared_ptr<Plan> Planner::make_one_rel(std::shared_ptr<Query> query, Contex
             ++it;
         }
 
-        if(i <= 0) {
+        if(i <= 1) {
             table_join_executors = std::make_shared<JoinPlan>(T_NestLoop, 
                                                             current_sql_id_, current_plan_id_++, 
                                                             std::move(table_join_executors), 

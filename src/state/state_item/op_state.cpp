@@ -1184,7 +1184,7 @@ size_t GatherOperatorState::serialize(char *dest) {
             // serialize subplan states
             // std::cout << "serialize subplan_states_[" << i << "], offset=" << offset << std::endl;
             // std::cout << "indexscan[" << i << "]: curr_rid={.page_no=" << subplan_states_[i].current_rid_.page_no << ", .slot_no=" << subplan_states_[i].current_rid_.slot_no << "}" << std::endl;
-            RwServerDebug::getInstance()->DEBUG_PRINT("[GatherOperator]: indexscan[" + std::to_string(i) + "]: curr_rid={.page_no=" + std::to_string(subplan_states_[i].current_rid_.page_no) + ", .slot_no=" + std::to_string(subplan_states_[i].current_rid_.slot_no) + "}");
+            // RwServerDebug::getInstance()->DEBUG_PRINT("[GatherOperator]: indexscan[" + std::to_string(i) + "]: curr_rid={.page_no=" + std::to_string(subplan_states_[i].current_rid_.page_no) + ", .slot_no=" + std::to_string(subplan_states_[i].current_rid_.slot_no) + "}");
             size_t subplan_state_size = subplan_states_[i].serialize(dest + offset);
             offset += subplan_state_size;
         }

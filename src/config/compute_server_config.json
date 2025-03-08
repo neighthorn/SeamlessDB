@@ -31,7 +31,7 @@
         "state_theta": 100,
         "buffer_pool_size": 1310720,
         "src_scale_factor": 0.9,
-        "block_size": 1000,
+        "block_size": 50000,
         "MB": 819200,
         "RB": 819200,
         "C": 5000

@@ -506,9 +506,9 @@ public:
         std::string table_name = "customer";
         std::vector<ColDef> col_defs;
 
-        col_defs.emplace_back(ColDef("c_nationkey", ColType::TYPE_INT, 4));
-        col_defs.emplace_back(ColDef("c_id", ColType::TYPE_INT, 4));
         col_defs.emplace_back(ColDef("c_mktsegment", ColType::TYPE_STRING, 10));
+        col_defs.emplace_back(ColDef("c_id", ColType::TYPE_INT, 4));
+        col_defs.emplace_back(ColDef("c_nationkey", ColType::TYPE_INT, 4));
         col_defs.emplace_back(ColDef("c_custkey", ColType::TYPE_INT, 4));
         col_defs.emplace_back(ColDef("c_name", ColType::TYPE_STRING, 25));
         col_defs.emplace_back(ColDef("c_address", ColType::TYPE_STRING, 40));
@@ -517,13 +517,13 @@ public:
         col_defs.emplace_back(ColDef("c_comment", ColType::TYPE_STRING, 117));
         std::vector<std::string> pkeys;
         /*** pkeys for Q3 ***/
-        // pkeys.emplace_back("c_mktsegment");
-        // pkeys.emplace_back("c_id");
+        pkeys.emplace_back("c_mktsegment");
+        pkeys.emplace_back("c_id");
         /*** pkeys for Q3 ***/
 
         /*** pkeys for Q5, Q7 ***/
-        pkeys.emplace_back("c_nationkey");
-        pkeys.emplace_back("c_id");
+        // pkeys.emplace_back("c_nationkey");
+        // pkeys.emplace_back("c_id");
         /*** pkeys for Q7 ***/
         sm_mgr->create_table(table_name, col_defs, pkeys, nullptr);
     }
@@ -573,16 +573,16 @@ public:
 
         RandomMapping random_mapping(c_custkey_max);
 
-        // for(int mktseg_idx = 0; mktseg_idx < MKTSEGMENT_MAX_NUM; ++ mktseg_idx) {
-        //     RandomGenerator::generate_mktsegment_from_idx(c_mktsegment, mktseg_idx);
+        for(int mktseg_idx = 0; mktseg_idx < MKTSEGMENT_MAX_NUM; ++ mktseg_idx) {
+            RandomGenerator::generate_mktsegment_from_idx(c_mktsegment, mktseg_idx);
         //     std::cout << c_mktsegment << std::endl;
-        for(c_nationkey = 1; c_nationkey <= c_nationkey_max; ++c_nationkey) {
+        // for(c_nationkey = 1; c_nationkey <= c_nationkey_max; ++c_nationkey) {
 
             for(int record_idx = 0; record_idx < record_per_key && c_custkey <= c_custkey_max; ++record_idx) {
                 RandomGenerator::generate_random_str(c_name, 25);
                 RandomGenerator::generate_random_str(c_address, 40);
-                // c_nationkey = RandomGenerator::generate_random_int(1, REGION_NUM * ONE_REGION_PER_NATION);
-                RandomGenerator::generate_random_mktsegment(c_mktsegment);
+                c_nationkey = RandomGenerator::generate_random_int(1, REGION_NUM * ONE_REGION_PER_NATION);
+                // RandomGenerator::generate_random_mktsegment(c_mktsegment);
                 RandomGenerator::generate_random_str(c_phone, 15);
                 c_acctbal = RandomGenerator::generate_random_float(1, 20000);
                 RandomGenerator::generate_random_str(c_comment, 117);
@@ -591,12 +591,12 @@ public:
                 
 
                 int offset = 0;
-                memcpy(record.raw_data_ + offset, (char *)&c_nationkey, sizeof(int));
-                offset += sizeof(int);
-                memcpy(record.raw_data_ + offset, (char *)&c_custkey, sizeof(int));
-                offset += sizeof(int);
                 memcpy(record.raw_data_ + offset, c_mktsegment, 10);
                 offset += 10;
+                memcpy(record.raw_data_ + offset, (char *)&c_custkey, sizeof(int));
+                offset += sizeof(int);
+                memcpy(record.raw_data_ + offset, (char *)&c_nationkey, sizeof(int));
+                offset += sizeof(int);
                 int actual_custkey = random_mapping.f(c_custkey);
                 // std::cout << "c_custkey: " << c_custkey << " actual_custkey: " << actual_custkey << std::endl;
                 memcpy(record.raw_data_ + offset, (char *)&actual_custkey, sizeof(int));

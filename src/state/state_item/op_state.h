@@ -30,14 +30,14 @@ constexpr int gather_state_size_min = operator_size_min;
 struct CheckPointMeta {
     int thread_id = -1;
     int checkpoint_num = -1;
-    int total_size = -1;
+    int64_t total_size = -1;
     double total_src_op = 0;
 
     size_t serialize(char *dest);
     bool deserialize(char *src, size_t size);
 
     static inline size_t getSize() {
-        return sizeof(int) * 3 + sizeof(double);
+        return sizeof(int) * 2 + sizeof(double) + sizeof(int64_t);
     }
 };
 

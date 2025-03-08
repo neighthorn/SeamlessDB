@@ -156,6 +156,7 @@ std::unique_ptr<Record> GatherExecutor::Next() {
         record = std::move(result_queues_[next_worker_index_][consumed_sizes_[next_worker_index_]]);
         consumed_sizes_[next_worker_index_]++;
         be_call_times_++;
+        state_change_time_ ++;
     }
     if(state_open_) write_state_if_allow();
     return record;
@@ -180,6 +181,7 @@ bool GatherExecutor::is_end() const {
         }
     }
     std::cout << "GatherExecutor is end!" << std::endl;
+    std::cout << "total_tuple_count: " << state_change_time_ << ", total_size: " << (int64_t)state_change_time_ * (int64_t)len_ << std::endl;
     return true;
 }
 
@@ -241,9 +243,10 @@ std::pair<bool, double> GatherExecutor::judge_state_reward(GatherCheckpointInfo*
             curr_ck_info->max_child_rc_op_ = max_child_rc_op;
             curr_ck_info->state_change_time_ = state_change_time_;
         }
+        // if(state_change_time_ - latest_ck_info->state_change_time_ < 5000) return {false, -1};
         // RwServerDebug::getInstance()->DEBUG_PRINT("[GatherExecutor]: [delta result num]: " + std::to_string(result_buffer_curr_tuple_counts_[0] - consumed_sizes_[0]) \
         //     + " [Rew_op]: " + std::to_string(rew_op) + " [state_size]: " + std::to_string(src_op) + " [Src_op]: " + std::to_string(new_src_op) + " [Rc_op]: " + std::to_string(rc_op) + " [State Theta]: " + std::to_string(state_theta_));
-        RwServerDebug::getInstance()->DEBUG_PRINT("[GatherExecutor]: [be_call_times]: " + std::to_string(be_call_times_));
+        // RwServerDebug::getInstance()->DEBUG_PRINT("[GatherExecutor]: [be_call_times]: " + std::to_string(be_call_times_));
         // if(state_change_time_ - latest_ck_info->state_change_time_ < 10) return {false, -1};
         return {true, src_op};
     }

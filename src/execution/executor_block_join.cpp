@@ -155,7 +155,7 @@ void JoinBlockExecutor::beginBlock() {
         // father_exec_->write_state_if_allow();
         executor_->nextTuple();
     }
-    // std::cout << "finish fill block: " << current_block_id_ << std::endl;
+    std::cout << "finish fill block: " << current_block_id_ << std::endl;
     
     // TODO: 在这里调用father_exec_->write_state_if_allow()
 

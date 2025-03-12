@@ -347,8 +347,8 @@ void CompCkptManager::create_ckpts(const std::vector<int>& best_solutions) {
     for(const auto& op: operators_) {
         if(best_solutions[op.second->current_op_->operator_id_] == 0) {
             if(auto x = dynamic_cast<BlockNestedLoopJoinExecutor *>(op.second->current_op_.get())) {
-                if(!x->is_end())
-                    x->write_state();
+                // if(!x->is_end())
+                //     x->write_state();
             }
             else if(auto x = dynamic_cast<HashJoinExecutor *>(op.second->current_op_.get())) {
                 if(!x->is_end())
@@ -382,6 +382,10 @@ void CompCkptManager::create_ckpts(OperatorStateManager* op_state_mgr) {
                 x->write_state();
         }
         else if(auto x = dynamic_cast<ProjectionExecutor *>(op.second->current_op_.get())) {
+            if(!x->is_end())
+                x->write_state();
+        }
+        else if(auto x = dynamic_cast<GatherExecutor *>(op.second->current_op_.get())) {
             if(!x->is_end())
                 x->write_state();
         }

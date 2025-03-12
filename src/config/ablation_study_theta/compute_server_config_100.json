@@ -34,7 +34,7 @@
         "block_size": 1000,
         "MB": 819200,
         "RB": 819200,
-        "C": 5000
+        "C": 500000
     },
     "remote_state_nodes": {
         "remote_ips": [

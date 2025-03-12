@@ -22,20 +22,19 @@
         "local_rdma_port": 12198,
         "thread_num": 1,
         "workload": "tpch",
-        "cost_model": "PREDATOR",
-        "parallel_factor": 8,
-        "pause_query_tree": 0,
-        "interval": 10,
+        "cost_model": "IntervalCkpt",
+        "parallel_factor": 4,
+        "interval": 5,
         "write_ckpt": 1,
         "record_num": 10,
         "state_open": 1,
-        "state_theta": 10,
+        "state_theta": 100,
         "buffer_pool_size": 1310720,
         "src_scale_factor": 0.9,
-        "block_size": 1000,
+        "block_size": 50000,
         "MB": 819200,
         "RB": 819200,
-        "C": 500000
+        "C": 5000
     },
     "remote_state_nodes": {
         "remote_ips": [

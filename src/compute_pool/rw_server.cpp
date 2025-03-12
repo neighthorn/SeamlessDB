@@ -630,6 +630,8 @@ void client_handler(int* sock_fd, RWNode* node) {
                         auto run_sql_total = std::chrono::duration_cast<std::chrono::microseconds>(run_sql_end - run_sql_start).count();
                         std::cout << "time for run sql: " << run_sql_total << "\n";
                         RwServerDebug::getInstance()->DEBUG_PRINT("[time for run sql: " + std::to_string(run_sql_total) + "]");
+                        
+                        std::cout << "checkpoint num = " << OperatorStateManager::write_cnts << ", ckpt_tot_size = " << OperatorStateManager::write_tot_size << "\n";
                     #endif
                     
                     node->portal_->drop();

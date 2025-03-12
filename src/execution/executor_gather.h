@@ -40,6 +40,7 @@ public:
     std::vector<std::atomic<bool>> worker_is_end_;  // 记录每个worker是否已经结束
     std::vector<std::atomic<size_t>> queue_sizes_;   // 记录每个worker的结果队列大小
     int* result_buffer_curr_tuple_counts_;   // 记录当前时刻每个worker的结果队列大小，用于获取状态
+    int* persisted_result_indexs_;
 
     std::atomic<bool> paused_;
 
@@ -79,10 +80,12 @@ public:
         //     result_queues_mutex_.emplace_back(std::mutex());
         // }
 
+        persisted_result_indexs_ = new int[worker_thread_num_];
         for(int i = 0; i < worker_thread_num_; ++i) {
             worker_is_end_[i] = false;
             queue_sizes_[i] = 0;
             consumed_sizes_[i] = 0;
+            persisted_result_indexs_[i] = 0;
         }
 
         next_worker_index_ = 0;
@@ -125,6 +128,9 @@ public:
         workers_.clear();
         if(result_buffer_curr_tuple_counts_ != nullptr) {
             delete[] result_buffer_curr_tuple_counts_;
+        }
+        if(persisted_result_indexs_ != nullptr) {
+            delete[] persisted_result_indexs_;
         }
     }
 

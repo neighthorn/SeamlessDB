@@ -2,7 +2,7 @@
 
 SeamlessDB is a prototype cloud database system for academic purposes, supporting the separation of computation, state, and storage into three layers.
 
-We have implemented all the designs mentioned in the paper(SeamlessDB: Efficient Instance Transition in Cloud-native Databases with Breakpoint Resumption) based on this system.
+We have implemented all the designs mentioned in the paper (SeamlessDB: a Cloud-Native Database for Resilient Failover with Breakpoint Resumption) in our prototype.
 
 ## Pre-requisites to Build
 - Compiler: g++ 11.4.0

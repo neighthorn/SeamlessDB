@@ -62,6 +62,8 @@ void CompCkptManager::add_new_query_tree(std::shared_ptr<AbstractExecutor> root_
 
 CompCkptManager::CompCkptManager() {
     last_ckpt_time_ = std::chrono::high_resolution_clock::now();
+    state_change_log_file_.open("state_change_log.txt", std::ios::out | std::ios::trunc);
+    first_write_ = -1;
 }
 
 void CompCkptManager::update_operator_cost() {
@@ -235,4 +237,19 @@ void CompCkptManager::create_ckpts(OperatorStateManager* op_state_mgr) {
                 x->write_state();
         }
     }
+}
+
+void CompCkptManager::print_whole_query_tree_size() {
+    if(first_write_ == -1) {
+        first_write_ = 0;
+        first_exec_time = std::chrono::steady_clock::now();
+    }
+    int64_t total_size = 0;
+    // 首先计算整个querytree当前的状态大小
+    for(const auto& op: operators_) {
+        if(auto x = dynamic_cast<BlockNestedLoopJoinExecutor *>(op.second->current_op_.get())) {
+            total_size += x->get_current_state_size();
+        }
+    }
+    state_change_log_file_ << std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - first_exec_time).count() << "," << total_size << "\n";
 }

@@ -96,30 +96,30 @@ public:
 
 private:
      ContextManager(int thread_num) {
-        lock_bitmap_ = new RegionBitmap(LOCK_MAX_COUNT, thread_num);
-        auto lock_buffer = RDMARegionAllocator::get_instance()->GetLockRegion();
-        // lock_rdma_buffer_ = new RDMABufferAllocator(lock_buffer.first, lock_buffer.second);
-        lock_rdma_buffer_ = new RDMACircularBuffer(lock_buffer.first, RDMARegionAllocator::get_instance()->lock_buf_size);
-        lock_bitmap_rdma_buffer_ = RDMARegionAllocator::get_instance()->GetLockBitmapRegion();
-        flush_first_lock_ = lock_rdma_buffer_->head_;
-        coro_sched_ = new CoroutineScheduler(0, CORO_NUM);
-        node_id_t primary_id = MetaManager::get_instance()->GetPrimaryNodeID();
-        lock_qp_ = QPManager::get_instance()->GetRemoteLockBufQPWithNodeID(primary_id);
+        // lock_bitmap_ = new RegionBitmap(LOCK_MAX_COUNT, thread_num);
+        // auto lock_buffer = RDMARegionAllocator::get_instance()->GetLockRegion();
+        // // lock_rdma_buffer_ = new RDMABufferAllocator(lock_buffer.first, lock_buffer.second);
+        // lock_rdma_buffer_ = new RDMACircularBuffer(lock_buffer.first, RDMARegionAllocator::get_instance()->lock_buf_size);
+        // lock_bitmap_rdma_buffer_ = RDMARegionAllocator::get_instance()->GetLockBitmapRegion();
+        // flush_first_lock_ = lock_rdma_buffer_->head_;
+        // coro_sched_ = new CoroutineScheduler(0, CORO_NUM);
+        // node_id_t primary_id = MetaManager::get_instance()->GetPrimaryNodeID();
+        // lock_qp_ = QPManager::get_instance()->GetRemoteLockBufQPWithNodeID(primary_id);
         
-        char* log_buffer = RDMARegionAllocator::get_instance()->GetLogRegion();
-        int log_buf_size = RDMARegionAllocator::get_instance()->log_buf_size;
-        log_rdma_buffer_ = new RDMACircularBuffer(log_buffer, log_buf_size);
-        need_flush_offset_ = 0;
-        flushed_log_offset_ = 0;
-        log_qp_ = QPManager::get_instance()->GetRemoteLogBufQPWithNodeID(primary_id);
-        remote_log_head_off_ = log_buf_size;
-        remote_log_tail_off_ = remote_log_head_off_ + sizeof(int64_t);
-        remote_log_state_tail_off_ = remote_log_tail_off_ + sizeof(int64_t);
-        log_meta_mr_ = RDMARegionAllocator::get_instance()->GetLogMetaRegion();
+        // char* log_buffer = RDMARegionAllocator::get_instance()->GetLogRegion();
+        // int log_buf_size = RDMARegionAllocator::get_instance()->log_buf_size;
+        // log_rdma_buffer_ = new RDMACircularBuffer(log_buffer, log_buf_size);
+        // need_flush_offset_ = 0;
+        // flushed_log_offset_ = 0;
+        // log_qp_ = QPManager::get_instance()->GetRemoteLogBufQPWithNodeID(primary_id);
+        // remote_log_head_off_ = log_buf_size;
+        // remote_log_tail_off_ = remote_log_head_off_ + sizeof(int64_t);
+        // remote_log_state_tail_off_ = remote_log_tail_off_ + sizeof(int64_t);
+        // log_meta_mr_ = RDMARegionAllocator::get_instance()->GetLogMetaRegion();
 
-        stop_thread_.store(false);
-        log_flush_thread_ = std::thread(&ContextManager::log_flush_thread_function, this);
-        lock_flush_thread_ = std::thread(&ContextManager::lock_flush_thread_function, this);
+        // stop_thread_.store(false);
+        // log_flush_thread_ = std::thread(&ContextManager::log_flush_thread_function, this);
+        // lock_flush_thread_ = std::thread(&ContextManager::lock_flush_thread_function, this);
     }
 
     ~ContextManager() {

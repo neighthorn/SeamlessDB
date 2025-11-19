@@ -154,6 +154,7 @@ void JoinBlockExecutor::beginBlock() {
         join_block_->push_back(std::move(executor_->Next()));
         // father_exec_->write_state_if_allow();
         executor_->nextTuple();
+        CompCkptManager::get_instance()->print_whole_query_tree_size();
     }
     std::cout << "finish fill block: " << current_block_id_ << std::endl;
     
@@ -192,6 +193,7 @@ void JoinBlockExecutor::nextBlock() {
         join_block_->push_back(std::move(executor_->Next()));
         // father_exec_->write_state_if_allow();
         executor_->nextTuple();
+        CompCkptManager::get_instance()->print_whole_query_tree_size();
         // std::cout << "BNLJ leftchild rid: " << executor_->rid().page_no << ", " << executor_->rid().slot_no << std::endl;
     }
     // std::cout << "finish fill block: " << current_block_id_ << std::endl;
@@ -319,7 +321,21 @@ std::unique_ptr<Record> BlockNestedLoopJoinExecutor::Next() {
     
     be_call_times_ ++;
     // write_state_if_allow();
+
+    CompCkptManager::get_instance()->print_whole_query_tree_size();
     return ret;
+}
+
+int64_t BlockNestedLoopJoinExecutor::get_current_state_size() {
+    int64_t size = 0;
+    if(left_block_ == nullptr) {
+        return 0;
+    }
+    if(left_block_->size_ <= 0) {
+        return 0;
+    }
+    size = (int64_t)left_block_->size_ * (int64_t)left_->tupleLen();
+    return size;
 }
 
 // 找到下一个符合fed_cond的tuple
@@ -387,6 +403,7 @@ void BlockNestedLoopJoinExecutor::find_next_valid_tuple() {
             // std::cout << "Check time period is: " << std::chrono::duration_cast<std::chrono::microseconds>(right_check_end - right_check_start).count() << "us" << std::endl;
 
             right_->nextTuple();
+            CompCkptManager::get_instance()->print_whole_query_tree_size();
 
             if(right_->is_end()) {
                 // std::cout << "left_block->cur_pos_ = " << left_block_->cur_pos_  << ", left_block->size_ = " << left_block_->size_ << std::endl;
@@ -396,6 +413,9 @@ void BlockNestedLoopJoinExecutor::find_next_valid_tuple() {
             }
             left_block_->beginTuple();
         } 
+
+        left_block_->size_ = 0;
+        CompCkptManager::get_instance()->print_whole_query_tree_size();
 
         left_blocks_->nextBlock();
         left_block_ = left_blocks_->Next();

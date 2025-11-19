@@ -6,6 +6,7 @@
 #include "benchmark/test/test_wk.h"
 #include "benchmark/tpcc/tpcc_wk.h"
 #include "benchmark/tpch/tpch_wk.h"
+#include "benchmark/TAW/hat_wk.h"
 
 void load_data(std::string workload, int record_num, SmManager* sm_mgr, IxManager* ix_mgr, MultiVersionManager *mvcc_mgr) {
     if(workload.compare("test") == 0) {
@@ -23,6 +24,11 @@ void load_data(std::string workload, int record_num, SmManager* sm_mgr, IxManage
         if(tpch_wk->create_table())
             tpch_wk->load_data();
     } 
+    else if(workload.compare("TAW") == 0) {
+        HATtrickWK* hattrick_wk = new HATtrickWK(sm_mgr, ix_mgr, record_num, mvcc_mgr);
+        if(hattrick_wk->create_table())
+            hattrick_wk->load_data();
+    }
     else {
         std::cerr << "workload not supported!\n";
     }

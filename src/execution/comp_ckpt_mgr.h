@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <deque>
 #include <chrono>
+#include <fstream>
 
 #include "execution/execution_defs.h"
 #include "execution/executor_abstract.h"
@@ -29,7 +30,9 @@ public:
     std::unordered_map<int, std::unique_ptr<Operator>> operators_;
 
     CompCkptManager();
-    ~CompCkptManager() {}
+    ~CompCkptManager() {
+        state_change_log_file_.close();
+    }
     
     static bool create_instance();
     static void destroy_instance();
@@ -45,6 +48,12 @@ public:
     void create_ckpts(const std::vector<int>& best_solutions);
     void create_ckpts(OperatorStateManager* op_state_mgr_);
 
+    void print_whole_query_tree_size();
+
     static CompCkptManager* ckpt_mgr_;
     std::chrono::time_point<std::chrono::system_clock> last_ckpt_time_;
+
+    std::ofstream state_change_log_file_;
+    std::chrono::steady_clock::time_point first_exec_time;
+    int first_write_ = -1;
 };

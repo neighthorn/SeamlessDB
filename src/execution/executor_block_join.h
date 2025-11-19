@@ -191,4 +191,7 @@ public:
     std::chrono::time_point<std::chrono::system_clock> get_latest_ckpt_time() override;
     double get_curr_suspend_cost() override;
     void write_state();
+
+    // used for collecting the whole query tree state change
+    int64_t get_current_state_size();
 };

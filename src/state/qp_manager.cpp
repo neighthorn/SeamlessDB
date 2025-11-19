@@ -9,9 +9,9 @@ int QPManager::qp_mgr_num_ = 32;
 int QPManager::next_qp_mgr_idx_ = 0;
 
 void QPManager::BuildALLQPConnection(MetaManager* meta_man) {
-  for(int i = 0; i < qp_mgr_num_; ++i ) {
-    global_qp_mgr_[i]->BuildQPConnection(meta_man);
-  }
+  // for(int i = 0; i < qp_mgr_num_; ++i ) {
+  //   global_qp_mgr_[i]->BuildQPConnection(meta_man);
+  // }
 }
 
 void QPManager::BuildQPConnection(MetaManager* meta_man) {
@@ -159,10 +159,6 @@ bool QPManager::create_instance(int qp_mgr_num) {
   }
   next_qp_mgr_idx_ = 0;
   return res;
-  // if(global_qp_mgr_ == nullptr) {
-  //   global_qp_mgr_ = new (std::nothrow) QPManager(0);
-  // }
-  // return (global_qp_mgr_ == nullptr);
 }
 
 void QPManager::destroy_instance() {

@@ -22,36 +22,36 @@ OperatorStateManager::OperatorStateManager(int connection_id, CoroutineScheduler
     coro_sched_(coro_sched), meta_manager_(meta_manager), qp_manager_(qp_manager)
 {
 
-    primary_node_id_ = meta_manager_->GetPrimaryNodeID();
+    // primary_node_id_ = meta_manager_->GetPrimaryNodeID();
 
-    local_sql_region_            = RDMARegionAllocator::get_instance()->GetThreadLocalSQLRegion(connection_id);
-    local_plan_region_           = RDMARegionAllocator::get_instance()->GetThreadLocalJoinPlanRegion(connection_id);
-    local_op_checkpoint_region_  = RDMARegionAllocator::get_instance()->GetThreadLocalJoinBlockRegion(connection_id);
-    local_op_checkpoint_read_cache_region_ = RDMARegionAllocator::get_instance()->GetThreadLocalOPCheckpointReadCacheRegion(connection_id);
+    // local_sql_region_            = RDMARegionAllocator::get_instance()->GetThreadLocalSQLRegion(connection_id);
+    // local_plan_region_           = RDMARegionAllocator::get_instance()->GetThreadLocalJoinPlanRegion(connection_id);
+    // local_op_checkpoint_region_  = RDMARegionAllocator::get_instance()->GetThreadLocalJoinBlockRegion(connection_id);
+    // local_op_checkpoint_read_cache_region_ = RDMARegionAllocator::get_instance()->GetThreadLocalOPCheckpointReadCacheRegion(connection_id);
 
-    sql_buffer_allocator_     = new RDMABufferAllocator(local_sql_region_.first, local_sql_region_.second);
-    plan_buffer_allocator_    = new RDMABufferAllocator(local_plan_region_.first, local_plan_region_.second);
-    op_checkpoint_meta_buffer_  = local_op_checkpoint_region_.first;
-    op_checkpoint_buffer_allocator_ = new RDMABufferAlloc(local_op_checkpoint_region_.first + CheckPointMetaSize, local_op_checkpoint_region_.second);
-    op_checkpoint_read_cache_allocator_ = new RDMABufferAllocator(local_op_checkpoint_read_cache_region_.first, local_op_checkpoint_read_cache_region_.second);
+    // sql_buffer_allocator_     = new RDMABufferAllocator(local_sql_region_.first, local_sql_region_.second);
+    // plan_buffer_allocator_    = new RDMABufferAllocator(local_plan_region_.first, local_plan_region_.second);
+    // op_checkpoint_meta_buffer_  = local_op_checkpoint_region_.first;
+    // op_checkpoint_buffer_allocator_ = new RDMABufferAlloc(local_op_checkpoint_region_.first + CheckPointMetaSize, local_op_checkpoint_region_.second);
+    // op_checkpoint_read_cache_allocator_ = new RDMABufferAllocator(local_op_checkpoint_read_cache_region_.first, local_op_checkpoint_read_cache_region_.second);
 
-    sql_qp_           = qp_manager_->GetRemoteSqlBufQPWithNodeID(primary_node_id_);
-    plan_qp_          = qp_manager_->GetRemoteJoinPlanBufQPWithNodeID(primary_node_id_);
-    op_checkpoint_qp_ = qp_manager_->GetRemoteJoinBlockBufQPWithNodeID(primary_node_id_);
+    // sql_qp_           = qp_manager_->GetRemoteSqlBufQPWithNodeID(primary_node_id_);
+    // plan_qp_          = qp_manager_->GetRemoteJoinPlanBufQPWithNodeID(primary_node_id_);
+    // op_checkpoint_qp_ = qp_manager_->GetRemoteJoinBlockBufQPWithNodeID(primary_node_id_);
 
-    ck_meta_ = std::make_unique<CheckPointMeta>();
-    ck_meta_->thread_id = coro_sched_->t_id_;
-    ck_meta_->checkpoint_num = 0;
-    ck_meta_->total_size = 0;
+    // ck_meta_ = std::make_unique<CheckPointMeta>();
+    // ck_meta_->thread_id = coro_sched_->t_id_;
+    // ck_meta_->checkpoint_num = 0;
+    // ck_meta_->total_size = 0;
 
-    total_src_op = 0;
+    // total_src_op = 0;
     
-    /*
-        next write offset
-    */
-    op_next_write_offset_ = CheckPointMetaSize;
+    // /*
+    //     next write offset
+    // */
+    // op_next_write_offset_ = CheckPointMetaSize;
 
-    op_checkpoint_write_thread_ = new std::thread(&OperatorStateManager::write_op_state_thread, this);
+    // op_checkpoint_write_thread_ = new std::thread(&OperatorStateManager::write_op_state_thread, this);
 }
 
 bool OperatorStateManager::finish_write() {

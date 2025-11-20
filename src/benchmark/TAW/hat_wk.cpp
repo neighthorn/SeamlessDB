@@ -1,3 +1,5 @@
+#include "common/config.h"
+
 #include "hat_wk.h"
 #include "HATtrick_table.h"
 
@@ -5,7 +7,7 @@ bool HATtrickWK::create_table() {
     /*
         create database hattrickbench
     */
-    std::string db_name = "db_hattrickbench";
+    std::string db_name = "db_TAW";
     struct stat st;
     if(stat(db_name.c_str(), &st) == 0 && S_ISDIR(st.st_mode)) {
         std::cout << "directory already exists, just load meta\n";
@@ -52,8 +54,9 @@ bool HATtrickWK::create_table() {
 
 #define hattrick_load_table_data(table_name) \
     { \
-        auto table_name##_table = std::make_unique<HATtrick::table_name>(); \
+        HATtrick::table_name* table_name##_table = new HATtrick::table_name(); \
         table_name##_table->generate_table_data(sf_, txn, sm_mgr_, ix_mgr_); \
+        delete table_name##_table; \
     }
 
 #define hattrick_flush_index(table_name) \
@@ -73,7 +76,7 @@ bool HATtrickWK::create_table() {
     }
 
 void HATtrickWK::load_meta() {
-    std::string db_name = "db_hattrickbench";
+    std::string db_name = "db_TAW";
     // struct stat st;
     
     // if(stat(db_name.c_str(), &st) == 0 && S_ISDIR(st.st_mode)) {
@@ -119,20 +122,50 @@ void HATtrickWK::load_data() {
         flush index
     */
     std::cout << "flush index:\n";
-    hattrick_flush_index(Customer);
-    hattrick_flush_index(Supplier);
-    hattrick_flush_index(Part);
-    hattrick_flush_index(LineOrder);
-    hattrick_flush_index(Date);
-    hattrick_flush_index(History);
+    hattrick_flush_index(customer);
+    hattrick_flush_index(supplier);
+    hattrick_flush_index(part);
+    hattrick_flush_index(lineorder);
+    hattrick_flush_index(date);
+    hattrick_flush_index(history);
     sm_mgr_->primary_index_.clear();
     std::cout << "hattrick flush index done!\n";
-    hattrick_reload_index(Customer);
-    hattrick_reload_index(Supplier);
-    hattrick_reload_index(Part);
-    hattrick_reload_index(LineOrder);
-    hattrick_reload_index(Date);
-    hattrick_reload_index(History);
+    hattrick_reload_index(customer);
+    hattrick_reload_index(supplier);
+    hattrick_reload_index(part);
+    hattrick_reload_index(lineorder);
+    hattrick_reload_index(date);
+    hattrick_reload_index(history);
     std::cout << "hattrick reload index done!\n";
     delete txn;
+}
+
+void HATtrickWK::init_transaction(int thread_num) {
+    thread_num_ = thread_num;
+    for(int i = 0; i < thread_num; ++i) {
+        new_order_txns_.emplace_back(new HATNewOrderTransaction());
+        payment_txns_.emplace_back(new HATPaymentTransaction());
+    }
+}
+
+NativeTransaction* HATtrickWK::generate_transaction(int thread_index) {
+    assert(thread_index <= thread_num_);
+    if(thread_index % 2 == 0) {
+        new_order_txns_[thread_index]->generate_new_txn();
+        return new_order_txns_[thread_index];
+    }
+    else {
+        payment_txns_[thread_index]->generate_new_txn();
+        return payment_txns_[thread_index];
+    }
+}
+
+NativeTransaction* HATtrickWK::get_transaction(int thread_index) {
+    assert(thread_index <= thread_num_);
+    if(thread_index % 2 == 0) {
+        return new_order_txns_[thread_index];
+    }
+    else {
+        return payment_txns_[thread_index];
+    }
 }

@@ -75,25 +75,26 @@ public:
             RandomGenerator::generate_random_str(c_phone, 15);
             RandomGenerator::generate_random_str(c_mktsegment, 10);
             c_paymentcnt = RandomGenerator::generate_random_int(0, 100);
+            memset(record.record_, 0, record.data_length_ + sizeof(RecordHdr));
 
             size_t offset = 0;
-            memcpy(record.record_ + offset, &c_custkey, sizeof(int));
+            memcpy(record.raw_data_ + offset, &c_custkey, sizeof(int));
             offset += sizeof(int);
-            memcpy(record.record_ + offset, c_name, 25);
+            memcpy(record.raw_data_ + offset, c_name, 25);
             offset += 25;
-            memcpy(record.record_ + offset, c_address, 25);
+            memcpy(record.raw_data_ + offset, c_address, 25);
             offset += 25;
-            memcpy(record.record_ + offset, c_city, 10);
+            memcpy(record.raw_data_ + offset, c_city, 10);
             offset += 10;
-            memcpy(record.record_ + offset, c_nation, 15);
+            memcpy(record.raw_data_ + offset, c_nation, 15);
             offset += 15;
-            memcpy(record.record_ + offset, c_region, 12);
+            memcpy(record.raw_data_ + offset, c_region, 12);
             offset += 12;
-            memcpy(record.record_ + offset, c_phone, 15);
+            memcpy(record.raw_data_ + offset, c_phone, 15);
             offset += 15;
-            memcpy(record.record_ + offset, c_mktsegment, 10);
+            memcpy(record.raw_data_ + offset, c_mktsegment, 10);
             offset += 10;
-            memcpy(record.record_ + offset, &c_paymentcnt, sizeof(int));
+            memcpy(record.raw_data_ + offset, &c_paymentcnt, sizeof(int));
             offset += sizeof(int);
 
             assert(offset == tab_meta.record_length_);
@@ -163,21 +164,21 @@ public:
             s_ytd = RandomGenerator::generate_random_float(0.0, 100000.0);
 
             size_t offset = 0;
-            memcpy(record.record_ + offset, &s_suppkey, sizeof(int));
+            memcpy(record.raw_data_ + offset, &s_suppkey, sizeof(int));
             offset += sizeof(int);
-            memcpy(record.record_ + offset, s_name, 25);
+            memcpy(record.raw_data_ + offset, s_name, 25);
             offset += 25;
-            memcpy(record.record_ + offset, s_address, 25);
+            memcpy(record.raw_data_ + offset, s_address, 25);
             offset += 25;
-            memcpy(record.record_ + offset, s_city, 10);
+            memcpy(record.raw_data_ + offset, s_city, 10);
             offset += 10;
-            memcpy(record.record_ + offset, s_nation, 15);
+            memcpy(record.raw_data_ + offset, s_nation, 15);
             offset += 15;
-            memcpy(record.record_ + offset, s_region, 12);
+            memcpy(record.raw_data_ + offset, s_region, 12);
             offset += 12;
-            memcpy(record.record_ + offset, s_phone, 15);
+            memcpy(record.raw_data_ + offset, s_phone, 15);
             offset += 15;
-            memcpy(record.record_ + offset, &s_ytd, sizeof(float));
+            memcpy(record.raw_data_ + offset, &s_ytd, sizeof(float));
             offset += sizeof(float);
 
             assert(offset == tab_meta.record_length_);
@@ -311,37 +312,37 @@ public:
                         memset(record.record_, 0, record.data_length_ + sizeof(RecordHdr));
 
                         size_t offset = 0;
-                        memcpy(record.record_ + offset, &lo_orderdate, sizeof(int));
+                        memcpy(record.raw_data_ + offset, &lo_orderdate, sizeof(int));
                         offset += sizeof(int);
-                        memcpy(record.record_ + offset, &lo_orderkey, sizeof(int));
+                        memcpy(record.raw_data_ + offset, &lo_orderkey, sizeof(int));
                         offset += sizeof(int);
-                        memcpy(record.record_ + offset, &lo_linenumber, sizeof(int));
+                        memcpy(record.raw_data_ + offset, &lo_linenumber, sizeof(int));
                         offset += sizeof(int);
-                        memcpy(record.record_ + offset, &lo_custkey, sizeof(int));
+                        memcpy(record.raw_data_ + offset, &lo_custkey, sizeof(int));
                         offset += sizeof(int);
-                        memcpy(record.record_ + offset, &lo_partkey, sizeof(int));
+                        memcpy(record.raw_data_ + offset, &lo_partkey, sizeof(int));
                         offset += sizeof(int);
-                        memcpy(record.record_ + offset, &lo_suppkey, sizeof(int));
+                        memcpy(record.raw_data_ + offset, &lo_suppkey, sizeof(int));
                         offset += sizeof(int);
-                        memcpy(record.record_ + offset, lo_ordpriority, 15);
+                        memcpy(record.raw_data_ + offset, lo_ordpriority, 15);
                         offset += 15;
-                        memcpy(record.record_ + offset, lo_shippriority, 1);
+                        memcpy(record.raw_data_ + offset, lo_shippriority, 1);
                         offset += 1;
-                        memcpy(record.record_ + offset, &lo_quantity, sizeof(int));
+                        memcpy(record.raw_data_ + offset, &lo_quantity, sizeof(int));
                         offset += sizeof(int);
-                        memcpy(record.record_ + offset, &lo_extendedprice, sizeof(float));
+                        memcpy(record.raw_data_ + offset, &lo_extendedprice, sizeof(float));
                         offset += sizeof(float);
-                        memcpy(record.record_ + offset, &lo_discount, sizeof(int));
+                        memcpy(record.raw_data_ + offset, &lo_discount, sizeof(int));
                         offset += sizeof(int);
-                        memcpy(record.record_ + offset, &lo_revenue, sizeof(float));
+                        memcpy(record.raw_data_ + offset, &lo_revenue, sizeof(float));
                         offset += sizeof(float);
-                        memcpy(record.record_ + offset, &lo_supplycost, sizeof(float));
+                        memcpy(record.raw_data_ + offset, &lo_supplycost, sizeof(float));
                         offset += sizeof(float);
-                        memcpy(record.record_ + offset, &lo_tax, sizeof(int));
+                        memcpy(record.raw_data_ + offset, &lo_tax, sizeof(int));
                         offset += sizeof(int);
-                        memcpy(record.record_ + offset, &lo_commitdate, sizeof(int));
+                        memcpy(record.raw_data_ + offset, &lo_commitdate, sizeof(int));
                         offset += sizeof(int);
-                        memcpy(record.record_ + offset, lo_shipmode, 10);
+                        memcpy(record.raw_data_ + offset, lo_shipmode, 10);
                         offset += 10;
                         assert(offset == tab_meta.record_length_);
                         index_handle->insert_entry(record.raw_data_, record.record_, txn);
@@ -488,25 +489,25 @@ public:
 
             // Serialize the record
             size_t offset = 0;
-            memcpy(record.record_ + offset, &p_partkey, sizeof(p_partkey));
+            memcpy(record.raw_data_ + offset, &p_partkey, sizeof(p_partkey));
             offset += sizeof(p_partkey);
-            memcpy(record.record_ + offset, p_name, sizeof(p_name));
+            memcpy(record.raw_data_ + offset, p_name, sizeof(p_name));
             offset += sizeof(p_name);
-            memcpy(record.record_ + offset, p_mfgr, sizeof(p_mfgr));
+            memcpy(record.raw_data_ + offset, p_mfgr, sizeof(p_mfgr));
             offset += sizeof(p_mfgr);
-            memcpy(record.record_ + offset, p_category, sizeof(p_category));
+            memcpy(record.raw_data_ + offset, p_category, sizeof(p_category));
             offset += sizeof(p_category);
-            memcpy(record.record_ + offset, p_brand1, sizeof(p_brand1));
+            memcpy(record.raw_data_ + offset, p_brand1, sizeof(p_brand1));
             offset += sizeof(p_brand1);
-            memcpy(record.record_ + offset, p_color, sizeof(p_color));
+            memcpy(record.raw_data_ + offset, p_color, sizeof(p_color));
             offset += sizeof(p_color);
-            memcpy(record.record_ + offset, p_type, sizeof(p_type));
+            memcpy(record.raw_data_ + offset, p_type, sizeof(p_type));
             offset += sizeof(p_type);
-            memcpy(record.record_ + offset, &p_size, sizeof(p_size));
+            memcpy(record.raw_data_ + offset, &p_size, sizeof(p_size));
             offset += sizeof(p_size);
-            memcpy(record.record_ + offset, p_container, sizeof(p_container));
+            memcpy(record.raw_data_ + offset, p_container, sizeof(p_container));
             offset += sizeof(p_container);
-            memcpy(record.record_ + offset, &p_price, sizeof(p_price));
+            memcpy(record.raw_data_ + offset, &p_price, sizeof(p_price));
             offset += sizeof(p_price);
 
             assert(offset == tab_meta.record_length_);
@@ -710,8 +711,10 @@ public:
         // pkeys.emplace_back("h_custkey");
         sm_mgr->create_table(table_name, col_defs, pkeys, nullptr);
     }
-    void print_record();
-    void get_random_condition(int SF, std::vector<Condition>& index_conds, std::vector<Condition> filter_conds, bool is_index_scan);
-    void generate_table_data(int SF, Transaction* txn, SmManager* sm_mgr, IxManager* ix_mgr);
+    void print_record() {}
+    void get_random_condition(int SF, std::vector<Condition>& index_conds, std::vector<Condition> filter_conds, bool is_index_scan) {}
+    void generate_table_data(int SF, Transaction* txn, SmManager* sm_mgr, IxManager* ix_mgr) {
+
+    }
 };
 }

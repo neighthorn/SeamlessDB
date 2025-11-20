@@ -88,7 +88,7 @@ public:
         queries.push_back("SELECT LO_EXTENDEDPRICE, LO_DISCOUNT FROM lineorder, date WHERE LO_ORDERDATE = D_DATEKEY \
         AND D_DATEKEY >= 19930101 AND D_DATEKEY <= 19931231 \
         AND LO_ORDERDATE >= 19930101 AND LO_ORDERDATE <= 19931231 \
-        AND LO_DISCOUNT BETWEEN 1 AND 3 \
+        AND LO_DISCOUNT <= 3 \
         AND LO_QUANTITY < 25;");
 
         queries.push_back("commit;");

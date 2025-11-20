@@ -2,6 +2,7 @@ set(WORKLOAD_SRC
     test/test_wk.cpp
     tpcc/tpcc_wk.cpp
     tpch/tpch_wk.cpp
+    TAW/hat_wk.cpp
     util/clock.cpp
     util/random.cpp
 )

@@ -66,8 +66,8 @@ public:
             "FROM HAT.LINEORDER, HAT.DATE "
             "WHERE LO_ORDERDATE = D_DATEKEY "
             "AND D_DATEKEY BETWEEN 19940101 AND 19940131 "
-            "AND LO_DISCOUNT BETWEEN 4 AND 6 "
-            "AND LO_QUANTITY BETWEEN 26 AND 35;"
+            "AND LO_DISCOUNT >= 4 AND LO_DISCOUNT <= 6 "
+            "AND LO_QUANTITY >= 26 AND LO_QUANTITY <= 35;"
         );
 
         queries.push_back("commit;");

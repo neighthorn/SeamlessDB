@@ -197,6 +197,11 @@ RWNode::RWNode(int local_rpc_port, std::string workload, int record_num, int thr
         tpch_wk->create_table();
         // tpch_wk->load_meta();
     }
+    else if(workload == "TAW") {
+        HATtrickWK* hattrick_wk = new HATtrickWK(sm_mgr_, index_mgr_, record_num_, mvcc_mgr_);
+        hattrick_wk->create_table();
+        // hattrick_wk->load_meta();
+    }
     else {
         std::cerr << "workload not supported!\n";
     }

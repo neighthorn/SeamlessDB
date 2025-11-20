@@ -12,6 +12,7 @@
 #include "benchmark/test/test_wk.h"
 #include "benchmark/tpcc/tpcc_wk.h"
 #include "benchmark/tpch/tpch_wk.h"
+#include "benchmark/TAW/hat_wk.h"
 
 class RWNode {
 public:

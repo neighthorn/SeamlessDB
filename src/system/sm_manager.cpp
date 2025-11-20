@@ -108,6 +108,7 @@ void SmManager::open_db(const std::string& db_name) {
     disk_manager_->SetLogFd(fd);
 
     // load表字段的最大值和最小值
+    // TODO: 这里只load了TPCH的，没有load TAW的，所以如果TAW某个表的扫描没有指定范围就无法使用多线程扫描
     std::string meta_path = "../../src/benchmark/tpch/table_meta.json";
     cJSON* cjson = parse_json_file(meta_path);
     cJSON* field_item = cJSON_GetObjectItem(cjson, "r_regionkey");
